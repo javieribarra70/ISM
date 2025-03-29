@@ -1,19 +1,26 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/sidebar";
 import { Project } from "@shared/schema";
-import CreateProjectModal from "@/components/modals/create-project-modal";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function HomePage() {
   const [location, navigate] = useLocation();
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [projectName, setProjectName] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const { toast } = useToast();
   
   // Fetch user authentication status manually
   useEffect(() => {
@@ -54,18 +61,64 @@ export default function HomePage() {
     enabled: !!user, // Only run query if user is authenticated
   });
 
-  // After creating a project, refresh the projects list
-  const handleProjectCreated = () => {
-    console.log("Project created, refreshing projects");
-    refetch();
-    setIsCreateModalOpen(false);
+  // Create project mutation
+  const createProjectMutation = useMutation({
+    mutationFn: async (data: { name: string; description: string }) => {
+      const response = await apiRequest("POST", "/api/projects", data);
+      return response.json();
+    },
+    onSuccess: (project: Project) => {
+      toast({
+        title: "Project created",
+        description: `"${project.name}" has been created successfully`,
+      });
+      
+      // Reset form and close modal
+      setProjectName("");
+      setProjectDescription("");
+      setShowCreateModal(false);
+      
+      // Refresh projects list
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      refetch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to create project",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!projectName.trim()) {
+      toast({
+        title: "Name required",
+        description: "Please enter a project name",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    createProjectMutation.mutate({
+      name: projectName,
+      description: projectDescription,
+    });
   };
   
-  // Add a logging function for debugging
+  // Function to handle opening the modal
   const handleOpenModal = () => {
-    console.log("Opening create project modal, current state:", isCreateModalOpen);
-    setIsCreateModalOpen(true);
-    console.log("Modal state after setting:", true);
+    console.log("Opening create project modal");
+    setShowCreateModal(true);
+  };
+  
+  // Function to handle closing the modal
+  const handleCloseModal = () => {
+    console.log("Closing create project modal");
+    setShowCreateModal(false);
   };
 
   if (isLoading || isProjectsLoading) {
@@ -173,11 +226,70 @@ export default function HomePage() {
         </main>
       </div>
 
-      <CreateProjectModal 
-        isOpen={isCreateModalOpen} 
-        onClose={() => setIsCreateModalOpen(false)}
-        onProjectCreated={handleProjectCreated}
-      />
+      {/* Create Project Modal - Inline implementation */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="relative w-full max-w-lg rounded-lg bg-background p-6 shadow-lg">
+            <button 
+              onClick={handleCloseModal}
+              className="absolute right-4 top-4 text-gray-500 hover:text-gray-700"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold">Create New Project</h2>
+              <p className="text-sm text-muted-foreground">
+                Create a new Interpretive Structural Modeling project to collaborate with your team.
+              </p>
+            </div>
+            
+            <form onSubmit={handleSubmit}>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="project-name">Project Name</Label>
+                  <Input
+                    id="project-name"
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    placeholder="Enter project name"
+                    required
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="project-description">Description (optional)</Label>
+                  <Textarea
+                    id="project-description"
+                    value={projectDescription}
+                    onChange={(e) => setProjectDescription(e.target.value)}
+                    placeholder="Describe the purpose of your project"
+                    rows={3}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handleCloseModal}
+                  disabled={createProjectMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  disabled={createProjectMutation.isPending || !projectName.trim()}
+                >
+                  {createProjectMutation.isPending ? "Creating..." : "Create Project"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
