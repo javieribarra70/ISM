@@ -94,32 +94,15 @@ export default function Sidebar() {
     </Sheet>
   );
 
+  // Función completamente reescrita para solucionar el problema de navegación
   const handleSidebarNavigation = (tab: string) => {
-    console.log("Sidebar navigation to tab:", tab);
+    console.log("Navegando a la pestaña:", tab);
     
-    // Navigate to admin with the appropriate tab
-    const newUrl = tab === "projects" 
+    // Nuestro enfoque será recargar completamente la página con la nueva URL
+    // Es un enfoque radical pero garantizado para que funcione
+    window.location.href = tab === "projects" 
       ? "/admin" 
       : `/admin?tab=${tab}`;
-    
-    navigate(newUrl);
-    
-    // Then also update the UI state directly
-    try {
-      // Check if we're in the admin page
-      if (location.startsWith("/admin")) {
-        // Find any tabs component and programmatically set its value
-        const tabsElement = document.querySelector('[role="tablist"]');
-        if (tabsElement) {
-          const tabElement = tabsElement.querySelector(`[value="${tab}"]`) as HTMLElement;
-          if (tabElement) {
-            tabElement.click();
-          }
-        }
-      }
-    } catch (e) {
-      console.error("Error updating tabs:", e);
-    }
   };
 
   const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (

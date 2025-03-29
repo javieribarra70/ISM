@@ -1,4 +1,4 @@
 // Add window interface extension for our timeout
 interface Window {
-  tabChangeTimeout?: number;
+  tabChangeTimeout?: ReturnType<typeof setTimeout>;
 }
