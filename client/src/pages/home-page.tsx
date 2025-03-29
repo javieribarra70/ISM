@@ -15,7 +15,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function HomePage() {
   const [location, navigate] = useLocation();
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -73,10 +73,10 @@ export default function HomePage() {
         description: `"${project.name}" has been created successfully`,
       });
       
-      // Reset form and close modal
+      // Reset form and go back to projects list
       setProjectName("");
       setProjectDescription("");
-      setShowCreateModal(false);
+      setIsCreatingProject(false);
       
       // Refresh projects list
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
@@ -109,16 +109,18 @@ export default function HomePage() {
     });
   };
   
-  // Function to handle opening the modal
-  const handleOpenModal = () => {
-    console.log("Opening create project modal");
-    setShowCreateModal(true);
+  // Function to toggle create project form
+  const handleCreateProject = () => {
+    console.log("Starting project creation");
+    setIsCreatingProject(true);
   };
   
-  // Function to handle closing the modal
-  const handleCloseModal = () => {
-    console.log("Closing create project modal");
-    setShowCreateModal(false);
+  // Function to cancel project creation
+  const handleCancelCreate = () => {
+    console.log("Canceling project creation");
+    setProjectName("");
+    setProjectDescription("");
+    setIsCreatingProject(false);
   };
 
   if (isLoading || isProjectsLoading) {
@@ -130,6 +132,66 @@ export default function HomePage() {
             <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
             <p className="mt-4 text-gray-500">Loading your projects...</p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show create project form
+  if (isCreatingProject) {
+    return (
+      <div className="flex h-screen">
+        <Sidebar />
+        <div className="flex-1 p-8">
+          <Card className="max-w-md mx-auto">
+            <CardHeader>
+              <CardTitle>Create New Project</CardTitle>
+              <CardDescription>
+                Create a new Interpretive Structural Modeling project to collaborate with your team.
+              </CardDescription>
+            </CardHeader>
+            <form onSubmit={handleSubmit}>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="project-name">Project Name</Label>
+                  <Input
+                    id="project-name"
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    placeholder="Enter project name"
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="project-description">Description (optional)</Label>
+                  <Textarea
+                    id="project-description"
+                    value={projectDescription}
+                    onChange={(e) => setProjectDescription(e.target.value)}
+                    placeholder="Describe the purpose of your project"
+                    rows={3}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-end space-x-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handleCancelCreate}
+                  disabled={createProjectMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  disabled={createProjectMutation.isPending || !projectName.trim()}
+                >
+                  {createProjectMutation.isPending ? "Creating..." : "Create Project"}
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
         </div>
       </div>
     );
@@ -149,7 +211,7 @@ export default function HomePage() {
               <Button onClick={() => refetch()} variant="outline">Refresh</Button>
               <Button 
                 className="bg-primary text-white"
-                onClick={handleOpenModal}
+                onClick={handleCreateProject}
               >
                 <PlusCircle className="mr-2 h-4 w-4" /> Create New Project
               </Button>
@@ -174,7 +236,7 @@ export default function HomePage() {
             </div>
             <Button 
               className="bg-primary text-white" 
-              onClick={handleOpenModal}
+              onClick={handleCreateProject}
             >
               <PlusCircle className="mr-2 h-4 w-4" /> Create Project
             </Button>
@@ -216,7 +278,7 @@ export default function HomePage() {
               <CardFooter>
                 <Button 
                   className="w-full bg-primary text-white"
-                  onClick={handleOpenModal}
+                  onClick={handleCreateProject}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" /> Create Your First Project
                 </Button>
@@ -225,71 +287,6 @@ export default function HomePage() {
           )}
         </main>
       </div>
-
-      {/* Create Project Modal - Inline implementation */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="relative w-full max-w-lg rounded-lg bg-background p-6 shadow-lg">
-            <button 
-              onClick={handleCloseModal}
-              className="absolute right-4 top-4 text-gray-500 hover:text-gray-700"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            
-            <div className="mb-4">
-              <h2 className="text-xl font-semibold">Create New Project</h2>
-              <p className="text-sm text-muted-foreground">
-                Create a new Interpretive Structural Modeling project to collaborate with your team.
-              </p>
-            </div>
-            
-            <form onSubmit={handleSubmit}>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="project-name">Project Name</Label>
-                  <Input
-                    id="project-name"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                    placeholder="Enter project name"
-                    required
-                  />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="project-description">Description (optional)</Label>
-                  <Textarea
-                    id="project-description"
-                    value={projectDescription}
-                    onChange={(e) => setProjectDescription(e.target.value)}
-                    placeholder="Describe the purpose of your project"
-                    rows={3}
-                  />
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handleCloseModal}
-                  disabled={createProjectMutation.isPending}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit"
-                  disabled={createProjectMutation.isPending || !projectName.trim()}
-                >
-                  {createProjectMutation.isPending ? "Creating..." : "Create Project"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
