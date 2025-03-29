@@ -84,18 +84,22 @@ export default function Sidebar() {
   };
 
   const isCurrentProject = (projectId: number) => {
-    return location.startsWith(`/project/${projectId}`);
+    const result = location.startsWith(`/project/${projectId}`);
+    console.log(`Checking if ${location} starts with /project/${projectId}: ${result}`);
+    return result;
   };
 
   const handleLogout = async () => {
     try {
+      console.log('Intentando cerrar sesión...');
       const response = await fetch('/api/logout', {
         method: 'POST',
         credentials: 'include',
       });
       
       if (response.ok) {
-        navigate('/auth');
+        console.log('Sesión cerrada correctamente, redirigiendo a /auth');
+        window.location.href = '/auth';
       }
     } catch (error) {
       console.error('Error logging out:', error);
@@ -155,7 +159,8 @@ export default function Sidebar() {
           <div className="mb-4">
             <div 
               onClick={() => {
-                navigate("/");
+                console.log("Navegando al dashboard");
+                window.location.href = "/";
                 isMobile && setOpen(false)
               }}
               className={cn(
@@ -179,7 +184,8 @@ export default function Sidebar() {
               <div
                 key={project.id}
                 onClick={() => {
-                  navigate(`/project/${project.id}`);
+                  console.log(`Navegando al proyecto ${project.id}`);
+                  window.location.href = `/project/${project.id}`;
                   isMobile && setOpen(false);
                 }}
                 className={cn(
