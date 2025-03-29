@@ -63,8 +63,9 @@ export default function HomePage() {
   
   // Add a logging function for debugging
   const handleOpenModal = () => {
-    console.log("Opening create project modal");
+    console.log("Opening create project modal, current state:", isCreateModalOpen);
     setIsCreateModalOpen(true);
+    console.log("Modal state after setting:", true);
   };
 
   if (isLoading || isProjectsLoading) {
