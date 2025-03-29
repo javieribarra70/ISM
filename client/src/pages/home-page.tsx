@@ -54,10 +54,29 @@ export default function HomePage() {
     checkAuth();
   }, [navigate]);
   
-  // Fetch user's projects only if authenticated
+  // Fetch user's projects only if authenticated - use custom query function
   const { data: projects = [], isLoading: isProjectsLoading, isError, refetch } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
-    queryFn: undefined, // Use the default query function
+    queryFn: async () => {
+      // Manual fetch instead of using the default query function
+      console.log("Directly fetching projects from API");
+      try {
+        const response = await fetch('/api/projects', {
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch projects');
+        }
+        
+        const data = await response.json();
+        console.log("Received projects from API:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+        throw error;
+      }
+    },
     enabled: !!user, // Only run query if user is authenticated
     refetchOnMount: true, // Always refetch when component mounts
     refetchOnWindowFocus: true, // Refetch when window gets focus
@@ -74,10 +93,28 @@ export default function HomePage() {
   const createProjectMutation = useMutation({
     mutationFn: async (data: { name: string; description: string }) => {
       console.log("Creating project with data:", data);
-      const response = await apiRequest("POST", "/api/projects", data);
-      const result = await response.json();
-      console.log("Project created response:", result);
-      return result;
+      try {
+        // Directly use fetch API to avoid any potential issues with the wrapper
+        const response = await fetch('/api/projects', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log("Project created response:", result);
+        return result;
+      } catch (error) {
+        console.error("Error in createProject mutation:", error);
+        throw error;
+      }
     },
     onSuccess: (project: Project) => {
       console.log("Project created successfully:", project);
@@ -95,16 +132,25 @@ export default function HomePage() {
       console.log("Invalidating projects query cache");
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       
-      // Manually fetch projects again after a short delay
-      setTimeout(async () => {
-        console.log("Manually refreshing projects list");
-        try {
-          await refetch();
-          console.log("Projects list refreshed successfully");
-        } catch (error) {
-          console.error("Error refreshing projects list:", error);
-        }
-      }, 500);
+      // Manually fetch projects immediately with direct fetch
+      console.log("Directly fetching projects after creation");
+      fetch('/api/projects', {
+        credentials: 'include',
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to fetch projects after creation');
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log("Received fresh projects from API:", data);
+          // Update the query cache manually with the new data
+          queryClient.setQueryData(["/api/projects"], data);
+        })
+        .catch(error => {
+          console.error("Error fetching projects after creation:", error);
+        });
     },
     onError: (error: Error) => {
       console.error("Failed to create project:", error);
