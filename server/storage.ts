@@ -6,8 +6,25 @@ import {
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { randomBytes } from "crypto";
+import { drizzle } from "drizzle-orm/postgres-js";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
+import { eq, and } from "drizzle-orm";
+import connectPgSimple from "connect-pg-simple";
+import postgres from 'postgres';
 
-// Create memory store for sessions
+// Database setup - using postgres package for better compatibility
+const connectionString = process.env.DATABASE_URL;
+const sql = postgres(connectionString as string, { 
+  ssl: 'require',
+  connect_timeout: 10,
+  idle_timeout: 30
+});
+const db = drizzle(sql);
+
+// PostgreSQL session store
+const PostgresSessionStore = connectPgSimple(session);
+
+// Create memory store for sessions as fallback
 const MemoryStore = createMemoryStore(session);
 
 export interface IStorage {
@@ -43,7 +60,7 @@ export interface IStorage {
   markInvitationAsUsed(id: number): Promise<Invitation | undefined>;
 
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Using any to avoid type issues with session.SessionStore
 }
 
 export class MemStorage implements IStorage {
@@ -54,7 +71,7 @@ export class MemStorage implements IStorage {
   private relationships: Map<number, Relationship>;
   private invitations: Map<number, Invitation>;
   
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Using any type for session store
   
   private currentUserId: number;
   private currentProjectId: number;
@@ -287,4 +304,641 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database storage implementation
+export class DatabaseStorage implements IStorage {
+  sessionStore: any; // Type workaround
+  
+  constructor() {
+    try {
+      // Set up the session store
+      this.sessionStore = new PostgresSessionStore({
+        conObject: {
+          connectionString: connectionString,
+          ssl: { rejectUnauthorized: false }
+        },
+        createTableIfMissing: true,
+      });
+      
+      console.log('PostgreSQL session store initialized');
+      
+      // Run migrations
+      this.initializeDatabase();
+    } catch (error) {
+      console.error('Error initializing database:', error);
+      throw error;
+    }
+  }
+  
+  private async initializeDatabase() {
+    try {
+      // Create tables if they don't exist
+      console.log('Running database migrations...');
+      
+      // This is just a basic check - in a production app, we would use drizzle-kit for migrations
+      try {
+        await db.select().from(users).limit(1);
+        console.log('Users table exists');
+      } catch (error) {
+        console.log('Creating database schema...');
+        // We need to execute each table creation as a separate SQL query
+        // to avoid "cannot insert multiple commands into a prepared statement" error
+        await sql`CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          username TEXT NOT NULL UNIQUE,
+          email TEXT NOT NULL UNIQUE,
+          password TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'user'
+        );`;
+        
+        await sql`CREATE TABLE IF NOT EXISTS projects (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT,
+          created_by INTEGER NOT NULL REFERENCES users(id),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );`;
+        
+        await sql`CREATE TABLE IF NOT EXISTS project_users (
+          id SERIAL PRIMARY KEY,
+          project_id INTEGER NOT NULL REFERENCES projects(id),
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          role TEXT NOT NULL DEFAULT 'member',
+          UNIQUE (project_id, user_id)
+        );`;
+        
+        await sql`CREATE TABLE IF NOT EXISTS ideas (
+          id SERIAL PRIMARY KEY,
+          project_id INTEGER NOT NULL REFERENCES projects(id),
+          title TEXT NOT NULL,
+          description TEXT,
+          category TEXT NOT NULL,
+          position_x TEXT DEFAULT '0',
+          position_y TEXT DEFAULT '0',
+          created_by INTEGER NOT NULL REFERENCES users(id),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );`;
+        
+        await sql`CREATE TABLE IF NOT EXISTS relationships (
+          id SERIAL PRIMARY KEY,
+          project_id INTEGER NOT NULL REFERENCES projects(id),
+          from_idea_id INTEGER NOT NULL REFERENCES ideas(id),
+          to_idea_id INTEGER NOT NULL REFERENCES ideas(id),
+          created_by INTEGER NOT NULL REFERENCES users(id)
+        );`;
+        
+        await sql`CREATE TABLE IF NOT EXISTS invitations (
+          id SERIAL PRIMARY KEY,
+          project_id INTEGER NOT NULL REFERENCES projects(id),
+          email TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'member',
+          token TEXT NOT NULL UNIQUE,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          used BOOLEAN NOT NULL DEFAULT FALSE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );`;
+        console.log('Database schema created successfully');
+        
+        // Create demo user
+        const demoUserExists = await sql`SELECT * FROM users WHERE username = 'demo' LIMIT 1`;
+        if (demoUserExists.length === 0) {
+          console.log('Creating demo user...');
+          await sql`
+            INSERT INTO users (username, email, password, role)
+            VALUES ('demo', 'demo@example.com', 'demo-password', 'admin')
+          `;
+          console.log('Demo user created successfully');
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing database:', error);
+      throw error;
+    }
+  }
+  
+  // User operations
+  async getUser(id: number): Promise<User | undefined> {
+    try {
+      const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+      return result.length > 0 ? result[0] : undefined;
+    } catch (error) {
+      console.error('Error getting user:', error);
+      throw error;
+    }
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    try {
+      const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
+      return result.length > 0 ? result[0] : undefined;
+    } catch (error) {
+      console.error('Error getting user by username:', error);
+      throw error;
+    }
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    try {
+      const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+      return result.length > 0 ? result[0] : undefined;
+    } catch (error) {
+      console.error('Error getting user by email:', error);
+      throw error;
+    }
+  }
+
+  async createUser(userData: InsertUser): Promise<User> {
+    try {
+      const result = await db.insert(users).values(userData).returning();
+      return result[0];
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
+    }
+  }
+
+  async getUserProjects(userId: number): Promise<Project[]> {
+    try {
+      // Find user's projects through the project_users join table
+      const joinResult = await sql`
+        SELECT p.* FROM projects p
+        JOIN project_users pu ON p.id = pu.project_id
+        WHERE pu.user_id = ${userId}
+      `;
+      
+      return joinResult.map(row => ({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        createdBy: row.created_by,
+        createdAt: row.created_at
+      }));
+    } catch (error) {
+      console.error('Error getting user projects:', error);
+      throw error;
+    }
+  }
+
+  // Project operations
+  async getProject(id: number): Promise<Project | undefined> {
+    try {
+      const result = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
+      return result.length > 0 ? result[0] : undefined;
+    } catch (error) {
+      console.error('Error getting project:', error);
+      throw error;
+    }
+  }
+
+  async getProjectUsers(projectId: number): Promise<(ProjectUser & { user: User })[]> {
+    try {
+      const result = await sql`
+        SELECT pu.*, u.* FROM project_users pu
+        JOIN users u ON pu.user_id = u.id
+        WHERE pu.project_id = ${projectId}
+      `;
+      
+      return result.map(row => ({
+        id: row.id,
+        projectId: row.project_id,
+        userId: row.user_id,
+        role: row.role,
+        user: {
+          id: row.id,
+          username: row.username,
+          email: row.email,
+          password: row.password,
+          role: row.role
+        }
+      }));
+    } catch (error) {
+      console.error('Error getting project users:', error);
+      throw error;
+    }
+  }
+
+  async createProject(projectData: InsertProject): Promise<Project> {
+    try {
+      // Map createdBy to created_by for SQL insert
+      const sqlInsert = await sql`
+        INSERT INTO projects (name, description, created_by) 
+        VALUES (${projectData.name}, ${projectData.description || null}, ${projectData.createdBy})
+        RETURNING *
+      `;
+      
+      const result = sqlInsert[0];
+      const project = {
+        id: result.id,
+        name: result.name,
+        description: result.description,
+        createdBy: result.created_by,
+        createdAt: result.created_at
+      };
+      
+      // Also add the creator as a project admin
+      await this.addUserToProject({
+        projectId: project.id,
+        userId: projectData.createdBy,
+        role: "admin"
+      });
+      
+      return project;
+    } catch (error) {
+      console.error('Error creating project:', error);
+      throw error;
+    }
+  }
+
+  async addUserToProject(projectUserData: InsertProjectUser): Promise<ProjectUser> {
+    try {
+      // Map projectId and userId to project_id and user_id for SQL insert
+      const sqlInsert = await sql`
+        INSERT INTO project_users (project_id, user_id, role)
+        VALUES (${projectUserData.projectId}, ${projectUserData.userId}, ${projectUserData.role})
+        RETURNING *
+      `;
+      
+      const result = sqlInsert[0];
+      return {
+        id: result.id,
+        projectId: result.project_id,
+        userId: result.user_id,
+        role: result.role
+      };
+    } catch (error) {
+      console.error('Error adding user to project:', error);
+      throw error;
+    }
+  }
+
+  async getUserProjectRole(userId: number, projectId: number): Promise<string | undefined> {
+    try {
+      const result = await sql`
+        SELECT role FROM project_users
+        WHERE user_id = ${userId} AND project_id = ${projectId}
+        LIMIT 1
+      `;
+      
+      return result.length > 0 ? result[0].role : undefined;
+    } catch (error) {
+      console.error('Error getting user project role:', error);
+      throw error;
+    }
+  }
+
+  // Idea operations - implementations will follow the same pattern
+  async getProjectIdeas(projectId: number): Promise<Idea[]> {
+    try {
+      const result = await sql`
+        SELECT * FROM ideas
+        WHERE project_id = ${projectId}
+      `;
+      
+      return result.map(row => ({
+        id: row.id,
+        projectId: row.project_id,
+        title: row.title,
+        description: row.description,
+        category: row.category,
+        positionX: row.position_x,
+        positionY: row.position_y,
+        createdBy: row.created_by,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+    } catch (error) {
+      console.error('Error getting project ideas:', error);
+      throw error;
+    }
+  }
+
+  async getIdea(id: number): Promise<Idea | undefined> {
+    try {
+      const result = await sql`
+        SELECT * FROM ideas
+        WHERE id = ${id}
+        LIMIT 1
+      `;
+      
+      if (result.length === 0) return undefined;
+      
+      const row = result[0];
+      return {
+        id: row.id,
+        projectId: row.project_id,
+        title: row.title,
+        description: row.description,
+        category: row.category,
+        positionX: row.position_x,
+        positionY: row.position_y,
+        createdBy: row.created_by,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      };
+    } catch (error) {
+      console.error('Error getting idea:', error);
+      throw error;
+    }
+  }
+  
+  // Implementation of remaining methods
+  async createIdea(ideaData: InsertIdea): Promise<Idea> {
+    try {
+      const sqlInsert = await sql`
+        INSERT INTO ideas (project_id, title, description, category, created_by, position_x, position_y)
+        VALUES (
+          ${ideaData.projectId}, 
+          ${ideaData.title}, 
+          ${ideaData.description || null}, 
+          ${ideaData.category},
+          ${ideaData.createdBy},
+          ${ideaData.positionX || '0'}, 
+          ${ideaData.positionY || '0'}
+        )
+        RETURNING *
+      `;
+      
+      const result = sqlInsert[0];
+      return {
+        id: result.id,
+        projectId: result.project_id,
+        title: result.title,
+        description: result.description,
+        category: result.category,
+        createdBy: result.created_by,
+        positionX: result.position_x,
+        positionY: result.position_y,
+        createdAt: result.created_at,
+        updatedAt: result.updated_at
+      };
+    } catch (error) {
+      console.error('Error creating idea:', error);
+      throw error;
+    }
+  }
+  
+  async updateIdea(id: number, ideaUpdate: Partial<InsertIdea>): Promise<Idea | undefined> {
+    try {
+      // Create a dynamic SET clause based on provided fields
+      let setClauses = [];
+      let params = [];
+      
+      if (ideaUpdate.title !== undefined) {
+        setClauses.push('title = $' + (params.length + 1));
+        params.push(ideaUpdate.title);
+      }
+      
+      if (ideaUpdate.description !== undefined) {
+        setClauses.push('description = $' + (params.length + 1));
+        params.push(ideaUpdate.description);
+      }
+      
+      if (ideaUpdate.category !== undefined) {
+        setClauses.push('category = $' + (params.length + 1));
+        params.push(ideaUpdate.category);
+      }
+      
+      // Add updated_at timestamp
+      setClauses.push('updated_at = CURRENT_TIMESTAMP');
+      
+      if (setClauses.length === 0) {
+        return this.getIdea(id); // Nothing to update
+      }
+      
+      // Execute the update
+      const query = `
+        UPDATE ideas 
+        SET ${setClauses.join(', ')} 
+        WHERE id = $${params.length + 1}
+        RETURNING *
+      `;
+      
+      params.push(id);
+      const result = await sql.unsafe(query, params);
+      
+      if (result.length === 0) {
+        return undefined;
+      }
+      
+      const updatedIdea = result[0];
+      return {
+        id: updatedIdea.id,
+        projectId: updatedIdea.project_id,
+        title: updatedIdea.title,
+        description: updatedIdea.description,
+        category: updatedIdea.category,
+        createdBy: updatedIdea.created_by,
+        positionX: updatedIdea.position_x,
+        positionY: updatedIdea.position_y,
+        createdAt: updatedIdea.created_at,
+        updatedAt: updatedIdea.updated_at
+      };
+    } catch (error) {
+      console.error('Error updating idea:', error);
+      throw error;
+    }
+  }
+  
+  async updateIdeaPosition(id: number, positionX: string, positionY: string): Promise<Idea | undefined> {
+    try {
+      const result = await sql`
+        UPDATE ideas
+        SET position_x = ${positionX}, position_y = ${positionY}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+        RETURNING *
+      `;
+      
+      if (result.length === 0) {
+        return undefined;
+      }
+      
+      const updatedIdea = result[0];
+      return {
+        id: updatedIdea.id,
+        projectId: updatedIdea.project_id,
+        title: updatedIdea.title,
+        description: updatedIdea.description,
+        category: updatedIdea.category,
+        createdBy: updatedIdea.created_by,
+        positionX: updatedIdea.position_x,
+        positionY: updatedIdea.position_y,
+        createdAt: updatedIdea.created_at,
+        updatedAt: updatedIdea.updated_at
+      };
+    } catch (error) {
+      console.error('Error updating idea position:', error);
+      throw error;
+    }
+  }
+  
+  async getProjectRelationships(projectId: number): Promise<Relationship[]> {
+    try {
+      const result = await sql`
+        SELECT * FROM relationships
+        WHERE project_id = ${projectId}
+      `;
+      
+      return result.map(row => ({
+        id: row.id,
+        projectId: row.project_id,
+        fromIdeaId: row.from_idea_id,
+        toIdeaId: row.to_idea_id,
+        createdBy: row.created_by
+      }));
+    } catch (error) {
+      console.error('Error getting project relationships:', error);
+      throw error;
+    }
+  }
+  
+  async createRelationship(relationshipData: InsertRelationship): Promise<Relationship> {
+    try {
+      const result = await sql`
+        INSERT INTO relationships (project_id, from_idea_id, to_idea_id, created_by)
+        VALUES (
+          ${relationshipData.projectId}, 
+          ${relationshipData.fromIdeaId}, 
+          ${relationshipData.toIdeaId}, 
+          ${relationshipData.createdBy}
+        )
+        RETURNING *
+      `;
+      
+      const newRelationship = result[0];
+      return {
+        id: newRelationship.id,
+        projectId: newRelationship.project_id,
+        fromIdeaId: newRelationship.from_idea_id,
+        toIdeaId: newRelationship.to_idea_id,
+        createdBy: newRelationship.created_by
+      };
+    } catch (error) {
+      console.error('Error creating relationship:', error);
+      throw error;
+    }
+  }
+  
+  async deleteRelationship(id: number): Promise<boolean> {
+    try {
+      const result = await sql`
+        DELETE FROM relationships
+        WHERE id = ${id}
+        RETURNING id
+      `;
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error('Error deleting relationship:', error);
+      throw error;
+    }
+  }
+  
+  async createInvitation(invitationData: InsertInvitation): Promise<Invitation> {
+    try {
+      const result = await sql`
+        INSERT INTO invitations (project_id, email, role, token, expires_at, used)
+        VALUES (
+          ${invitationData.projectId}, 
+          ${invitationData.email}, 
+          ${invitationData.role}, 
+          ${invitationData.token},
+          ${invitationData.expiresAt},
+          false
+        )
+        RETURNING *
+      `;
+      
+      const newInvitation = result[0];
+      return {
+        id: newInvitation.id,
+        projectId: newInvitation.project_id,
+        email: newInvitation.email,
+        role: newInvitation.role,
+        token: newInvitation.token,
+        expiresAt: newInvitation.expires_at,
+        used: newInvitation.used,
+        createdAt: newInvitation.created_at
+      };
+    } catch (error) {
+      console.error('Error creating invitation:', error);
+      throw error;
+    }
+  }
+  
+  async getInvitationByToken(token: string): Promise<Invitation | undefined> {
+    try {
+      const result = await sql`
+        SELECT * FROM invitations
+        WHERE token = ${token}
+        LIMIT 1
+      `;
+      
+      if (result.length === 0) {
+        return undefined;
+      }
+      
+      const invitation = result[0];
+      return {
+        id: invitation.id,
+        projectId: invitation.project_id,
+        email: invitation.email,
+        role: invitation.role,
+        token: invitation.token,
+        expiresAt: invitation.expires_at,
+        used: invitation.used,
+        createdAt: invitation.created_at
+      };
+    } catch (error) {
+      console.error('Error getting invitation by token:', error);
+      throw error;
+    }
+  }
+  
+  async markInvitationAsUsed(id: number): Promise<Invitation | undefined> {
+    try {
+      const result = await sql`
+        UPDATE invitations
+        SET used = true
+        WHERE id = ${id}
+        RETURNING *
+      `;
+      
+      if (result.length === 0) {
+        return undefined;
+      }
+      
+      const updatedInvitation = result[0];
+      return {
+        id: updatedInvitation.id,
+        projectId: updatedInvitation.project_id,
+        email: updatedInvitation.email,
+        role: updatedInvitation.role,
+        token: updatedInvitation.token,
+        expiresAt: updatedInvitation.expires_at,
+        used: updatedInvitation.used,
+        createdAt: updatedInvitation.created_at
+      };
+    } catch (error) {
+      console.error('Error marking invitation as used:', error);
+      throw error;
+    }
+  }
+}
+
+// Choose between implementations based on environment variables
+let storage: IStorage;
+
+try {
+  if (process.env.DATABASE_URL) {
+    console.log('Using PostgreSQL database storage');
+    storage = new DatabaseStorage();
+  } else {
+    console.log('Using in-memory storage');
+    storage = new MemStorage();
+  }
+} catch (error) {
+  console.error('Error initializing database storage, falling back to in-memory storage:', error);
+  storage = new MemStorage();
+}
+
+export { storage };
