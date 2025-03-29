@@ -62,8 +62,17 @@ export default function AdminPage() {
     
     if (tabParam && ['projects', 'users', 'reports'].includes(tabParam)) {
       setActiveTab(tabParam);
+      console.log("Tab changed to:", tabParam);
     }
   }, [location]);
+  
+  // Effect to handle the tabs controls click
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    // Update URL without triggering navigation
+    const newUrl = `/admin${value !== "projects" ? `?tab=${value}` : ""}`;
+    window.history.pushState({}, '', newUrl);
+  };
 
   // We're already checking admin role in the useEffect
 
@@ -123,7 +132,7 @@ export default function AdminPage() {
             </Button>
           </div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
             <TabsList className="mb-6">
               <TabsTrigger value="projects">Projects</TabsTrigger>
               <TabsTrigger value="users">Users</TabsTrigger>

@@ -181,11 +181,6 @@ export default function Sidebar() {
                   onClick={() => {
                     const newUrl = "/admin";
                     navigate(newUrl);
-                    // We need to force re-render to make sure tab is updated
-                    setTimeout(() => {
-                      window.history.pushState({}, '', newUrl);
-                      window.dispatchEvent(new Event('popstate'));
-                    }, 10);
                     isMobile && setOpen(false);
                   }}
                   className={cn(
@@ -202,11 +197,6 @@ export default function Sidebar() {
                   onClick={() => {
                     const newUrl = "/admin?tab=projects";
                     navigate(newUrl);
-                    // We need to force re-render to make sure tab is updated
-                    setTimeout(() => {
-                      window.history.pushState({}, '', newUrl);
-                      window.dispatchEvent(new Event('popstate'));
-                    }, 10);
                     isMobile && setOpen(false);
                   }}
                   className={cn(
@@ -223,11 +213,6 @@ export default function Sidebar() {
                   onClick={() => {
                     const newUrl = "/admin?tab=users";
                     navigate(newUrl);
-                    // We need to force re-render to make sure tab is updated
-                    setTimeout(() => {
-                      window.history.pushState({}, '', newUrl);
-                      window.dispatchEvent(new Event('popstate'));
-                    }, 10);
                     isMobile && setOpen(false);
                   }}
                   className={cn(
@@ -244,11 +229,6 @@ export default function Sidebar() {
                   onClick={() => {
                     const newUrl = "/admin?tab=reports";
                     navigate(newUrl);
-                    // We need to force re-render to make sure tab is updated
-                    setTimeout(() => {
-                      window.history.pushState({}, '', newUrl);
-                      window.dispatchEvent(new Event('popstate'));
-                    }, 10);
                     isMobile && setOpen(false);
                   }}
                   className={cn(
