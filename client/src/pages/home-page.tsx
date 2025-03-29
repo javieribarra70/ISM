@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/sidebar";
 import { Project } from "@shared/schema";
+import { useProjects } from "@/hooks/use-projects";
 
 export default function HomePage() {
   const [location, navigate] = useLocation();
@@ -19,11 +20,12 @@ export default function HomePage() {
   const [projectDescription, setProjectDescription] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [isProjectsLoading, setIsProjectsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
+  
+  // Uso del contexto global de proyectos
+  const { projects, refreshProjects, isLoading: isProjectsLoading } = useProjects();
   
   // Fetch user authentication status manually
   useEffect(() => {
@@ -57,52 +59,19 @@ export default function HomePage() {
     checkAuth();
   }, [navigate]);
   
-  // Custom fetch projects function
-  const fetchProjects = async () => {
-    if (!user) return;
-    
-    setIsProjectsLoading(true);
-    setIsError(false);
-    
-    try {
-      console.log("Directly fetching projects from API");
-      const response = await fetch('/api/projects', {
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch projects');
-      }
-      
-      const data = await response.json();
-      console.log("Received projects from API:", data);
-      setProjects(data);
-    } catch (error) {
-      console.error("Error fetching projects:", error);
-      setIsError(true);
-      toast({
-        title: "Error fetching projects",
-        description: "Please try refreshing the page",
-        variant: "destructive"
-      });
-    } finally {
-      setIsProjectsLoading(false);
-      setIsRefreshing(false);
+  // Fetch projects when user is loaded
+  useEffect(() => {
+    if (user) {
+      refreshProjects();
     }
-  };
+  }, [user, refreshProjects]);
   
   // Manual refetch function
   const refetch = async () => {
     setIsRefreshing(true);
-    await fetchProjects();
+    await refreshProjects();
+    setIsRefreshing(false);
   };
-  
-  // Fetch projects when user is loaded
-  useEffect(() => {
-    if (user) {
-      fetchProjects();
-    }
-  }, [user]);
   
   // For debugging, log if there are projects on render
   useEffect(() => {
@@ -148,38 +117,8 @@ export default function HomePage() {
       setProjectDescription("");
       setIsCreatingProject(false);
       
-      // Forcefully refresh the projects list with direct fetch
-      console.log("Directly fetching projects after creation");
-      fetch('/api/projects', {
-        credentials: 'include',
-      })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('Failed to fetch projects after creation');
-          }
-          return response.json();
-        })
-        .then(data => {
-          console.log("Received fresh projects from API:", data);
-          // Update the projects state directly with the fresh data
-          // Also add the newly created project to the list for immediate UI update
-          setProjects(prev => {
-            // Add the new project to the list
-            const exists = prev.some(p => p.id === project.id);
-            if (!exists) {
-              return [...prev, project];
-            }
-            return prev;
-          });
-          
-          // Then update with server data immediately
-          setProjects(data);
-        })
-        .catch(error => {
-          console.error("Error fetching projects after creation:", error);
-          // Still try the original refetch method as fallback
-          fetchProjects();
-        });
+      // Refrescar proyectos a través del contexto global
+      refreshProjects();
     },
     onError: (error: Error) => {
       console.error("Failed to create project:", error);
@@ -223,14 +162,15 @@ export default function HomePage() {
     setIsCreatingProject(false);
   };
 
-  if (isLoading || isProjectsLoading) {
+  // Mostrar spinner de carga si estamos cargando el usuario o los proyectos
+  if (isLoading) {
     return (
       <div className="flex h-screen">
         <Sidebar />
         <div className="flex-1 p-8 flex justify-center items-center">
           <div className="text-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-            <p className="mt-4 text-gray-500">Loading your projects...</p>
+            <p className="mt-4 text-gray-500">Loading your profile...</p>
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Project } from "@shared/schema";
+import { useProjects } from "@/hooks/use-projects";
 import { 
   Home, 
   PanelLeft, 
@@ -20,9 +21,11 @@ export default function Sidebar() {
   const [location, navigate] = useLocation();
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("projects");
+  
+  // Uso del contexto global de proyectos
+  const { projects, refreshProjects } = useProjects();
   
   // Detectar la pestaña activa basada en la URL y resetear cuando estamos fuera de admin
   useEffect(() => {
@@ -44,22 +47,6 @@ export default function Sidebar() {
     }
   }, [location]);
 
-  // Función para obtener proyectos independientemente
-  const fetchProjects = async () => {
-    try {
-      const projectsResponse = await fetch('/api/projects', {
-        credentials: 'include',
-      });
-      
-      if (projectsResponse.ok) {
-        const projectsData = await projectsResponse.json();
-        setProjects(projectsData);
-      }
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-    }
-  };
-
   // Fetch user data directly
   useEffect(() => {
     const fetchUserData = async () => {
@@ -71,9 +58,6 @@ export default function Sidebar() {
         if (response.ok) {
           const userData = await response.json();
           setUser(userData);
-          
-          // Fetch projects once we have a user
-          await fetchProjects();
         } else if (response.status === 401) {
           // Redirect to login if not authenticated
           navigate('/auth');
@@ -90,11 +74,10 @@ export default function Sidebar() {
   
   // Refetch projects when location changes
   useEffect(() => {
-    // Solo recargar proyectos si el usuario ya está cargado
     if (user) {
-      fetchProjects();
+      refreshProjects();
     }
-  }, [location, user]);
+  }, [location, user, refreshProjects]);
 
   const isCurrentPath = (path: string) => {
     return location === path;
