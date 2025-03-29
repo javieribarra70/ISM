@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query"; // Removed useQuery - we'll fetch manually
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/sidebar";
 import { Project } from "@shared/schema";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function HomePage() {
   const [location, navigate] = useLocation();
@@ -20,6 +19,10 @@ export default function HomePage() {
   const [projectDescription, setProjectDescription] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isProjectsLoading, setIsProjectsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
   
   // Fetch user authentication status manually
@@ -54,35 +57,52 @@ export default function HomePage() {
     checkAuth();
   }, [navigate]);
   
-  // Fetch user's projects only if authenticated - use custom query function
-  const { data: projects = [], isLoading: isProjectsLoading, isError, refetch } = useQuery<Project[]>({
-    queryKey: ["/api/projects"],
-    queryFn: async () => {
-      // Manual fetch instead of using the default query function
+  // Custom fetch projects function
+  const fetchProjects = async () => {
+    if (!user) return;
+    
+    setIsProjectsLoading(true);
+    setIsError(false);
+    
+    try {
       console.log("Directly fetching projects from API");
-      try {
-        const response = await fetch('/api/projects', {
-          credentials: 'include',
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch projects');
-        }
-        
-        const data = await response.json();
-        console.log("Received projects from API:", data);
-        return data;
-      } catch (error) {
-        console.error("Error fetching projects:", error);
-        throw error;
+      const response = await fetch('/api/projects', {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch projects');
       }
-    },
-    enabled: !!user, // Only run query if user is authenticated
-    refetchOnMount: true, // Always refetch when component mounts
-    refetchOnWindowFocus: true, // Refetch when window gets focus
-    staleTime: 0, // Data is never fresh, always refetch
-    retry: 3 // Retry failed requests 3 times
-  });
+      
+      const data = await response.json();
+      console.log("Received projects from API:", data);
+      setProjects(data);
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      setIsError(true);
+      toast({
+        title: "Error fetching projects",
+        description: "Please try refreshing the page",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProjectsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+  
+  // Manual refetch function
+  const refetch = async () => {
+    setIsRefreshing(true);
+    await fetchProjects();
+  };
+  
+  // Fetch projects when user is loaded
+  useEffect(() => {
+    if (user) {
+      fetchProjects();
+    }
+  }, [user]);
   
   // For debugging, log if there are projects on render
   useEffect(() => {
@@ -128,11 +148,7 @@ export default function HomePage() {
       setProjectDescription("");
       setIsCreatingProject(false);
       
-      // Forcefully refresh the projects list
-      console.log("Invalidating projects query cache");
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      
-      // Manually fetch projects immediately with direct fetch
+      // Forcefully refresh the projects list with direct fetch
       console.log("Directly fetching projects after creation");
       fetch('/api/projects', {
         credentials: 'include',
@@ -145,11 +161,26 @@ export default function HomePage() {
         })
         .then(data => {
           console.log("Received fresh projects from API:", data);
-          // Update the query cache manually with the new data
-          queryClient.setQueryData(["/api/projects"], data);
+          // Update the projects state directly with the fresh data
+          // Also add the newly created project to the list for immediate UI update
+          setProjects(prev => {
+            // Add the new project to the list
+            const exists = prev.some(p => p.id === project.id);
+            if (!exists) {
+              return [...prev, project];
+            }
+            return prev;
+          });
+          
+          // Then update with server data after short delay to ensure UI is fresh
+          setTimeout(() => {
+            setProjects(data);
+          }, 300);
         })
         .catch(error => {
           console.error("Error fetching projects after creation:", error);
+          // Still try the original refetch method as fallback
+          fetchProjects();
         });
     },
     onError: (error: Error) => {
