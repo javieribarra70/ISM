@@ -1,10 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
 import { Project } from "@shared/schema";
 import { 
   Home, 
@@ -18,15 +16,46 @@ import {
 } from "lucide-react";
 
 export default function Sidebar() {
-  const [location] = useLocation();
-  const { user, logoutMutation } = useAuth();
+  const [location, navigate] = useLocation();
   const [open, setOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch user's projects for the sidebar
-  const { data: projects } = useQuery<Project[]>({
-    queryKey: ["/api/projects"],
-    queryFn: undefined,
-  });
+  // Fetch user data directly
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('/api/user', {
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+          
+          // Fetch projects once we have a user
+          const projectsResponse = await fetch('/api/projects', {
+            credentials: 'include',
+          });
+          
+          if (projectsResponse.ok) {
+            const projectsData = await projectsResponse.json();
+            setProjects(projectsData);
+          }
+        } else if (response.status === 401) {
+          // Redirect to login if not authenticated
+          navigate('/auth');
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchUserData();
+  }, [navigate]);
 
   const isCurrentPath = (path: string) => {
     return location === path;
@@ -36,8 +65,19 @@ export default function Sidebar() {
     return location.startsWith(`/project/${projectId}`);
   };
 
-  const handleLogout = () => {
-    logoutMutation.mutate();
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        navigate('/auth');
+      }
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
   const MobileSidebar = () => (
@@ -80,17 +120,20 @@ export default function Sidebar() {
       <nav className="flex-1 overflow-y-auto">
         <div className="p-4">
           <div className="mb-4">
-            <Link href="/" onClick={() => isMobile && setOpen(false)}>
-              <a className={cn(
-                "flex items-center px-3 py-2 text-sm font-medium rounded-md",
+            <div 
+              onClick={() => {
+                navigate("/");
+                isMobile && setOpen(false)
+              }}
+              className={cn(
+                "flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer",
                 isCurrentPath("/") 
                   ? "bg-primary-light text-primary" 
                   : "text-gray-700 hover:bg-gray-50"
               )}>
                 <Home className="h-5 w-5 mr-2" />
                 Dashboard
-              </a>
-            </Link>
+            </div>
           </div>
 
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
@@ -100,21 +143,22 @@ export default function Sidebar() {
           {/* Projects List */}
           <div className="space-y-1 mb-4">
             {projects?.map(project => (
-              <Link 
-                key={project.id} 
-                href={`/project/${project.id}`}
-                onClick={() => isMobile && setOpen(false)}
-              >
-                <a className={cn(
-                  "flex items-center px-3 py-2 text-sm font-medium rounded-md truncate",
+              <div
+                key={project.id}
+                onClick={() => {
+                  navigate(`/project/${project.id}`);
+                  isMobile && setOpen(false);
+                }}
+                className={cn(
+                  "flex items-center px-3 py-2 text-sm font-medium rounded-md truncate cursor-pointer",
                   isCurrentProject(project.id) 
                     ? "bg-primary-light text-primary" 
                     : "text-gray-700 hover:bg-gray-50"
-                )}>
-                  <FolderKanban className="h-5 w-5 mr-2 flex-shrink-0" />
-                  <span className="truncate">{project.name}</span>
-                </a>
-              </Link>
+                )}
+              >
+                <FolderKanban className="h-5 w-5 mr-2 flex-shrink-0" />
+                <span className="truncate">{project.name}</span>
+              </div>
             ))}
             
             {(!projects || projects.length === 0) && (
@@ -132,23 +176,31 @@ export default function Sidebar() {
               </h3>
               
               <div className="space-y-1">
-                <Link href="/admin" onClick={() => isMobile && setOpen(false)}>
-                  <a className={cn(
-                    "flex items-center px-3 py-2 text-sm font-medium rounded-md",
+                <div
+                  onClick={() => {
+                    navigate("/admin");
+                    isMobile && setOpen(false);
+                  }}
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer",
                     isCurrentPath("/admin") 
                       ? "bg-primary-light text-primary" 
                       : "text-gray-700 hover:bg-gray-50"
-                  )}>
-                    <Settings className="h-5 w-5 mr-2" />
-                    Admin Panel
-                  </a>
-                </Link>
-                <Link href="/admin?tab=users" onClick={() => isMobile && setOpen(false)}>
-                  <a className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50">
-                    <Users className="h-5 w-5 mr-2" />
-                    Manage Users
-                  </a>
-                </Link>
+                  )}
+                >
+                  <Settings className="h-5 w-5 mr-2" />
+                  Admin Panel
+                </div>
+                <div
+                  onClick={() => {
+                    navigate("/admin?tab=users");
+                    isMobile && setOpen(false);
+                  }}
+                  className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 cursor-pointer"
+                >
+                  <Users className="h-5 w-5 mr-2" />
+                  Manage Users
+                </div>
               </div>
             </>
           )}

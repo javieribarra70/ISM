@@ -1,21 +1,47 @@
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
 import Sidebar from "@/components/sidebar";
 import Workspace from "@/components/workspace";
 import { Button } from "@/components/ui/button";
 import { Project, Idea, Relationship, ProjectUser } from "@shared/schema";
 import { Loader2, Share2, Users, UserPlus } from "lucide-react";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import NewIdeaModal from "@/components/modals/new-idea-modal";
 import InviteUsersModal from "@/components/modals/invite-users-modal";
 import { Avatars } from "@/components/avatars";
 
 export default function ProjectPage() {
-  const { projectId } = useParams();
+  const params = useParams<{ projectId: string }>();
+  const projectId = params.projectId;
   const [location, navigate] = useLocation();
-  const { user } = useAuth();
+  const [user, setUser] = useState<any>(null);
+  
+  // Fetch user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('/api/user', {
+          credentials: 'include',
+        });
+        
+        if (response.status === 401) {
+          navigate('/auth');
+          return;
+        }
+        
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        navigate('/auth');
+      }
+    };
+    
+    fetchUserData();
+  }, [navigate]);
   const [isNewIdeaModalOpen, setIsNewIdeaModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [lastPolled, setLastPolled] = useState<Date>(new Date());

@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import Sidebar from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
@@ -10,15 +9,46 @@ import { User, Project } from "@shared/schema";
 import { Loader2, UserPlus, Settings } from "lucide-react";
 
 export default function AdminPage() {
-  const { user } = useAuth();
+  const [user, setUser] = useState<any>(null);
   const [location, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("projects");
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Fetch user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('/api/user', {
+          credentials: 'include',
+        });
+        
+        if (response.status === 401) {
+          navigate('/auth');
+          return;
+        }
+        
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+          
+          // Redirect if not admin
+          if (userData.role !== "admin") {
+            navigate("/");
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        navigate('/auth');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchUserData();
+  }, [navigate]);
 
-  // Redirect if not admin
-  if (user && user.role !== "admin") {
-    navigate("/");
-    return null;
-  }
+  // We're already checking admin role in the useEffect
 
   // Fetch all projects (admin can see all)
   const { 
