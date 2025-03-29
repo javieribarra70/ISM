@@ -104,10 +104,17 @@ export default function AuthPage() {
         });
         navigate("/");
       } else {
-        const errorText = await response.text();
+        let errorText;
+        try {
+          const errorData = await response.json();
+          errorText = errorData.message;
+        } catch {
+          errorText = "Invalid username or password. Please try again.";
+        }
+        
         toast({
           title: "Login failed",
-          description: errorText || "Invalid username or password",
+          description: errorText,
           variant: "destructive",
         });
       }
@@ -146,10 +153,17 @@ export default function AuthPage() {
         });
         navigate("/");
       } else {
-        const errorText = await response.text();
+        let errorText;
+        try {
+          const errorData = await response.json();
+          errorText = errorData.message;
+        } catch {
+          errorText = "Could not create account. Username might already exist.";
+        }
+        
         toast({
           title: "Registration failed",
-          description: errorText || "Could not create account",
+          description: errorText,
           variant: "destructive",
         });
       }

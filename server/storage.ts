@@ -81,6 +81,26 @@ export class MemStorage implements IStorage {
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000 // 24 hours
     });
+    
+    // Create a demo user for testing purposes
+    this.createDemoUser();
+  }
+  
+  private createDemoUser() {
+    // Hash using the same algorithm as in auth.ts but precalculated
+    // This is the hash for password "demo123"
+    const hashedPassword = "8a1ea5669137134d30cf8a14e85329aadbf3f907748e25c877db83c927dfcb359ed97e0967151e40b076088396ba72145b9a6a153aeb26160e6fdad240fbaf0a.5bfbf79a8bfa1cdf";
+    
+    const demoUser = {
+      id: 1,
+      username: "demo",
+      password: hashedPassword,
+      email: "demo@example.com",
+      role: "admin"
+    };
+    
+    this.users.set(demoUser.id, demoUser);
+    this.currentUserId = 2; // Next user ID would be 2
   }
 
   // User operations
