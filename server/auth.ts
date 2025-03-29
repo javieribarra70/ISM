@@ -37,12 +37,14 @@ async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "ism-platform-session-secret-key",
-    resave: false,
-    saveUninitialized: false,
+    resave: true, // Changed to true to ensure session is saved on every request
+    saveUninitialized: true, // Changed to true to create session even without login
     store: storage.sessionStore,
     cookie: {
       secure: false, // Set to true in production with HTTPS
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days (increased from 7 days)
+      httpOnly: true,
+      sameSite: 'lax'
     }
   };
 
