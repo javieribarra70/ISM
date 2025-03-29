@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Sidebar from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Project } from "@shared/schema";
-import { Loader2, UserPlus, Settings } from "lucide-react";
+import { Loader2, UserPlus, Settings, FolderOpen, Edit, Trash, Download, RotateCw } from "lucide-react";
 
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null);
@@ -36,6 +35,13 @@ export default function AdminPage() {
             navigate("/");
             return;
           }
+          
+          // Check for tab param in URL
+          const url = new URL(window.location.href);
+          const tabParam = url.searchParams.get('tab');
+          if (tabParam && ['projects', 'users', 'reports'].includes(tabParam)) {
+            setActiveTab(tabParam);
+          }
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
@@ -46,18 +52,38 @@ export default function AdminPage() {
     };
     
     fetchUserData();
-  }, [navigate]);
+  }, [navigate, location]);
 
   // We're already checking admin role in the useEffect
 
-  // Fetch all projects (admin can see all)
-  const { 
-    data: projects, 
-    isLoading: isProjectsLoading 
-  } = useQuery<Project[]>({
-    queryKey: ["/api/projects"],
-    queryFn: undefined,
-  });
+  // Fetch all projects manually (admin can see all)
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isProjectsLoading, setIsProjectsLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (!user) return;
+      
+      try {
+        setIsProjectsLoading(true);
+        const response = await fetch('/api/projects', {
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const projectsData = await response.json();
+          console.log("Admin projects:", projectsData);
+          setProjects(projectsData);
+        }
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+      } finally {
+        setIsProjectsLoading(false);
+      }
+    };
+    
+    fetchProjects();
+  }, [user]);
 
   if (isProjectsLoading) {
     return (
@@ -104,35 +130,128 @@ export default function AdminPage() {
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {projects?.map((project) => (
-                  <Card 
-                    key={project.id} 
-                    className="hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => navigate(`/project/${project.id}`)}
-                  >
-                    <CardHeader>
-                      <CardTitle>{project.name}</CardTitle>
-                      <CardDescription>{project.description || 'No description'}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">
-                        Created: {new Date(project.createdAt).toLocaleDateString()}
-                      </p>
-                      <div className="mt-4 flex justify-end">
-                        <Button size="sm" variant="outline">Manage</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-
+              <div className="overflow-hidden border rounded-md">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted/50 border-b">
+                      <th className="text-left whitespace-nowrap p-2 font-medium">Project Name</th>
+                      <th className="text-left whitespace-nowrap p-2 font-medium">Description</th>
+                      <th className="text-left whitespace-nowrap p-2 font-medium">Created At</th>
+                      <th className="text-left whitespace-nowrap p-2 font-medium">
+                        <div className="flex items-center justify-between">
+                          <span>Actions</span>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-8 w-8 mr-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const fetchProjects = async () => {
+                                if (!user) return;
+                                
+                                try {
+                                  setIsProjectsLoading(true);
+                                  const response = await fetch('/api/projects', {
+                                    credentials: 'include',
+                                  });
+                                  
+                                  if (response.ok) {
+                                    const projectsData = await response.json();
+                                    setProjects(projectsData);
+                                  }
+                                } catch (error) {
+                                  console.error('Error refreshing projects:', error);
+                                } finally {
+                                  setIsProjectsLoading(false);
+                                }
+                              };
+                              
+                              fetchProjects();
+                            }}
+                          >
+                            <RotateCw className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {projects?.map((project) => (
+                      <tr 
+                        key={project.id} 
+                        className="border-b hover:bg-muted/50 transition-colors"
+                      >
+                        <td className="p-2">
+                          <div className="font-medium">{project.name}</div>
+                        </td>
+                        <td className="p-2 text-muted-foreground">
+                          {project.description || 'No description'}
+                        </td>
+                        <td className="p-2 text-muted-foreground">
+                          {new Date(project.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="p-2">
+                          <div className="flex items-center space-x-2">
+                            <Button 
+                              size="icon" 
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/project/${project.id}`);
+                              }}
+                            >
+                              <FolderOpen className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Edit functionality will be implemented later
+                                alert('Edit project: ' + project.name);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Delete functionality will be implemented later
+                                if (confirm(`Are you sure you want to delete project: ${project.name}?`)) {
+                                  alert('Project deletion will be implemented later');
+                                }
+                              }}
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Export functionality will be implemented later
+                                alert('Export project: ' + project.name);
+                              }}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                
                 {projects?.length === 0 && (
-                  <Card className="col-span-full">
-                    <CardHeader>
-                      <CardTitle>No Projects Yet</CardTitle>
-                      <CardDescription>Create a new project to get started.</CardDescription>
-                    </CardHeader>
-                  </Card>
+                  <div className="p-4 text-center text-muted-foreground">
+                    No projects found. Create your first project to get started.
+                  </div>
                 )}
               </div>
             </TabsContent>

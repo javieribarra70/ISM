@@ -183,7 +183,7 @@ export default function Sidebar() {
                   }}
                   className={cn(
                     "flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer",
-                    isCurrentPath("/admin") 
+                    isCurrentPath("/admin") && !location.includes("?tab=") 
                       ? "bg-primary-light text-primary" 
                       : "text-gray-700 hover:bg-gray-50"
                   )}
@@ -193,10 +193,30 @@ export default function Sidebar() {
                 </div>
                 <div
                   onClick={() => {
+                    navigate("/admin?tab=projects");
+                    isMobile && setOpen(false);
+                  }}
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer",
+                    location.includes("?tab=projects")
+                      ? "bg-primary-light text-primary" 
+                      : "text-gray-700 hover:bg-gray-50"
+                  )}
+                >
+                  <FolderKanban className="h-5 w-5 mr-2" />
+                  Admin Projects
+                </div>
+                <div
+                  onClick={() => {
                     navigate("/admin?tab=users");
                     isMobile && setOpen(false);
                   }}
-                  className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 cursor-pointer"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer",
+                    location.includes("?tab=users")
+                      ? "bg-primary-light text-primary" 
+                      : "text-gray-700 hover:bg-gray-50"
+                  )}
                 >
                   <Users className="h-5 w-5 mr-2" />
                   Manage Users
