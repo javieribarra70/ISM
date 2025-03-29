@@ -56,17 +56,43 @@ export default function AdminPage() {
   
   // React to URL param changes and also initialize
   useEffect(() => {
-    // Get tab from URL search params
-    const searchParams = new URLSearchParams(window.location.search);
-    const tabParam = searchParams.get('tab');
-    
-    if (tabParam && ['projects', 'users', 'reports'].includes(tabParam)) {
-      console.log("Setting active tab from URL param:", tabParam);
-      setActiveTab(tabParam);
-    } else if (location === "/admin") {
-      // Default to projects when no tab specified
-      setActiveTab("projects");
+    // Clear any existing timeouts to prevent race conditions
+    if (window.tabChangeTimeout) {
+      clearTimeout(window.tabChangeTimeout as any);
     }
+    
+    // Get tab from URL search params with a slight delay to ensure DOM is ready
+    window.tabChangeTimeout = setTimeout(() => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const tabParam = searchParams.get('tab');
+      
+      if (tabParam && ['projects', 'users', 'reports'].includes(tabParam)) {
+        console.log("Setting active tab from URL param:", tabParam);
+        setActiveTab(tabParam);
+        
+        // Directly click the tab element to ensure UI state is correct
+        const tabElement = document.querySelector(`[role="tab"][value="${tabParam}"]`) as HTMLElement;
+        if (tabElement) {
+          tabElement.click();
+        }
+      } else if (location === "/admin") {
+        // Default to projects when no tab specified
+        setActiveTab("projects");
+        
+        // Directly click the projects tab to ensure UI state is correct
+        const projectsTab = document.querySelector(`[role="tab"][value="projects"]`) as HTMLElement;
+        if (projectsTab) {
+          projectsTab.click();
+        }
+      }
+    }, 50);
+    
+    // Cleanup function to clear the timeout
+    return () => {
+      if (window.tabChangeTimeout) {
+        clearTimeout(window.tabChangeTimeout as any);
+      }
+    };
   }, [location]);
   
   // Handle tab changes from UI controls
