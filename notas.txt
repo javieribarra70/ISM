@@ -1,0 +1,3 @@
+Si doy click en alguno de los proyectos, no se desactiva el color azul de sidebar de admin projects incluso si oprimo en el sidebar dashboard, admin projects queda en color azul. 
+al crear un nuevo proyecto me aparece el nuevo proyecto inmediatamente en el dashboard welcome pero no aparece en la lista de projects en el sidebar pero si oprimo algun proyecto, la lista de projects si se actualiza. 
+

@@ -24,16 +24,23 @@ export default function Sidebar() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("projects");
   
-  // Detectar la pestaña activa basada en la URL
+  // Detectar la pestaña activa basada en la URL y resetear cuando estamos fuera de admin
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const tabParam = searchParams.get('tab');
-    
-    if (tabParam && ['projects', 'users', 'reports', 'settings'].includes(tabParam)) {
-      setActiveTab(tabParam);
-      console.log("Setting active tab from URL param:", tabParam);
-    } else if (location === "/admin") {
-      setActiveTab("projects");
+    // Si estamos en la página de admin, detectar la pestaña activa
+    if (location.startsWith("/admin")) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const tabParam = searchParams.get('tab');
+      
+      if (tabParam && ['projects', 'users', 'reports', 'settings'].includes(tabParam)) {
+        setActiveTab(tabParam);
+        console.log("Setting active tab from URL param:", tabParam);
+      } else {
+        setActiveTab("projects");
+      }
+    } else {
+      // Si estamos en cualquier otra página, resetear la pestaña activa
+      setActiveTab("");
+      console.log("Resetting active tab, we're not in admin page");
     }
   }, [location]);
 
