@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { PlusCircle, Loader2, X } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -55,19 +55,32 @@ export default function HomePage() {
   }, [navigate]);
   
   // Fetch user's projects only if authenticated
-  const { data: projects, isLoading: isProjectsLoading, isError, refetch } = useQuery<Project[]>({
+  const { data: projects = [], isLoading: isProjectsLoading, isError, refetch } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
     queryFn: undefined, // Use the default query function
     enabled: !!user, // Only run query if user is authenticated
+    refetchOnMount: true, // Always refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window gets focus
+    staleTime: 0, // Data is never fresh, always refetch
+    retry: 3 // Retry failed requests 3 times
   });
+  
+  // For debugging, log if there are projects on render
+  useEffect(() => {
+    console.log("Current projects state on render:", projects);
+  }, [projects]);
 
   // Create project mutation
   const createProjectMutation = useMutation({
     mutationFn: async (data: { name: string; description: string }) => {
+      console.log("Creating project with data:", data);
       const response = await apiRequest("POST", "/api/projects", data);
-      return response.json();
+      const result = await response.json();
+      console.log("Project created response:", result);
+      return result;
     },
     onSuccess: (project: Project) => {
+      console.log("Project created successfully:", project);
       toast({
         title: "Project created",
         description: `"${project.name}" has been created successfully`,
@@ -78,11 +91,23 @@ export default function HomePage() {
       setProjectDescription("");
       setIsCreatingProject(false);
       
-      // Refresh projects list
+      // Forcefully refresh the projects list
+      console.log("Invalidating projects query cache");
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      refetch();
+      
+      // Manually fetch projects again after a short delay
+      setTimeout(async () => {
+        console.log("Manually refreshing projects list");
+        try {
+          await refetch();
+          console.log("Projects list refreshed successfully");
+        } catch (error) {
+          console.error("Error refreshing projects list:", error);
+        }
+      }, 500);
     },
     onError: (error: Error) => {
+      console.error("Failed to create project:", error);
       toast({
         title: "Failed to create project",
         description: error.message,
