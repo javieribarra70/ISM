@@ -81,11 +81,17 @@ export default function HomePage() {
         <div className="flex-1 p-8 flex justify-center items-center">
           <Card className="w-full max-w-md">
             <CardHeader>
-              <CardTitle className="text-error">Error</CardTitle>
-              <CardDescription>Could not load your projects.</CardDescription>
+              <CardTitle>No Projects Yet</CardTitle>
+              <CardDescription>You don't have any projects yet. Create your first project to get started.</CardDescription>
             </CardHeader>
-            <CardFooter>
-              <Button onClick={() => refetch()}>Try Again</Button>
+            <CardFooter className="flex justify-between">
+              <Button onClick={() => refetch()} variant="outline">Refresh</Button>
+              <Button 
+                className="bg-primary text-white"
+                onClick={() => setIsCreateModalOpen(true)}
+              >
+                <PlusCircle className="mr-2 h-4 w-4" /> Create New Project
+              </Button>
             </CardFooter>
           </Card>
         </div>
