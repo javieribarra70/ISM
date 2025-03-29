@@ -99,6 +99,13 @@ export function registerRoutes(app: Express): Server {
   // Set up authentication routes
   setupAuth(app);
 
+  // Añadir middleware para cache-control
+  app.use((req, res, next) => {
+    // No cachear API por defecto
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    next();
+  });
+
   // Project routes
   app.get("/api/projects", isAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
     try {

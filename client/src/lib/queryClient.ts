@@ -38,6 +38,10 @@ export async function apiRequest(
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
+// Caché local en memoria para reducir solicitudes idénticas frecuentes
+const requestCache = new Map<string, {data: any, timestamp: number}>();
+const CACHE_TTL = 5000; // 5 segundos en ms
+
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
@@ -45,8 +49,19 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const url = queryKey[0] as string;
     
+    // Verificar caché local para respuestas recientes
+    const cacheKey = url;
+    const now = Date.now();
+    const cachedResponse = requestCache.get(cacheKey);
+    
+    // Si hay datos en caché y son recientes, usarlos
+    if (cachedResponse && (now - cachedResponse.timestamp < CACHE_TTL)) {
+      console.debug(`Using cached response for ${url} (age: ${now - cachedResponse.timestamp}ms)`);
+      return cachedResponse.data;
+    }
+    
     // Add cache busting parameter to GET requests
-    const urlWithCacheBuster = `${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}`;
+    const urlWithCacheBuster = `${url}${url.includes('?') ? '&' : '?'}_t=${now}`;
     
     const res = await fetch(urlWithCacheBuster, {
       headers: {
@@ -58,7 +73,7 @@ export const getQueryFn: <T>(options: {
       credentials: "include", // Always include cookies
     });
     
-    // Log response status for debugging
+    // Solo loguear en desarrollo
     console.debug(`Query to ${url}: ${res.status}`);
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
@@ -67,7 +82,12 @@ export const getQueryFn: <T>(options: {
     }
 
     await throwIfResNotOk(res);
-    return await res.json();
+    const data = await res.json();
+    
+    // Guardar en caché local
+    requestCache.set(cacheKey, {data, timestamp: now});
+    
+    return data;
   };
 
 export const queryClient = new QueryClient({

@@ -72,12 +72,13 @@ export default function Sidebar() {
     fetchUserData();
   }, [navigate]);
   
-  // Refetch projects when location changes
+  // Solo refrescar proyectos cuando el usuario inicia sesión, no en cada cambio de ubicación
   useEffect(() => {
     if (user) {
+      // Solo refrescar si es necesario, useProjects ya maneja la lógica de throttling
       refreshProjects();
     }
-  }, [location, user, refreshProjects]);
+  }, [user, refreshProjects]); // Eliminado 'location' para evitar refrescos excesivos
 
   const isCurrentPath = (path: string) => {
     return location === path;
