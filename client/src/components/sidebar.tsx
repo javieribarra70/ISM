@@ -12,7 +12,8 @@ import {
   FolderKanban, 
   Plus,
   Settings,
-  Info
+  Info,
+  BarChart2
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -238,6 +239,27 @@ export default function Sidebar() {
                 >
                   <Users className="h-5 w-5 mr-2" />
                   Manage Users
+                </div>
+                <div
+                  onClick={() => {
+                    const newUrl = "/admin?tab=reports";
+                    navigate(newUrl);
+                    // We need to force re-render to make sure tab is updated
+                    setTimeout(() => {
+                      window.history.pushState({}, '', newUrl);
+                      window.dispatchEvent(new Event('popstate'));
+                    }, 10);
+                    isMobile && setOpen(false);
+                  }}
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer",
+                    location.includes("?tab=reports")
+                      ? "bg-primary-light text-primary" 
+                      : "text-gray-700 hover:bg-gray-50"
+                  )}
+                >
+                  <Settings className="h-5 w-5 mr-2" />
+                  Manage Reports
                 </div>
               </div>
             </>
