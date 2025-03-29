@@ -52,7 +52,18 @@ export default function AdminPage() {
     };
     
     fetchUserData();
-  }, [navigate, location]);
+  }, [navigate]);
+  
+  // Effect to update the activeTab when the URL changes
+  useEffect(() => {
+    // Parse the URL search params to extract tab parameter
+    const url = new URL(window.location.href);
+    const tabParam = url.searchParams.get('tab');
+    
+    if (tabParam && ['projects', 'users', 'reports'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [location]);
 
   // We're already checking admin role in the useEffect
 
