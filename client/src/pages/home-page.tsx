@@ -56,8 +56,15 @@ export default function HomePage() {
 
   // After creating a project, refresh the projects list
   const handleProjectCreated = () => {
+    console.log("Project created, refreshing projects");
     refetch();
     setIsCreateModalOpen(false);
+  };
+  
+  // Add a logging function for debugging
+  const handleOpenModal = () => {
+    console.log("Opening create project modal");
+    setIsCreateModalOpen(true);
   };
 
   if (isLoading || isProjectsLoading) {
@@ -88,7 +95,7 @@ export default function HomePage() {
               <Button onClick={() => refetch()} variant="outline">Refresh</Button>
               <Button 
                 className="bg-primary text-white"
-                onClick={() => setIsCreateModalOpen(true)}
+                onClick={handleOpenModal}
               >
                 <PlusCircle className="mr-2 h-4 w-4" /> Create New Project
               </Button>
@@ -113,7 +120,7 @@ export default function HomePage() {
             </div>
             <Button 
               className="bg-primary text-white" 
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={handleOpenModal}
             >
               <PlusCircle className="mr-2 h-4 w-4" /> Create Project
             </Button>
@@ -155,7 +162,7 @@ export default function HomePage() {
               <CardFooter>
                 <Button 
                   className="w-full bg-primary text-white"
-                  onClick={() => setIsCreateModalOpen(true)}
+                  onClick={handleOpenModal}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" /> Create Your First Project
                 </Button>

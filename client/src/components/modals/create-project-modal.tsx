@@ -52,6 +52,7 @@ export default function CreateProjectModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Submit form triggered");
     
     if (!name.trim()) {
       toast({
@@ -62,6 +63,7 @@ export default function CreateProjectModal({
       return;
     }
     
+    console.log("Submitting project:", { name, description });
     createProjectMutation.mutate({
       name,
       description,
