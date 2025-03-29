@@ -22,6 +22,20 @@ export default function Sidebar() {
   const [user, setUser] = useState<any>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("projects");
+  
+  // Detectar la pestaña activa basada en la URL
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const tabParam = searchParams.get('tab');
+    
+    if (tabParam && ['projects', 'users', 'reports', 'settings'].includes(tabParam)) {
+      setActiveTab(tabParam);
+      console.log("Setting active tab from URL param:", tabParam);
+    } else if (location === "/admin") {
+      setActiveTab("projects");
+    }
+  }, [location]);
 
   // Fetch user data directly
   useEffect(() => {
@@ -94,12 +108,12 @@ export default function Sidebar() {
     </Sheet>
   );
 
-  // Función completamente reescrita para solucionar el problema de navegación
+  // Función para la navegación en el sidebar
   const handleSidebarNavigation = (tab: string) => {
     console.log("Navegando a la pestaña:", tab);
+    setActiveTab(tab);
     
-    // Nuestro enfoque será recargar completamente la página con la nueva URL
-    // Es un enfoque radical pero garantizado para que funcione
+    // Usar window.location para asegurar recarga completa
     window.location.href = tab === "projects" 
       ? "/admin" 
       : `/admin?tab=${tab}`;
@@ -195,7 +209,7 @@ export default function Sidebar() {
                   }}
                   className={cn(
                     "flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer",
-                    (location.includes("?tab=projects") || (isCurrentPath("/admin") && !location.includes("?tab=")))
+                    activeTab === "projects"
                       ? "bg-primary-light text-primary" 
                       : "text-gray-700 hover:bg-gray-50"
                   )}
@@ -210,7 +224,7 @@ export default function Sidebar() {
                   }}
                   className={cn(
                     "flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer",
-                    location.includes("?tab=users")
+                    activeTab === "users"
                       ? "bg-primary-light text-primary" 
                       : "text-gray-700 hover:bg-gray-50"
                   )}
@@ -225,7 +239,7 @@ export default function Sidebar() {
                   }}
                   className={cn(
                     "flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer",
-                    location.includes("?tab=reports")
+                    activeTab === "reports"
                       ? "bg-primary-light text-primary" 
                       : "text-gray-700 hover:bg-gray-50"
                   )}
@@ -240,7 +254,7 @@ export default function Sidebar() {
                   }}
                   className={cn(
                     "flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer",
-                    location.includes("?tab=settings")
+                    activeTab === "settings"
                       ? "bg-primary-light text-primary" 
                       : "text-gray-700 hover:bg-gray-50"
                   )}
