@@ -3,13 +3,8 @@ import { useLocation } from "wouter";
 import Sidebar from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Project } from "@shared/schema";
-import { Loader2, UserPlus, Settings, FolderOpen, Edit, Trash, Download, RotateCw, DatabaseBackup } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
+import { Loader2, UserPlus, FolderOpen, Edit, Trash, Download, RotateCw } from "lucide-react";
 
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null);
@@ -43,7 +38,7 @@ export default function AdminPage() {
           // Check for tab param in URL
           const url = new URL(window.location.href);
           const tabParam = url.searchParams.get('tab');
-          if (tabParam && ['projects', 'users', 'reports'].includes(tabParam)) {
+          if (tabParam && ['projects', 'users', 'reports', 'settings'].includes(tabParam)) {
             setActiveTab(tabParam);
           }
         }
@@ -62,7 +57,7 @@ export default function AdminPage() {
   useEffect(() => {
     // Clear any existing timeouts to prevent race conditions
     if (window.tabChangeTimeout) {
-      clearTimeout(window.tabChangeTimeout as any);
+      clearTimeout(window.tabChangeTimeout);
     }
     
     // Get tab from URL search params with a slight delay to ensure DOM is ready
@@ -70,31 +65,19 @@ export default function AdminPage() {
       const searchParams = new URLSearchParams(window.location.search);
       const tabParam = searchParams.get('tab');
       
-      if (tabParam && ['projects', 'users', 'reports'].includes(tabParam)) {
+      if (tabParam && ['projects', 'users', 'reports', 'settings'].includes(tabParam)) {
         console.log("Setting active tab from URL param:", tabParam);
         setActiveTab(tabParam);
-        
-        // Directly click the tab element to ensure UI state is correct
-        const tabElement = document.querySelector(`[role="tab"][value="${tabParam}"]`) as HTMLElement;
-        if (tabElement) {
-          tabElement.click();
-        }
       } else if (location === "/admin") {
         // Default to projects when no tab specified
         setActiveTab("projects");
-        
-        // Directly click the projects tab to ensure UI state is correct
-        const projectsTab = document.querySelector(`[role="tab"][value="projects"]`) as HTMLElement;
-        if (projectsTab) {
-          projectsTab.click();
-        }
       }
     }, 50);
     
     // Cleanup function to clear the timeout
     return () => {
       if (window.tabChangeTimeout) {
-        clearTimeout(window.tabChangeTimeout as any);
+        clearTimeout(window.tabChangeTimeout);
       }
     };
   }, [location]);
@@ -111,8 +94,6 @@ export default function AdminPage() {
     
     window.history.pushState({}, '', newUrl);
   };
-
-  // We're already checking admin role in the useEffect
 
   // Fetch all projects manually (admin can see all)
   const [projects, setProjects] = useState<Project[]>([]);
@@ -166,286 +147,280 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
-            <TabsList className="mb-6">
-              <TabsTrigger value="projects">Projects</TabsTrigger>
-              <TabsTrigger value="users">Users</TabsTrigger>
-              <TabsTrigger value="reports">Reports</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-            </TabsList>
+          <div className="mt-6">
+            {/* Contenido específico para cada sección basado en activeTab */}
+            {activeTab === "projects" && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold">All Projects</h2>
+                  <Button 
+                    onClick={() => navigate("/")}
+                    variant="outline"
+                  >
+                    Create New Project
+                  </Button>
+                </div>
 
-            <TabsContent value="projects" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold">All Projects</h2>
-                <Button 
-                  onClick={() => navigate("/")}
-                  variant="outline"
-                >
-                  Create New Project
-                </Button>
-              </div>
-
-              <div className="overflow-hidden border rounded-md">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-muted/50 border-b">
-                      <th className="text-left whitespace-nowrap p-2 font-medium">Project Name</th>
-                      <th className="text-left whitespace-nowrap p-2 font-medium">Description</th>
-                      <th className="text-left whitespace-nowrap p-2 font-medium">Created At</th>
-                      <th className="text-left whitespace-nowrap p-2 font-medium">
-                        <div className="flex items-center justify-between">
-                          <span>Actions</span>
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            className="h-8 w-8 mr-1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const fetchProjects = async () => {
-                                if (!user) return;
-                                
-                                try {
-                                  setIsProjectsLoading(true);
-                                  const response = await fetch('/api/projects', {
-                                    credentials: 'include',
-                                  });
+                <div className="overflow-hidden border rounded-md">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted/50 border-b">
+                        <th className="text-left whitespace-nowrap p-2 font-medium">Project Name</th>
+                        <th className="text-left whitespace-nowrap p-2 font-medium">Description</th>
+                        <th className="text-left whitespace-nowrap p-2 font-medium">Created At</th>
+                        <th className="text-left whitespace-nowrap p-2 font-medium">
+                          <div className="flex items-center justify-between">
+                            <span>Actions</span>
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-8 w-8 mr-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const fetchProjects = async () => {
+                                  if (!user) return;
                                   
-                                  if (response.ok) {
-                                    const projectsData = await response.json();
-                                    setProjects(projectsData);
+                                  try {
+                                    setIsProjectsLoading(true);
+                                    const response = await fetch('/api/projects', {
+                                      credentials: 'include',
+                                    });
+                                    
+                                    if (response.ok) {
+                                      const projectsData = await response.json();
+                                      setProjects(projectsData);
+                                    }
+                                  } catch (error) {
+                                    console.error('Error refreshing projects:', error);
+                                  } finally {
+                                    setIsProjectsLoading(false);
                                   }
-                                } catch (error) {
-                                  console.error('Error refreshing projects:', error);
-                                } finally {
-                                  setIsProjectsLoading(false);
-                                }
-                              };
-                              
-                              fetchProjects();
-                            }}
-                          >
-                            <RotateCw className="h-4 w-4" />
+                                };
+                                
+                                fetchProjects();
+                              }}
+                            >
+                              <RotateCw className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {projects?.map((project) => (
+                        <tr 
+                          key={project.id} 
+                          className="border-b hover:bg-muted/50 transition-colors"
+                        >
+                          <td className="p-2">
+                            <div className="font-medium">{project.name}</div>
+                          </td>
+                          <td className="p-2 text-muted-foreground">
+                            {project.description || 'No description'}
+                          </td>
+                          <td className="p-2 text-muted-foreground">
+                            {new Date(project.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="p-2">
+                            <div className="flex items-center space-x-2">
+                              <Button 
+                                size="icon" 
+                                variant="ghost"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/project/${project.id}`);
+                                }}
+                              >
+                                <FolderOpen className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                size="icon" 
+                                variant="ghost"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Edit functionality will be implemented later
+                                  alert('Edit project: ' + project.name);
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                size="icon" 
+                                variant="ghost"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Delete functionality will be implemented later
+                                  if (confirm(`Are you sure you want to delete project: ${project.name}?`)) {
+                                    alert('Project deletion will be implemented later');
+                                  }
+                                }}
+                              >
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                size="icon" 
+                                variant="ghost"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Export functionality will be implemented later
+                                  alert('Export project: ' + project.name);
+                                }}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  
+                  {projects?.length === 0 && (
+                    <div className="p-4 text-center text-muted-foreground">
+                      No projects found. Create your first project to get started.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {activeTab === "users" && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold">User Management</h2>
+                  <Button variant="outline">
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Add New User
+                  </Button>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Users</CardTitle>
+                    <CardDescription>Manage user accounts and permissions</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground">
+                      This feature will be implemented in the next version.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === "reports" && (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>System Reports</CardTitle>
+                    <CardDescription>View and analyze system usage statistics</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground">
+                      This feature will be implemented in the next version.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+            
+            {activeTab === "settings" && (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>System Settings</CardTitle>
+                    <CardDescription>Configure application settings and preferences</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="text-lg font-medium">Application Settings</h3>
+                        <div className="mt-4 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">Appearance</p>
+                              <p className="text-sm text-muted-foreground">Choose your preferred visual theme</p>
+                            </div>
+                            <select className="border rounded px-3 py-2 w-40">
+                              <option value="light">Light</option>
+                              <option value="dark">Dark</option>
+                              <option value="system">System</option>
+                            </select>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">Language</p>
+                              <p className="text-sm text-muted-foreground">Set your preferred language</p>
+                            </div>
+                            <select className="border rounded px-3 py-2 w-40">
+                              <option value="en">English</option>
+                              <option value="es">Español</option>
+                              <option value="fr">Français</option>
+                            </select>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">Notifications</p>
+                              <p className="text-sm text-muted-foreground">Receive email notifications</p>
+                            </div>
+                            <div className="flex h-6 items-center">
+                              <input type="checkbox" className="h-4 w-4" defaultChecked />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <hr className="my-4" />
+                      
+                      <div>
+                        <h3 className="text-lg font-medium">Database Backup</h3>
+                        <p className="text-sm text-muted-foreground mt-1 mb-4">
+                          Create and manage database backups
+                        </p>
+                        
+                        <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
+                          <Button variant="outline">
+                            <Download className="mr-2 h-4 w-4" />
+                            Create Backup
+                          </Button>
+                          <Button variant="outline">
+                            <Download className="mr-2 h-4 w-4" />
+                            Download Latest
                           </Button>
                         </div>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {projects?.map((project) => (
-                      <tr 
-                        key={project.id} 
-                        className="border-b hover:bg-muted/50 transition-colors"
-                      >
-                        <td className="p-2">
-                          <div className="font-medium">{project.name}</div>
-                        </td>
-                        <td className="p-2 text-muted-foreground">
-                          {project.description || 'No description'}
-                        </td>
-                        <td className="p-2 text-muted-foreground">
-                          {new Date(project.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="p-2">
-                          <div className="flex items-center space-x-2">
-                            <Button 
-                              size="icon" 
-                              variant="ghost"
-                              className="h-8 w-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/project/${project.id}`);
-                              }}
-                            >
-                              <FolderOpen className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              size="icon" 
-                              variant="ghost"
-                              className="h-8 w-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // Edit functionality will be implemented later
-                                alert('Edit project: ' + project.name);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              size="icon" 
-                              variant="ghost"
-                              className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // Delete functionality will be implemented later
-                                if (confirm(`Are you sure you want to delete project: ${project.name}?`)) {
-                                  alert('Project deletion will be implemented later');
-                                }
-                              }}
-                            >
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              size="icon" 
-                              variant="ghost"
-                              className="h-8 w-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // Export functionality will be implemented later
-                                alert('Export project: ' + project.name);
-                              }}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                
-                {projects?.length === 0 && (
-                  <div className="p-4 text-center text-muted-foreground">
-                    No projects found. Create your first project to get started.
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="users" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold">User Management</h2>
-                <Button variant="outline">
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Add New User
-                </Button>
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Users</CardTitle>
-                  <CardDescription>Manage user accounts and permissions</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">
-                    This feature will be implemented in the next version.
-                  </p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="reports" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>System Reports</CardTitle>
-                  <CardDescription>View and analyze system usage statistics</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">
-                    This feature will be implemented in the next version.
-                  </p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="settings" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>System Settings</CardTitle>
-                  <CardDescription>Configure application settings and preferences</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-lg font-medium">Application Settings</h3>
-                      <div className="mt-4 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label htmlFor="appearance" className="font-medium">Appearance</Label>
-                            <p className="text-sm text-muted-foreground">Choose your preferred visual theme</p>
-                          </div>
-                          <Select defaultValue="light">
-                            <SelectTrigger id="appearance" className="w-40">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="light">Light</SelectItem>
-                              <SelectItem value="dark">Dark</SelectItem>
-                              <SelectItem value="system">System</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label htmlFor="language" className="font-medium">Language</Label>
-                            <p className="text-sm text-muted-foreground">Set your preferred language</p>
-                          </div>
-                          <Select defaultValue="en">
-                            <SelectTrigger id="language" className="w-40">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="en">English</SelectItem>
-                              <SelectItem value="es">Español</SelectItem>
-                              <SelectItem value="fr">Français</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label className="font-medium">Notifications</Label>
-                            <p className="text-sm text-muted-foreground">Receive email notifications</p>
-                          </div>
-                          <Switch defaultChecked />
-                        </div>
                       </div>
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div>
-                      <h3 className="text-lg font-medium">Database Backup</h3>
-                      <p className="text-sm text-muted-foreground mt-1 mb-4">
-                        Create and manage database backups
-                      </p>
                       
-                      <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-                        <Button variant="outline">
-                          <DatabaseBackup className="mr-2 h-4 w-4" />
-                          Create Backup
-                        </Button>
-                        <Button variant="outline">
-                          <Download className="mr-2 h-4 w-4" />
-                          Download Latest
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div>
-                      <h3 className="text-lg font-medium">System Information</h3>
-                      <div className="grid gap-4 mt-4">
-                        <div className="grid grid-cols-2 items-center gap-4">
-                          <div className="font-medium">Version</div>
-                          <div>1.0.0</div>
-                        </div>
-                        <div className="grid grid-cols-2 items-center gap-4">
-                          <div className="font-medium">Database</div>
-                          <div>PostgreSQL</div>
-                        </div>
-                        <div className="grid grid-cols-2 items-center gap-4">
-                          <div className="font-medium">Last Update</div>
-                          <div>{new Date().toLocaleDateString()}</div>
+                      <hr className="my-4" />
+                      
+                      <div>
+                        <h3 className="text-lg font-medium">System Information</h3>
+                        <div className="grid gap-4 mt-4">
+                          <div className="grid grid-cols-2 items-center gap-4">
+                            <div className="font-medium">Version</div>
+                            <div>1.0.0</div>
+                          </div>
+                          <div className="grid grid-cols-2 items-center gap-4">
+                            <div className="font-medium">Database</div>
+                            <div>PostgreSQL</div>
+                          </div>
+                          <div className="grid grid-cols-2 items-center gap-4">
+                            <div className="font-medium">Last Update</div>
+                            <div>{new Date().toLocaleDateString()}</div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
         </main>
       </div>
     </div>
