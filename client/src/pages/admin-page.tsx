@@ -5,7 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Project } from "@shared/schema";
-import { Loader2, UserPlus, Settings, FolderOpen, Edit, Trash, Download, RotateCw } from "lucide-react";
+import { Loader2, UserPlus, Settings, FolderOpen, Edit, Trash, Download, RotateCw, DatabaseBackup } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null);
@@ -160,10 +164,6 @@ export default function AdminPage() {
               <h1 className="text-2xl font-bold text-text">Admin Dashboard</h1>
               <p className="text-muted-foreground">Manage users, projects and system settings</p>
             </div>
-            <Button className="bg-primary text-white">
-              <Settings className="mr-2 h-4 w-4" />
-              System Settings
-            </Button>
           </div>
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
@@ -171,6 +171,7 @@ export default function AdminPage() {
               <TabsTrigger value="projects">Projects</TabsTrigger>
               <TabsTrigger value="users">Users</TabsTrigger>
               <TabsTrigger value="reports">Reports</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
             </TabsList>
 
             <TabsContent value="projects" className="space-y-4">
@@ -342,6 +343,105 @@ export default function AdminPage() {
                   <p className="text-muted-foreground">
                     This feature will be implemented in the next version.
                   </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="settings" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>System Settings</CardTitle>
+                  <CardDescription>Configure application settings and preferences</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-medium">Application Settings</h3>
+                      <div className="mt-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label htmlFor="appearance" className="font-medium">Appearance</Label>
+                            <p className="text-sm text-muted-foreground">Choose your preferred visual theme</p>
+                          </div>
+                          <Select defaultValue="light">
+                            <SelectTrigger id="appearance" className="w-40">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="light">Light</SelectItem>
+                              <SelectItem value="dark">Dark</SelectItem>
+                              <SelectItem value="system">System</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label htmlFor="language" className="font-medium">Language</Label>
+                            <p className="text-sm text-muted-foreground">Set your preferred language</p>
+                          </div>
+                          <Select defaultValue="en">
+                            <SelectTrigger id="language" className="w-40">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="en">English</SelectItem>
+                              <SelectItem value="es">Español</SelectItem>
+                              <SelectItem value="fr">Français</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label className="font-medium">Notifications</Label>
+                            <p className="text-sm text-muted-foreground">Receive email notifications</p>
+                          </div>
+                          <Switch defaultChecked />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div>
+                      <h3 className="text-lg font-medium">Database Backup</h3>
+                      <p className="text-sm text-muted-foreground mt-1 mb-4">
+                        Create and manage database backups
+                      </p>
+                      
+                      <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
+                        <Button variant="outline">
+                          <DatabaseBackup className="mr-2 h-4 w-4" />
+                          Create Backup
+                        </Button>
+                        <Button variant="outline">
+                          <Download className="mr-2 h-4 w-4" />
+                          Download Latest
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div>
+                      <h3 className="text-lg font-medium">System Information</h3>
+                      <div className="grid gap-4 mt-4">
+                        <div className="grid grid-cols-2 items-center gap-4">
+                          <div className="font-medium">Version</div>
+                          <div>1.0.0</div>
+                        </div>
+                        <div className="grid grid-cols-2 items-center gap-4">
+                          <div className="font-medium">Database</div>
+                          <div>PostgreSQL</div>
+                        </div>
+                        <div className="grid grid-cols-2 items-center gap-4">
+                          <div className="font-medium">Last Update</div>
+                          <div>{new Date().toLocaleDateString()}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

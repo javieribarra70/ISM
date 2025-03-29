@@ -190,28 +190,12 @@ export default function Sidebar() {
               <div className="space-y-1">
                 <div
                   onClick={() => {
-                    const newUrl = "/admin";
-                    navigate(newUrl);
-                    isMobile && setOpen(false);
-                  }}
-                  className={cn(
-                    "flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer",
-                    isCurrentPath("/admin") && !location.includes("?tab=") 
-                      ? "bg-primary-light text-primary" 
-                      : "text-gray-700 hover:bg-gray-50"
-                  )}
-                >
-                  <Settings className="h-5 w-5 mr-2" />
-                  Admin Panel
-                </div>
-                <div
-                  onClick={() => {
                     handleSidebarNavigation("projects");
                     isMobile && setOpen(false);
                   }}
                   className={cn(
                     "flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer",
-                    location.includes("?tab=projects")
+                    (location.includes("?tab=projects") || (isCurrentPath("/admin") && !location.includes("?tab=")))
                       ? "bg-primary-light text-primary" 
                       : "text-gray-700 hover:bg-gray-50"
                   )}
@@ -246,8 +230,23 @@ export default function Sidebar() {
                       : "text-gray-700 hover:bg-gray-50"
                   )}
                 >
-                  <Settings className="h-5 w-5 mr-2" />
+                  <BarChart2 className="h-5 w-5 mr-2" />
                   Manage Reports
+                </div>
+                <div
+                  onClick={() => {
+                    handleSidebarNavigation("settings");
+                    isMobile && setOpen(false);
+                  }}
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer",
+                    location.includes("?tab=settings")
+                      ? "bg-primary-light text-primary" 
+                      : "text-gray-700 hover:bg-gray-50"
+                  )}
+                >
+                  <Settings className="h-5 w-5 mr-2" />
+                  System Settings
                 </div>
               </div>
             </>
