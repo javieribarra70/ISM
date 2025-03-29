@@ -172,10 +172,8 @@ export default function HomePage() {
             return prev;
           });
           
-          // Then update with server data after short delay to ensure UI is fresh
-          setTimeout(() => {
-            setProjects(data);
-          }, 300);
+          // Then update with server data immediately
+          setProjects(data);
         })
         .catch(error => {
           console.error("Error fetching projects after creation:", error);

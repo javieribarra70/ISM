@@ -44,6 +44,22 @@ export default function Sidebar() {
     }
   }, [location]);
 
+  // Función para obtener proyectos independientemente
+  const fetchProjects = async () => {
+    try {
+      const projectsResponse = await fetch('/api/projects', {
+        credentials: 'include',
+      });
+      
+      if (projectsResponse.ok) {
+        const projectsData = await projectsResponse.json();
+        setProjects(projectsData);
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
+
   // Fetch user data directly
   useEffect(() => {
     const fetchUserData = async () => {
@@ -57,14 +73,7 @@ export default function Sidebar() {
           setUser(userData);
           
           // Fetch projects once we have a user
-          const projectsResponse = await fetch('/api/projects', {
-            credentials: 'include',
-          });
-          
-          if (projectsResponse.ok) {
-            const projectsData = await projectsResponse.json();
-            setProjects(projectsData);
-          }
+          await fetchProjects();
         } else if (response.status === 401) {
           // Redirect to login if not authenticated
           navigate('/auth');
@@ -78,6 +87,14 @@ export default function Sidebar() {
     
     fetchUserData();
   }, [navigate]);
+  
+  // Refetch projects when location changes
+  useEffect(() => {
+    // Solo recargar proyectos si el usuario ya está cargado
+    if (user) {
+      fetchProjects();
+    }
+  }, [location, user]);
 
   const isCurrentPath = (path: string) => {
     return location === path;
