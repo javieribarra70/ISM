@@ -94,6 +94,34 @@ export default function Sidebar() {
     </Sheet>
   );
 
+  const handleSidebarNavigation = (tab: string) => {
+    console.log("Sidebar navigation to tab:", tab);
+    
+    // Navigate to admin with the appropriate tab
+    const newUrl = tab === "projects" 
+      ? "/admin" 
+      : `/admin?tab=${tab}`;
+    
+    navigate(newUrl);
+    
+    // Then also update the UI state directly
+    try {
+      // Check if we're in the admin page
+      if (location.startsWith("/admin")) {
+        // Find any tabs component and programmatically set its value
+        const tabsElement = document.querySelector('[role="tablist"]');
+        if (tabsElement) {
+          const tabElement = tabsElement.querySelector(`[value="${tab}"]`) as HTMLElement;
+          if (tabElement) {
+            tabElement.click();
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error updating tabs:", e);
+    }
+  };
+
   const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (
     <div className="h-full border-r border-border bg-white flex flex-col">
       {/* Logo */}
@@ -195,8 +223,7 @@ export default function Sidebar() {
                 </div>
                 <div
                   onClick={() => {
-                    const newUrl = "/admin?tab=projects";
-                    navigate(newUrl);
+                    handleSidebarNavigation("projects");
                     isMobile && setOpen(false);
                   }}
                   className={cn(
@@ -211,8 +238,7 @@ export default function Sidebar() {
                 </div>
                 <div
                   onClick={() => {
-                    const newUrl = "/admin?tab=users";
-                    navigate(newUrl);
+                    handleSidebarNavigation("users");
                     isMobile && setOpen(false);
                   }}
                   className={cn(
@@ -227,8 +253,7 @@ export default function Sidebar() {
                 </div>
                 <div
                   onClick={() => {
-                    const newUrl = "/admin?tab=reports";
-                    navigate(newUrl);
+                    handleSidebarNavigation("reports");
                     isMobile && setOpen(false);
                   }}
                   className={cn(

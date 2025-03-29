@@ -54,23 +54,31 @@ export default function AdminPage() {
     fetchUserData();
   }, [navigate]);
   
-  // Effect to update the activeTab when the URL changes
+  // React to URL param changes and also initialize
   useEffect(() => {
-    // Parse the URL search params to extract tab parameter
-    const url = new URL(window.location.href);
-    const tabParam = url.searchParams.get('tab');
+    // Get tab from URL search params
+    const searchParams = new URLSearchParams(window.location.search);
+    const tabParam = searchParams.get('tab');
     
     if (tabParam && ['projects', 'users', 'reports'].includes(tabParam)) {
+      console.log("Setting active tab from URL param:", tabParam);
       setActiveTab(tabParam);
-      console.log("Tab changed to:", tabParam);
+    } else if (location === "/admin") {
+      // Default to projects when no tab specified
+      setActiveTab("projects");
     }
   }, [location]);
   
-  // Effect to handle the tabs controls click
+  // Handle tab changes from UI controls
   const handleTabChange = (value: string) => {
+    console.log("Tab clicked:", value);
     setActiveTab(value);
-    // Update URL without triggering navigation
-    const newUrl = `/admin${value !== "projects" ? `?tab=${value}` : ""}`;
+    
+    // Update URL without full navigation
+    const newUrl = value === "projects" 
+      ? "/admin" 
+      : `/admin?tab=${value}`;
+    
     window.history.pushState({}, '', newUrl);
   };
 
