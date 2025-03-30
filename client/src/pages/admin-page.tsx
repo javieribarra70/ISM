@@ -49,18 +49,29 @@ function UserManagementSection() {
     },
   });
   
+  // Define una función para recargar la lista de usuarios
+  const forceRefreshUsersList = () => {
+    // Hacer una petición fresca a la API
+    queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    
+    // Forzar un refresh UI completo cambiando la pestaña y volviendo
+    const searchParams = new URLSearchParams(window.location.search);
+    
+    // Cambiar a otra pestaña temporalmente y volver
+    window.history.pushState({}, '', `/admin`);
+    setTimeout(() => {
+      window.history.pushState({}, '', `/admin?tab=users`);
+      // Cargar los datos de nuevo
+      queryClient.refetchQueries({ queryKey: ["/api/users"] });
+    }, 100);
+  };
+  
   // Función para crear usuario
   async function onSubmit(data: CreateUserFormValues) {
     try {
-      // Guardar los usuarios actuales
-      const currentUsers = queryClient.getQueryData<SelectUser[]>(["/api/users"]) || [];
-      
       // Realizar la petición real
       const response = await apiRequest("POST", "/api/users", data);
       const newUser = await response.json();
-      
-      // Actualizar manualmente la lista de usuarios en la caché DESPUÉS de la respuesta exitosa
-      queryClient.setQueryData(["/api/users"], [...currentUsers, newUser]);
       
       toast({
         title: "Success",
@@ -71,8 +82,10 @@ function UserManagementSection() {
       setIsDialogOpen(false);
       form.reset();
       
-      // Intentar recargar los datos en segundo plano
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      // Forzar un refresh completo
+      setTimeout(() => {
+        forceRefreshUsersList();
+      }, 300);
     } catch (error) {
       toast({
         title: "Error",
@@ -93,7 +106,17 @@ function UserManagementSection() {
   
   const handleRoleChange = (userId: number, newRole: 'admin' | 'user') => {
     if (confirm(`¿Estás seguro de que deseas cambiar el rol de este usuario a ${newRole}?`)) {
-      updateUserRoleMutation.mutate({ userId, role: newRole });
+      updateUserRoleMutation.mutate(
+        { userId, role: newRole },
+        {
+          onSuccess: () => {
+            // Forzar un refresh completo
+            setTimeout(() => {
+              forceRefreshUsersList();
+            }, 300);
+          }
+        }
+      );
     }
   };
 
@@ -245,7 +268,14 @@ function UserManagementSection() {
                             className="h-9 w-9 text-destructive hover:bg-destructive hover:text-white transition-colors"
                             onClick={() => {
                               if (confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.')) {
-                                deleteUserMutation.mutate(user.id);
+                                deleteUserMutation.mutate(user.id, {
+                                  onSuccess: () => {
+                                    // Forzar un refresh completo
+                                    setTimeout(() => {
+                                      forceRefreshUsersList();
+                                    }, 300);
+                                  }
+                                });
                               }
                             }}
                           >
