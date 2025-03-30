@@ -36,7 +36,19 @@ export default function ProjectPage() {
       return "categories"; // Fallback si hay problemas con sessionStorage
     }
   };
+  
   const [activeTab, setActiveTab] = useState(getInitialTab());
+  
+  // Cuando cambia la pestaña, guardarla en sessionStorage
+  const handleTabChange = (tab: string) => {
+    console.log(`Guardando pestaña activa: ${tab}`);
+    setActiveTab(tab);
+    try {
+      sessionStorage.setItem(`project_${projectId}_active_tab`, tab);
+    } catch (e) {
+      console.error("Error guardando la pestaña activa:", e);
+    }
+  };
   
   // Validate projectId
   const parsedProjectId = parseInt(projectId || "");
@@ -348,17 +360,7 @@ export default function ProjectPage() {
           {/* Pestañas de navegación */}
           <Tabs 
             value={activeTab}
-            onValueChange={(value) => {
-              // Guardar la pestaña activa en sessionStorage para persistencia
-              try {
-                sessionStorage.setItem(`project_${projectId}_active_tab`, value);
-                console.log(`Guardando pestaña activa: ${value}`);
-              } catch (e) {
-                console.error("Error al guardar pestaña en sessionStorage:", e);
-              }
-              // Actualizar el estado
-              setActiveTab(value);
-            }}
+            onValueChange={handleTabChange}
             className="w-full px-4 sm:px-6 lg:px-8"
           >
             <TabsList className="grid w-full max-w-lg grid-cols-4 mb-4">

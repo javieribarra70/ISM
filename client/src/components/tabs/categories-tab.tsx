@@ -29,6 +29,17 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  
+  // Función auxiliar para mantener pestaña de categorías
+  const persistCategoriesTab = useCallback(() => {
+    try {
+      sessionStorage.setItem(`project_${projectId}_active_tab`, "categories");
+      console.log("Guardando pestaña activa: categories en sessionStorage");
+    } catch (e) {
+      console.error("Error al guardar pestaña en sessionStorage:", e);
+    }
+    setActiveTab("categories");
+  }, [projectId, setActiveTab]);
 
   // Obtener las categorías del proyecto
   const { data: categories, isLoading, refetch: refetchCategories } = useQuery<Category[]>({
@@ -58,7 +69,7 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
       });
       setIsNewCategoryModalOpen(false);
       // Asegurar que la pestaña permanezca en categorías
-      setActiveTab("categories");
+      persistCategoriesTab();
     },
     onError: (error: Error) => {
       console.error("Error al crear categoría:", error);
@@ -89,7 +100,7 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
       setCurrentCategory(null);
       setIsEditMode(false);
       // Asegurar que la pestaña permanezca en categorías
-      setActiveTab("categories");
+      persistCategoriesTab();
     },
     onError: (error: Error) => {
       console.error("Error al actualizar categoría:", error);
@@ -118,7 +129,7 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
       });
       setCategoryToDelete(null);
       // Asegurar que la pestaña permanezca en categorías
-      setActiveTab("categories");
+      persistCategoriesTab();
     },
     onError: (error: Error) => {
       console.error("Error al eliminar categoría:", error);
@@ -166,7 +177,7 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
     if (categoryToDelete) {
       deleteCategoryMutation.mutate(categoryToDelete.id);
       // Asegurar que la pestaña permanezca en categorías
-      setActiveTab("categories");
+      persistCategoriesTab();
     }
   };
 
