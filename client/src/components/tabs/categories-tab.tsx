@@ -20,9 +20,10 @@ import {
 
 interface CategoriesTabProps {
   projectId: number;
+  setActiveTab: (value: string) => void;
 }
 
-export default function CategoriesTab({ projectId }: CategoriesTabProps) {
+export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTabProps) {
   const { toast } = useToast();
   const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -107,6 +108,8 @@ export default function CategoriesTab({ projectId }: CategoriesTabProps) {
         description: "La categoría ha sido eliminada correctamente",
       });
       setCategoryToDelete(null);
+      // Asegurar que la pestaña permanezca en categorías
+      setActiveTab("categories");
     },
     onError: (error: Error) => {
       console.error("Error al eliminar categoría:", error);
@@ -153,6 +156,8 @@ export default function CategoriesTab({ projectId }: CategoriesTabProps) {
   const confirmDeleteCategory = () => {
     if (categoryToDelete) {
       deleteCategoryMutation.mutate(categoryToDelete.id);
+      // Asegurar que la pestaña permanezca en categorías
+      setActiveTab("categories");
     }
   };
 

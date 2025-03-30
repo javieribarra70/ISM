@@ -290,7 +290,10 @@ export default function ProjectPage() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="categories" className="mt-0 p-4">
-              <CategoriesTab projectId={parsedProjectId} />
+              <CategoriesTab 
+                projectId={parsedProjectId} 
+                setActiveTab={setActiveTab}
+              />
             </TabsContent>
             
             <TabsContent value="ideas" className="mt-0 p-0">
