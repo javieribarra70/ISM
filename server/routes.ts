@@ -438,6 +438,7 @@ export function registerRoutes(app: Express): Server {
       // Verificar que el usuario a eliminar fue creado por el admin actual o es uno auto-registrado
       const userToDelete = await db.select({
         id: users.id,
+        role: users.role,
         createdBy: users.createdBy
       })
       .from(users)
@@ -458,13 +459,24 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ message: "You cannot delete your own account" });
       }
       
+      const isAdmin = userToDelete[0].role === 'admin';
       const deleted = await storage.deleteUser(userId);
       
       if (!deleted) {
         return res.status(404).json({ message: "User not found or could not be deleted" });
       }
       
-      res.json({ message: "User deleted successfully" });
+      if (isAdmin) {
+        res.json({ 
+          message: "Administrador eliminado correctamente junto con todos sus usuarios y proyectos asociados. Esta acción ha eliminado en cascada todos los datos relacionados.", 
+          deletedType: "admin"
+        });
+      } else {
+        res.json({ 
+          message: "Usuario eliminado correctamente",
+          deletedType: "user"
+        });
+      }
     } catch (error) {
       console.error("Error deleting user:", error);
       next(error);

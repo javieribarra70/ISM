@@ -78,15 +78,19 @@ export function UsersProvider({ children }: { children: ReactNode }) {
       return { userId, response: responseData };
     },
     onSuccess: (data) => {
+      const isAdminDeletion = data.response.deletedType === "admin";
+      
       toast({
-        title: "Usuario eliminado",
+        title: isAdminDeletion ? "Administrador eliminado" : "Usuario eliminado",
         description: data.response.message || "El usuario ha sido eliminado exitosamente.",
+        duration: isAdminDeletion ? 5000 : 3000, // Más tiempo para ver el mensaje de admin
+        variant: isAdminDeletion ? "default" : "default",
       });
       
       // Usar la función refetch directamente para obtener datos frescos
       setTimeout(() => {
         refetchUsers();
-      }, 300);
+      }, isAdminDeletion ? 500 : 300); // Esperar un poco más para refrescar si era un admin
     },
     onError: (error: Error) => {
       toast({

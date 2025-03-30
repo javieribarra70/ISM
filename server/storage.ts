@@ -511,11 +511,65 @@ export class DatabaseStorage implements IStorage {
   
   async deleteUser(userId: number): Promise<boolean> {
     try {
-      // En una aplicación de producción real, esto debería ser una transacción
-      // y deberíamos realizar limpiezas adicionales (como eliminar ideas del usuario, etc.)
+      // Primero obtener datos del usuario para saber si es admin
+      const userResult = await db.select({
+        id: users.id,
+        role: users.role
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
       
-      // Primero eliminar todos los registros de project_users donde el usuario está
-      await sql`DELETE FROM project_users WHERE user_id = ${userId}`;
+      if (userResult.length === 0) {
+        return false;
+      }
+      
+      const isAdmin = userResult[0].role === 'admin';
+      
+      // Si es un administrador, debemos:
+      // 1. Eliminar todos los usuarios que creó
+      // 2. Eliminar todos sus proyectos y datos relacionados
+      if (isAdmin) {
+        console.log(`Eliminando un administrador (ID: ${userId}), limpiando todos sus datos`);
+        
+        // 1. Identificar y eliminar todos los usuarios creados por este admin
+        const createdUserIds = await db.select({ id: users.id })
+          .from(users)
+          .where(eq(users.createdBy, userId));
+        
+        // Para cada usuario creado, eliminarlo (limpiará sus propios project_users)
+        for (const userObj of createdUserIds) {
+          await this.deleteUser(userObj.id);
+        }
+        
+        // 2. Identificar todos los proyectos creados por este admin
+        const projectIds = await db.select({ id: projects.id })
+          .from(projects)
+          .where(eq(projects.createdBy, userId));
+        
+        // Para cada proyecto, eliminar todas sus dependencias
+        for (const project of projectIds) {
+          const projectId = project.id;
+          
+          // Eliminar relaciones
+          await sql`DELETE FROM relationships WHERE project_id = ${projectId}`;
+          
+          // Eliminar ideas
+          await sql`DELETE FROM ideas WHERE project_id = ${projectId}`;
+          
+          // Eliminar invitaciones
+          await sql`DELETE FROM invitations WHERE project_id = ${projectId}`;
+          
+          // Eliminar project_users
+          await sql`DELETE FROM project_users WHERE project_id = ${projectId}`;
+          
+          // Eliminar el proyecto
+          await sql`DELETE FROM projects WHERE id = ${projectId}`;
+        }
+      } else {
+        // Si es un usuario normal, solo eliminar sus project_users
+        await sql`DELETE FROM project_users WHERE user_id = ${userId}`;
+      }
       
       // Finalmente eliminar el usuario
       const result = await db.delete(users)

@@ -259,13 +259,19 @@ function UserManagementSection() {
                             size="icon" 
                             className="h-9 w-9 text-destructive hover:bg-destructive hover:text-white transition-colors"
                             onClick={() => {
-                              if (confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.')) {
+                              // Mensaje diferenciado para admins vs usuarios normales
+                              const isAdmin = user.role === 'admin';
+                              const confirmMessage = isAdmin 
+                                ? `¡ADVERTENCIA! Vas a eliminar al administrador ${user.username}.\n\nEsto también eliminará:\n- Todos los usuarios creados por este administrador\n- Todos los proyectos creados por este administrador\n- Todas las ideas y relaciones asociadas\n\n¿Estás COMPLETAMENTE seguro?`
+                                : `¿Estás seguro de que deseas eliminar al usuario ${user.username}? Esta acción no se puede deshacer.`;
+                              
+                              if (confirm(confirmMessage)) {
                                 deleteUserMutation.mutate(user.id, {
                                   onSuccess: () => {
                                     // Forzar un refresh completo
                                     setTimeout(() => {
                                       forceRefreshUsersList();
-                                    }, 300);
+                                    }, isAdmin ? 800 : 300); // Dar más tiempo si es admin para completar la cascada de eliminación
                                   }
                                 });
                               }
