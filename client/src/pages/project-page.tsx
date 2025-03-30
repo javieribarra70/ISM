@@ -27,7 +27,16 @@ export default function ProjectPage() {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [lastPolled, setLastPolled] = useState<Date>(new Date());
   // Estado para controlar la pestaña activa - debe estar aquí con los otros estados
-  const [activeTab, setActiveTab] = useState("ideas");
+  // Intentar recordar la última pestaña activa usando sessionStorage
+  const getInitialTab = () => {
+    try {
+      const savedTab = sessionStorage.getItem(`project_${projectId}_active_tab`);
+      return savedTab || "categories"; // Si no hay valor guardado, mostrar categorías por defecto
+    } catch (e) {
+      return "categories"; // Fallback si hay problemas con sessionStorage
+    }
+  };
+  const [activeTab, setActiveTab] = useState(getInitialTab());
   
   // Validate projectId
   const parsedProjectId = parseInt(projectId || "");
@@ -183,19 +192,27 @@ export default function ProjectPage() {
       return response.json();
     },
     onSuccess: () => {
+      // Guardar explícitamente "categories" como la pestaña activa en sessionStorage
+      try {
+        sessionStorage.setItem(`project_${projectId}_active_tab`, "categories");
+        console.log("Persistiendo pestaña activa: categories en sessionStorage");
+      } catch (e) {
+        console.error("Error al guardar pestaña en sessionStorage:", e);
+      }
+      
       // Primer paso: Invalidar la consulta para forzar una recarga
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${parsedProjectId}/categories`] });
       
       // Segundo paso: Cerrar el modal
       setIsNewCategoryModalOpen(false);
       
-      // Tercer paso: Forzar que se muestre la pestaña de categorías
-      // Usar setTimeout para asegurar que el cambio ocurra después de que React procese otros estados
+      // Tercer paso: Forzar que se muestre la pestaña de categorías con retraso
+      // Usar setTimeout con un retraso más largo para asegurar que todos los cambios de estado se completen
       setTimeout(() => {
         // Asegurarse de que la pestaña activa sea "categories" explícitamente
         setActiveTab("categories");
         console.log("Estableciendo pestaña activa a 'categories' después de crear categoría");
-      }, 100);
+      }, 200);
     },
     onError: (error: Error) => {
       console.error("Error al crear categoría:", error);
@@ -303,7 +320,17 @@ export default function ProjectPage() {
           {/* Pestañas de navegación */}
           <Tabs 
             value={activeTab}
-            onValueChange={setActiveTab}
+            onValueChange={(value) => {
+              // Guardar la pestaña activa en sessionStorage para persistencia
+              try {
+                sessionStorage.setItem(`project_${projectId}_active_tab`, value);
+                console.log(`Guardando pestaña activa: ${value}`);
+              } catch (e) {
+                console.error("Error al guardar pestaña en sessionStorage:", e);
+              }
+              // Actualizar el estado
+              setActiveTab(value);
+            }}
             className="w-full px-4 sm:px-6 lg:px-8"
           >
             <TabsList className="grid w-full max-w-lg grid-cols-4 mb-4">
