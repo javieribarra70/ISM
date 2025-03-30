@@ -183,10 +183,19 @@ export default function ProjectPage() {
       return response.json();
     },
     onSuccess: () => {
+      // Primer paso: Invalidar la consulta para forzar una recarga
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${parsedProjectId}/categories`] });
+      
+      // Segundo paso: Cerrar el modal
       setIsNewCategoryModalOpen(false);
-      // Asegurarse de que la pestaña activa sea "categories"
-      setActiveTab("categories");
+      
+      // Tercer paso: Forzar que se muestre la pestaña de categorías
+      // Usar setTimeout para asegurar que el cambio ocurra después de que React procese otros estados
+      setTimeout(() => {
+        // Asegurarse de que la pestaña activa sea "categories" explícitamente
+        setActiveTab("categories");
+        console.log("Estableciendo pestaña activa a 'categories' después de crear categoría");
+      }, 100);
     },
     onError: (error: Error) => {
       console.error("Error al crear categoría:", error);
