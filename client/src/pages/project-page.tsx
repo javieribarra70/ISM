@@ -375,6 +375,7 @@ export default function ProjectPage() {
                 project={project}
                 ideas={ideas || []}
                 relationships={relationships || []}
+                categories={projectCategories || []}
                 onCreateIdea={() => setIsNewIdeaModalOpen(true)}
                 onCreateRelationship={(fromId, toId) => 
                   createRelationshipMutation.mutate({ fromIdeaId: fromId, toIdeaId: toId })

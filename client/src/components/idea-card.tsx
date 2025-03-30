@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Idea, User } from "@shared/schema";
+import { Idea, User, Category } from "@shared/schema";
 import { Edit, MoreHorizontal } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ interface IdeaCardProps {
   onStartConnection?: () => void;
   onPositionChange?: (x: string, y: string) => void;
   style?: React.CSSProperties;
+  categories?: Category[]; // Añadimos las categorías para poder obtener el color
 }
 
 export default function IdeaCard({
@@ -28,6 +29,7 @@ export default function IdeaCard({
   onStartConnection,
   onPositionChange,
   style,
+  categories = [],
 }: IdeaCardProps) {
   const { user } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
@@ -37,23 +39,37 @@ export default function IdeaCard({
   });
   const cardRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-
-  // Get badge color based on category
-  const getBadgeColor = (category: string) => {
-    switch (category.toLowerCase()) {
-      case 'primary goal':
-        return "bg-blue-100 text-blue-800";
-      case 'policy':
-        return "bg-green-100 text-green-800";
-      case 'strategy':
-        return "bg-purple-100 text-purple-800";
-      case 'implementation':
-        return "bg-yellow-100 text-yellow-800";
-      case 'new':
-        return "bg-pink-100 text-pink-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+  
+  // Estado para almacenar el color de la categoría
+  const [categoryColor, setCategoryColor] = useState<string | undefined>(undefined);
+  
+  // Buscar el color de la categoría cuando la idea o las categorías cambien
+  useEffect(() => {
+    if (idea.categoryId && categories.length > 0) {
+      const category = categories.find(cat => cat.id === idea.categoryId);
+      if (category) {
+        setCategoryColor(category.color);
+      }
     }
+  }, [idea.categoryId, categories]);
+
+  // Get badge color based on category color
+  const getBadgeStyle = (color: string | undefined) => {
+    if (!color) {
+      return { backgroundColor: "#F1F5F9", color: "#475569" }; // Default gray
+    }
+    
+    // Usar el color directamente para el fondo con transparencia
+    const backgroundColor = `${color}25`; // 25 es hexadecimal para 15% de opacidad
+    
+    // Para el texto, usamos el mismo color pero más oscuro
+    const textColor = color;
+    
+    return { 
+      backgroundColor, 
+      color: textColor,
+      borderColor: `${color}50` // 50 es hexadecimal para 30% de opacidad
+    };
   };
 
   // Get time ago string
@@ -113,7 +129,7 @@ export default function IdeaCard({
   };
 
   // Add/remove event listeners for mouse movement
-  useState(() => {
+  useEffect(() => {
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
@@ -148,8 +164,11 @@ export default function IdeaCard({
     >
       <CardHeader className="p-3 pb-2">
         <div className="flex justify-between items-start">
-          <Badge className={cn("font-medium", getBadgeColor(idea.category))}>
-            {idea.category}
+          <Badge 
+            className="font-medium border"
+            style={getBadgeStyle(categoryColor)}
+          >
+            {idea.category || "Sin categoría"}
           </Badge>
           <div className="flex space-x-1">
             <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-500">
@@ -163,7 +182,7 @@ export default function IdeaCard({
       </CardHeader>
       <CardContent className="p-3 pt-0">
         <h3 className="text-sm font-medium text-gray-900">{idea.title}</h3>
-        <p className="mt-1 text-xs text-gray-500 line-clamp-2">{idea.description}</p>
+        <p className="mt-1 text-xs text-gray-500 line-clamp-3">{idea.description}</p>
         {idea.clarification && (
           <p className="mt-1 text-xs text-gray-500 italic bg-gray-50 p-1 rounded">
             <span className="font-medium">Clarification:</span> {idea.clarification}
@@ -177,21 +196,6 @@ export default function IdeaCard({
             <span className="ml-1">{creator?.username || 'Unknown'}</span>
           </span>
           <span className="text-xs text-gray-400">{getTimeAgo(idea.updatedAt)}</span>
-        </div>
-        
-        {/* Connection trigger */}
-        <div className="mt-2 flex justify-end">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-xs px-2 py-1 h-auto text-primary"
-            onClick={(e) => {
-              e.stopPropagation();
-              onStartConnection?.();
-            }}
-          >
-            Connect
-          </Button>
         </div>
       </CardContent>
     </Card>

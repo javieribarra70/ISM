@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import IdeaCard from "@/components/idea-card";
-import { Idea, Project, Relationship } from "@shared/schema";
+import { Idea, Project, Relationship, Category } from "@shared/schema";
 import { PlusCircle, Pen, Link as LinkIcon, ArrowRightCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -10,6 +10,7 @@ interface WorkspaceProps {
   project: Project;
   ideas: Idea[];
   relationships: Relationship[];
+  categories: Category[]; // Añadimos las categorías
   onCreateIdea: () => void;
   onCreateRelationship: (fromIdeaId: number, toIdeaId: number) => void;
   onUpdateIdeaPosition: (ideaId: number, x: string, y: string) => void;
@@ -19,6 +20,7 @@ export default function Workspace({
   project,
   ideas,
   relationships,
+  categories,
   onCreateIdea,
   onCreateRelationship,
   onUpdateIdeaPosition,
@@ -251,6 +253,7 @@ export default function Workspace({
                 onClick={() => handleSelectIdea(idea.id)}
                 onStartConnection={() => handleStartConnection(idea.id)}
                 onPositionChange={(x, y) => onUpdateIdeaPosition(idea.id, x, y)}
+                categories={categories}
               />
             ))}
             
