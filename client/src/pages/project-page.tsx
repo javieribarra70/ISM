@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Sidebar from "@/components/sidebar";
 import Workspace from "@/components/workspace";
 import { Button } from "@/components/ui/button";
-import { Project, Idea, Relationship, ProjectUser } from "@shared/schema";
+import { Project, Idea, Relationship, ProjectUser, Category } from "@shared/schema";
 import { Loader2, Share2, Users, UserPlus, ListChecks, Network, FileText, Tags } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import NewIdeaModal from "@/components/modals/new-idea-modal";
@@ -86,6 +86,17 @@ export default function ProjectPage() {
     queryKey: [`/api/projects/${parsedProjectId}/relationships`],
     enabled: !!project, // Solo cargar relaciones si el proyecto existe
     refetchInterval: 5000, // Poll every 5 seconds for updates
+  });
+  
+  // Fetch project categories
+  const { 
+    data: projectCategories = [], // Default to empty array 
+    isLoading: isCategoriesLoading, 
+    isError: isCategoriesError,
+    refetch: refetchCategories
+  } = useQuery<Category[]>({
+    queryKey: [`/api/projects/${parsedProjectId}/categories`],
+    enabled: !!project, // Solo cargar categorías si el proyecto existe
   });
 
   // Fetch project users
@@ -406,6 +417,7 @@ export default function ProjectPage() {
           projectId: parsedProjectId,
         })}
         isCreating={createIdeaMutation.isPending}
+        projectCategories={projectCategories}
       />
 
       <InviteUsersModal

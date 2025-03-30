@@ -5,25 +5,48 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AVAILABLE_CATEGORIES } from "@shared/schema";
+import { AVAILABLE_CATEGORIES, type Category } from "@shared/schema";
 
 interface NewIdeaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateIdea: (ideaData: { title: string; description: string; clarification: string; category: string; positionX: string; positionY: string }) => void;
+  onCreateIdea: (ideaData: { 
+    title: string; 
+    description: string; 
+    clarification: string; 
+    category: string; 
+    categoryId?: number;  // Agregamos categoryId opcional
+    positionX: string; 
+    positionY: string 
+  }) => void;
   isCreating: boolean;
+  projectCategories?: Category[]; // Lista de categorías específicas del proyecto
 }
 
 export default function NewIdeaModal({
   isOpen,
   onClose,
   onCreateIdea,
-  isCreating
+  isCreating,
+  projectCategories = [] // Categorías específicas del proyecto
 }: NewIdeaModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [clarification, setClarification] = useState(""); // Agregamos estado para clarificación
-  const [category, setCategory] = useState("Primary Goal");
+  const [selectedCategoryValue, setSelectedCategoryValue] = useState<string>("");
+  
+  // Al abrir el modal, establecer una categoría por defecto si hay categorías del proyecto disponibles
+  useEffect(() => {
+    if (isOpen) {
+      if (projectCategories && projectCategories.length > 0) {
+        // Usa la primera categoría del proyecto si está disponible
+        setSelectedCategoryValue(`custom_${projectCategories[0].id}`);
+      } else {
+        // O usa una categoría predeterminada si no hay categorías de proyecto
+        setSelectedCategoryValue("Primary Goal");
+      }
+    }
+  }, [isOpen, projectCategories]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,11 +59,33 @@ export default function NewIdeaModal({
     const positionX = Math.floor(Math.random() * 600).toString();
     const positionY = Math.floor(Math.random() * 400).toString();
     
+    // Determinar si estamos usando una categoría personalizada o predeterminada
+    let categoryId: number | undefined;
+    let category: string;
+    
+    if (selectedCategoryValue.startsWith('custom_')) {
+      // Es una categoría personalizada, extraer el ID
+      const id = parseInt(selectedCategoryValue.replace('custom_', ''), 10);
+      const foundCategory = projectCategories.find(cat => cat.id === id);
+      
+      if (foundCategory) {
+        categoryId = foundCategory.id;
+        category = foundCategory.name;
+      } else {
+        // Fallback si no se encuentra la categoría (no debería ocurrir)
+        category = "Primary Goal";
+      }
+    } else {
+      // Es una categoría predeterminada
+      category = selectedCategoryValue;
+    }
+    
     onCreateIdea({
       title,
       description,
       clarification,
       category,
+      categoryId, // Incluir el ID de categoría si existe
       positionX,
       positionY
     });
@@ -49,7 +94,13 @@ export default function NewIdeaModal({
     setTitle("");
     setDescription("");
     setClarification("");
-    setCategory("Primary Goal");
+    
+    // Reset to default category
+    if (projectCategories && projectCategories.length > 0) {
+      setSelectedCategoryValue(`custom_${projectCategories[0].id}`);
+    } else {
+      setSelectedCategoryValue("Primary Goal");
+    }
   };
   
   return (
@@ -100,13 +151,31 @@ export default function NewIdeaModal({
             <div className="grid gap-2">
               <Label htmlFor="idea-category">Category</Label>
               <Select
-                value={category}
-                onValueChange={setCategory}
+                value={selectedCategoryValue}
+                onValueChange={setSelectedCategoryValue}
               >
                 <SelectTrigger id="idea-category">
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
+                  {/* Mostrar categorías del proyecto si están disponibles */}
+                  {projectCategories && projectCategories.length > 0 && (
+                    <>
+                      <SelectItem value="project_categories_header" disabled>
+                        <span className="font-semibold">Project Categories</span>
+                      </SelectItem>
+                      {projectCategories.map((cat) => (
+                        <SelectItem key={`custom_${cat.id}`} value={`custom_${cat.id}`}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="default_categories_header" disabled>
+                        <span className="font-semibold">Default Categories</span>
+                      </SelectItem>
+                    </>
+                  )}
+                  
+                  {/* Mostrar categorías predeterminadas */}
                   {AVAILABLE_CATEGORIES.map((categoryName) => (
                     <SelectItem key={categoryName} value={categoryName}>
                       {categoryName}
