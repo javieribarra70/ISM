@@ -607,8 +607,27 @@ export function registerRoutes(app: Express): Server {
   // Endpoint para eliminar una categoría
   app.delete("/api/categories/:categoryId", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
       const categoryId = parseInt(req.params.categoryId);
+      console.log(`Intentando eliminar categoría con ID: ${categoryId}`);
+      
+      // Verificar que la categoría exista
+      const category = await storage.getCategory(categoryId);
+      if (!category) {
+        console.log(`Categoría con ID ${categoryId} no encontrada`);
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      // Verificar que la categoría pertenezca a un proyecto al que el usuario tiene acceso
+      // El middleware hasProjectAccess ya se encarga de esto, pero es bueno verificarlo de nuevo
+      
+      // Intentar eliminar la categoría
       const deleted = await storage.deleteCategory(categoryId);
+      
+      console.log(`Resultado de eliminar categoría ${categoryId}: ${deleted ? 'Eliminado' : 'No eliminado'}`);
       
       if (!deleted) {
         return res.status(400).json({ message: "Category is in use by ideas and cannot be deleted" });
@@ -616,6 +635,7 @@ export function registerRoutes(app: Express): Server {
       
       res.status(204).send();
     } catch (error) {
+      console.error(`Error al eliminar categoría: ${error}`);
       next(error);
     }
   });

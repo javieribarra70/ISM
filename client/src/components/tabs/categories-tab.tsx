@@ -94,9 +94,13 @@ export default function CategoriesTab({ projectId }: CategoriesTabProps) {
   // Mutación para eliminar categoría
   const deleteCategoryMutation = useMutation({
     mutationFn: async (categoryId: number) => {
-      await apiRequest("DELETE", `/api/categories/${categoryId}`);
+      console.log(`Enviando solicitud DELETE a /api/categories/${categoryId}`);
+      const response = await apiRequest("DELETE", `/api/categories/${categoryId}`);
+      console.log(`Respuesta recibida para DELETE a /api/categories/${categoryId}: ${response.status}`);
+      return response;
     },
     onSuccess: () => {
+      console.log("Categoría eliminada con éxito");
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/categories`] });
       toast({
         title: "Categoría eliminada",
@@ -106,9 +110,15 @@ export default function CategoriesTab({ projectId }: CategoriesTabProps) {
     },
     onError: (error: Error) => {
       console.error("Error al eliminar categoría:", error);
+      const errorMessage = error.message.includes("400") 
+        ? "Esta categoría está siendo utilizada por ideas y no puede ser eliminada."
+        : error.message.includes("404")
+          ? "No se encontró la categoría. Es posible que ya haya sido eliminada."
+          : "Ha ocurrido un error al eliminar la categoría. Inténtalo de nuevo más tarde.";
+      
       toast({
         title: "Error al eliminar categoría",
-        description: "Esta categoría está siendo utilizada por ideas y no puede ser eliminada.",
+        description: errorMessage,
         variant: "destructive",
       });
       setCategoryToDelete(null);
