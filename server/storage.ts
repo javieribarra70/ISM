@@ -725,6 +725,7 @@ export class DatabaseStorage implements IStorage {
         projectId: row.project_id,
         title: row.title,
         description: row.description,
+        clarification: row.clarification,
         category: row.category,
         positionX: row.position_x,
         positionY: row.position_y,
@@ -754,6 +755,7 @@ export class DatabaseStorage implements IStorage {
         projectId: row.project_id,
         title: row.title,
         description: row.description,
+        clarification: row.clarification,
         category: row.category,
         positionX: row.position_x,
         positionY: row.position_y,
@@ -771,11 +773,12 @@ export class DatabaseStorage implements IStorage {
   async createIdea(ideaData: InsertIdea): Promise<Idea> {
     try {
       const sqlInsert = await sql`
-        INSERT INTO ideas (project_id, title, description, category, created_by, position_x, position_y)
+        INSERT INTO ideas (project_id, title, description, clarification, category, created_by, position_x, position_y)
         VALUES (
           ${ideaData.projectId}, 
           ${ideaData.title}, 
           ${ideaData.description || null}, 
+          ${ideaData.clarification || null},
           ${ideaData.category},
           ${ideaData.createdBy},
           ${ideaData.positionX || '0'}, 
@@ -790,6 +793,7 @@ export class DatabaseStorage implements IStorage {
         projectId: result.project_id,
         title: result.title,
         description: result.description,
+        clarification: result.clarification,
         category: result.category,
         createdBy: result.created_by,
         positionX: result.position_x,
@@ -817,6 +821,11 @@ export class DatabaseStorage implements IStorage {
       if (ideaUpdate.description !== undefined) {
         setClauses.push('description = $' + (params.length + 1));
         params.push(ideaUpdate.description);
+      }
+      
+      if (ideaUpdate.clarification !== undefined) {
+        setClauses.push('clarification = $' + (params.length + 1));
+        params.push(ideaUpdate.clarification);
       }
       
       if (ideaUpdate.category !== undefined) {
@@ -852,6 +861,7 @@ export class DatabaseStorage implements IStorage {
         projectId: updatedIdea.project_id,
         title: updatedIdea.title,
         description: updatedIdea.description,
+        clarification: updatedIdea.clarification,
         category: updatedIdea.category,
         createdBy: updatedIdea.created_by,
         positionX: updatedIdea.position_x,
@@ -884,6 +894,7 @@ export class DatabaseStorage implements IStorage {
         projectId: updatedIdea.project_id,
         title: updatedIdea.title,
         description: updatedIdea.description,
+        clarification: updatedIdea.clarification,
         category: updatedIdea.category,
         createdBy: updatedIdea.created_by,
         positionX: updatedIdea.position_x,

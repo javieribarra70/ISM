@@ -164,6 +164,11 @@ export default function IdeaCard({
       <CardContent className="p-3 pt-0">
         <h3 className="text-sm font-medium text-gray-900">{idea.title}</h3>
         <p className="mt-1 text-xs text-gray-500 line-clamp-2">{idea.description}</p>
+        {idea.clarification && (
+          <p className="mt-1 text-xs text-gray-500 italic bg-gray-50 p-1 rounded">
+            <span className="font-medium">Clarification:</span> {idea.clarification}
+          </p>
+        )}
         <div className="mt-2 flex justify-between items-center">
           <span className="inline-flex items-center text-xs text-gray-500">
             <div className="h-4 w-4 rounded-full bg-primary-light text-primary text-[8px] flex items-center justify-center mr-1">

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface NewIdeaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateIdea: (ideaData: { title: string; description: string; category: string; positionX: string; positionY: string }) => void;
+  onCreateIdea: (ideaData: { title: string; description: string; clarification: string; category: string; positionX: string; positionY: string }) => void;
   isCreating: boolean;
 }
 
@@ -21,6 +21,7 @@ export default function NewIdeaModal({
 }: NewIdeaModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [clarification, setClarification] = useState(""); // Agregamos estado para clarificación
   const [category, setCategory] = useState("Primary Goal");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -37,6 +38,7 @@ export default function NewIdeaModal({
     onCreateIdea({
       title,
       description,
+      clarification,
       category,
       positionX,
       positionY
@@ -45,6 +47,7 @@ export default function NewIdeaModal({
     // Reset form after submission
     setTitle("");
     setDescription("");
+    setClarification("");
     setCategory("Primary Goal");
   };
   
@@ -79,6 +82,17 @@ export default function NewIdeaModal({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe your idea"
                 rows={3}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="idea-clarification">Clarification</Label>
+              <Textarea
+                id="idea-clarification"
+                value={clarification}
+                onChange={(e) => setClarification(e.target.value)}
+                placeholder="Add any clarifications for this idea"
+                rows={2}
               />
             </div>
             

@@ -286,11 +286,12 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).json({ message: "You can only edit your own ideas unless you're a project admin" });
       }
       
-      const { title, description, category } = req.body;
+      const { title, description, clarification, category } = req.body;
       const updateData: Partial<typeof idea> = {};
       
       if (title !== undefined) updateData.title = title;
       if (description !== undefined) updateData.description = description;
+      if (clarification !== undefined) updateData.clarification = clarification;
       if (category !== undefined) updateData.category = category;
       
       const updatedIdea = await storage.updateIdea(ideaId, updateData);

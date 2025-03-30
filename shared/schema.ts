@@ -35,6 +35,7 @@ export const ideas = pgTable("ideas", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
+  clarification: text("clarification"), // Agregando el campo clarificación
   category: text("category").notNull(),
   projectId: integer("project_id").notNull().references(() => projects.id),
   createdBy: integer("created_by").notNull().references(() => users.id),
@@ -89,6 +90,7 @@ export const insertProjectUserSchema = createInsertSchema(projectUsers).pick({
 export const insertIdeaSchema = createInsertSchema(ideas).pick({
   title: true,
   description: true,
+  clarification: true, // Agregando el campo de clarificación
   category: true,
   projectId: true,
   createdBy: true,
