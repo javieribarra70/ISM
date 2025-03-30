@@ -37,6 +37,14 @@ export default function IdeaCard({
     x: parseInt(idea.positionX) || 0,
     y: parseInt(idea.positionY) || 0,
   });
+  
+  // Actualizar la posición cuando cambian las props de la idea
+  useEffect(() => {
+    setPosition({
+      x: parseInt(idea.positionX) || 0,
+      y: parseInt(idea.positionY) || 0,
+    });
+  }, [idea.positionX, idea.positionY]);
   const cardRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   
