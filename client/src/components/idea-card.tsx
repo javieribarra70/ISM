@@ -54,18 +54,34 @@ export default function IdeaCard({
   
   // Buscar el color de la categoría cuando la idea o las categorías cambien
   useEffect(() => {
-    if (idea.categoryId && categories.length > 0) {
-      const category = categories.find(cat => cat.id === idea.categoryId);
+    if (idea.category && categories.length > 0) {
+      const category = categories.find(cat => cat.name === idea.category);
       if (category) {
+        console.log(`Encontrada categoría ${category.name} con color ${category.color}`);
         setCategoryColor(category.color);
       }
     }
-  }, [idea.categoryId, categories]);
+  }, [idea.category, categories]);
 
-  // Get badge color based on category color
+  // Get badge color based on category
   const getBadgeStyle = (color: string | undefined) => {
+    // Añadir logs para debuggear
+    console.log(`Idea ${idea.id} - Categoría: ${idea.category}, Color: ${color}`);
+
     if (!color) {
-      return { backgroundColor: "#F1F5F9", color: "#475569" }; // Default gray
+      // Si no hay color, buscamos por el nombre de la categoría
+      if (idea.category && categories.length > 0) {
+        const category = categories.find(cat => cat.name === idea.category);
+        if (category) {
+          console.log(`Encontrado color ${category.color} para categoría ${category.name}`);
+          color = category.color;
+        }
+      }
+      
+      // Si aún no hay color, usamos el gris por defecto
+      if (!color) {
+        return { backgroundColor: "#F1F5F9", color: "#475569" }; // Default gray
+      }
     }
     
     // Usar el color directamente para el fondo con transparencia
@@ -185,7 +201,7 @@ export default function IdeaCard({
       <CardHeader className="p-3 pb-2">
         <div className="flex justify-between items-start">
           <Badge 
-            className="font-medium border"
+            className="font-medium border select-none"
             style={getBadgeStyle(categoryColor)}
           >
             {idea.category || "Sin categoría"}
@@ -200,7 +216,7 @@ export default function IdeaCard({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-3 pt-0">
+      <CardContent className="p-3 pt-0 select-none">
         <h3 className="text-sm font-medium text-gray-900">{idea.title}</h3>
         <p className="mt-1 text-xs text-gray-500 line-clamp-3">{idea.description}</p>
         {idea.clarification && (
