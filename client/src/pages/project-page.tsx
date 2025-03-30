@@ -21,6 +21,8 @@ export default function ProjectPage() {
   const [isNewIdeaModalOpen, setIsNewIdeaModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [lastPolled, setLastPolled] = useState<Date>(new Date());
+  // Estado para controlar la pestaña activa - debe estar aquí con los otros estados
+  const [activeTab, setActiveTab] = useState("ideas");
   
   // Validate projectId
   const parsedProjectId = parseInt(projectId || "");
@@ -222,9 +224,6 @@ export default function ProjectPage() {
     );
   }
 
-  // Estado para controlar la pestaña activa
-  const [activeTab, setActiveTab] = useState("ideas");
-  
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
@@ -266,9 +265,7 @@ export default function ProjectPage() {
           {/* Pestañas de navegación */}
           <Tabs 
             defaultValue="ideas" 
-            className="w-full px-4 sm:px-6 lg:px-8" 
-            value={activeTab} 
-            onValueChange={setActiveTab}
+            className="w-full px-4 sm:px-6 lg:px-8"
           >
             <TabsList className="grid w-full max-w-lg grid-cols-3 mb-4">
               <TabsTrigger value="ideas" className="flex items-center">
