@@ -5,12 +5,13 @@ import Sidebar from "@/components/sidebar";
 import Workspace from "@/components/workspace";
 import { Button } from "@/components/ui/button";
 import { Project, Idea, Relationship, ProjectUser } from "@shared/schema";
-import { Loader2, Share2, Users, UserPlus } from "lucide-react";
+import { Loader2, Share2, Users, UserPlus, ListChecks, Network, FileText } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import NewIdeaModal from "@/components/modals/new-idea-modal";
 import InviteUsersModal from "@/components/modals/invite-users-modal";
 import { Avatars } from "@/components/avatars";
 import { useAuth } from "@/hooks/use-auth";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ProjectPage() {
   const params = useParams<{ projectId: string }>();
@@ -221,6 +222,9 @@ export default function ProjectPage() {
     );
   }
 
+  // Estado para controlar la pestaña activa
+  const [activeTab, setActiveTab] = useState("ideas");
+  
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
@@ -258,21 +262,66 @@ export default function ProjectPage() {
               </Button>
             </div>
           </div>
+          
+          {/* Pestañas de navegación */}
+          <Tabs 
+            defaultValue="ideas" 
+            className="w-full px-4 sm:px-6 lg:px-8" 
+            value={activeTab} 
+            onValueChange={setActiveTab}
+          >
+            <TabsList className="grid w-full max-w-lg grid-cols-3 mb-4">
+              <TabsTrigger value="ideas" className="flex items-center">
+                <ListChecks className="h-4 w-4 mr-2" />
+                Ideas
+              </TabsTrigger>
+              <TabsTrigger value="context" className="flex items-center">
+                <FileText className="h-4 w-4 mr-2" />
+                Context
+              </TabsTrigger>
+              <TabsTrigger value="connection" className="flex items-center">
+                <Network className="h-4 w-4 mr-2" />
+                Connection
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="ideas" className="mt-0 p-0">
+              {/* Main workspace content */}
+              <Workspace
+                project={project}
+                ideas={ideas || []}
+                relationships={relationships || []}
+                onCreateIdea={() => setIsNewIdeaModalOpen(true)}
+                onCreateRelationship={(fromId, toId) => 
+                  createRelationshipMutation.mutate({ fromIdeaId: fromId, toIdeaId: toId })
+                }
+                onUpdateIdeaPosition={(ideaId, x, y) => 
+                  updateIdeaPositionMutation.mutate({ ideaId, positionX: x, positionY: y })
+                }
+              />
+            </TabsContent>
+            
+            <TabsContent value="context" className="mt-0 p-4">
+              <div className="bg-white rounded-lg shadow p-6 min-h-[600px]">
+                <h2 className="text-xl font-semibold mb-4">Contexto del Proyecto</h2>
+                <p className="text-muted-foreground">
+                  Esta sección permitirá añadir y editar información contextual sobre el proyecto,
+                  como documentos de referencia, objetivos y alcance.
+                </p>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="connection" className="mt-0 p-4">
+              <div className="bg-white rounded-lg shadow p-6 min-h-[600px]">
+                <h2 className="text-xl font-semibold mb-4">Administración de Conexiones</h2>
+                <p className="text-muted-foreground">
+                  Esta sección permitirá visualizar y editar las relaciones entre las ideas del proyecto,
+                  creando estructuras y jerarquías más complejas.
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
-        
-        {/* Main workspace content */}
-        <Workspace
-          project={project}
-          ideas={ideas || []}
-          relationships={relationships || []}
-          onCreateIdea={() => setIsNewIdeaModalOpen(true)}
-          onCreateRelationship={(fromId, toId) => 
-            createRelationshipMutation.mutate({ fromIdeaId: fromId, toIdeaId: toId })
-          }
-          onUpdateIdeaPosition={(ideaId, x, y) => 
-            updateIdeaPositionMutation.mutate({ ideaId, positionX: x, positionY: y })
-          }
-        />
       </div>
 
       {/* Modals */}
