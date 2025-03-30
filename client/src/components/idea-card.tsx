@@ -131,7 +131,18 @@ export default function IdeaCard({
 
   const handleMouseUp = () => {
     if (isDragging && onPositionChange) {
-      onPositionChange(position.x.toString(), position.y.toString());
+      // Convertir a string para asegurar que es un formato consistente
+      const newPosX = position.x.toString();
+      const newPosY = position.y.toString();
+      
+      console.log(`Card dropped at position: X:${newPosX}, Y:${newPosY}`);
+      
+      // Notificar al componente padre para guardar la posición
+      onPositionChange(newPosX, newPosY);
+      
+      // Actualizar los valores iniciales para mantener la coherencia
+      idea.positionX = newPosX;
+      idea.positionY = newPosY;
     }
     setIsDragging(false);
   };

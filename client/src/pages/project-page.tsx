@@ -238,25 +238,41 @@ export default function ProjectPage() {
   // Update idea position
   const updateIdeaPositionMutation = useMutation({
     mutationFn: async ({ ideaId, positionX, positionY }: { ideaId: number; positionX: string; positionY: string }) => {
-      const response = await fetch(`/api/projects/${parsedProjectId}/ideas/${ideaId}/position`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ positionX, positionY }),
-        credentials: "include",
-      });
+      console.log(`Actualizando posición de idea ${ideaId} a X:${positionX}, Y:${positionY} via mutación`);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update idea position");
+      // Usar apiRequest en lugar de fetch directo para asegurar consistencia
+      const response = await apiRequest(
+        "PATCH", 
+        `/api/projects/${parsedProjectId}/ideas/${ideaId}/position`, 
+        { positionX, positionY }
+      );
+      
+      const data = await response.json();
+      console.log(`Respuesta de actualización de posición:`, data);
+      return data;
+    },
+    onSuccess: (data) => {
+      console.log(`Posición actualizada exitosamente`, data);
+      
+      // Guardar explícitamente "ideas" como la pestaña activa en sessionStorage
+      try {
+        sessionStorage.setItem(`project_${projectId}_active_tab`, "ideas");
+        console.log("Guardando pestaña activa: ideas en sessionStorage");
+      } catch (e) {
+        console.error("Error al guardar pestaña en sessionStorage:", e);
       }
       
-      return response.json();
-    },
-    onSuccess: () => {
+      // Invalidar la consulta para forzar una recarga
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${parsedProjectId}/ideas`] });
     },
+    onError: (error: Error) => {
+      console.error("Error al actualizar posición de idea:", error);
+      toast({
+        title: "Error al actualizar posición",
+        description: "Ha ocurrido un error al guardar la posición de la idea.",
+        variant: "destructive",
+      });
+    }
   });
 
   // Handle loading state for project only

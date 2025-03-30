@@ -332,7 +332,9 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).json({ message: "Idea does not belong to this project" });
       }
       
+      console.log(`Actualizando posición de idea ${ideaId} a X:${positionX}, Y:${positionY}`);
       const updatedIdea = await storage.updateIdeaPosition(ideaId, positionX, positionY);
+      console.log(`Idea actualizada:`, updatedIdea);
       res.json(updatedIdea);
     } catch (error) {
       next(error);
