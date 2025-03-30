@@ -64,15 +64,21 @@ export function UsersProvider({ children }: { children: ReactNode }) {
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: number) => {
       const res = await apiRequest("DELETE", `/api/users/${userId}`);
-      return await res.json();
+      return { userId, response: await res.json() };
     },
     onSuccess: (data) => {
       // Invalidar la caché de usuarios para forzar una recarga
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       
+      // También actualizar la caché directamente para una actualización más rápida
+      queryClient.setQueryData(["/api/users"], (oldData: SelectUser[] | undefined) => {
+        if (!oldData) return [];
+        return oldData.filter(user => user.id !== data.userId);
+      });
+      
       toast({
         title: "Usuario eliminado",
-        description: data.message || "El usuario ha sido eliminado exitosamente.",
+        description: data.response.message || "El usuario ha sido eliminado exitosamente.",
       });
     },
     onError: (error: Error) => {

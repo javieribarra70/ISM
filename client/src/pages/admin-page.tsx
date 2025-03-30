@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { User, Project } from "@shared/schema";
+import { User as SelectUser, Project } from "@shared/schema";
 import { Loader2, UserPlus, FolderOpen, Edit, Trash, Download, RotateCw, UserCog, ShieldAlert, Shield } from "lucide-react";
 import { useUsers } from "@/hooks/use-users";
 
@@ -64,7 +64,13 @@ function UserManagementSection() {
       setIsDialogOpen(false);
       form.reset();
       
-      // Actualizar la lista de usuarios
+      // Actualizar la lista de usuarios directamente en la caché
+      queryClient.setQueryData(["/api/users"], (oldData: SelectUser[] | undefined) => {
+        if (!oldData) return [newUser];
+        return [...oldData, newUser];
+      });
+      
+      // Invalidar la caché para una actualización completa
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       
     } catch (error) {
