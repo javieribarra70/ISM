@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { randomBytes } from "crypto";
 import { db } from "./db";
-import { eq, or, isNull } from "drizzle-orm";
+import { eq, or, isNull, and } from "drizzle-orm";
 import { 
   insertProjectSchema, 
   insertIdeaSchema, 
@@ -376,7 +376,10 @@ export function registerRoutes(app: Express): Server {
         return res.status(401).json({ message: "User not authenticated" });
       }
       
-      // Obtener usuarios que este admin creó o usuarios auto-registrados (createdBy es null)
+      // Obtener:
+      // 1. A sí mismo (el admin que hace la consulta)
+      // 2. Los usuarios que este admin creó 
+      // 3. Los usuarios auto-registrados (createdBy es null), pero solo los que no son admin
       const visibleUsers = await db.select({
         id: users.id,
         username: users.username,
@@ -388,8 +391,17 @@ export function registerRoutes(app: Express): Server {
       .from(users)
       .where(
         or(
+          // El admin actual puede verse a sí mismo
+          eq(users.id, req.user.id),
+          
+          // El admin actual puede ver los usuarios que él creó
           eq(users.createdBy, req.user.id),
-          isNull(users.createdBy)
+          
+          // El admin actual puede ver usuarios auto-registrados QUE NO SEAN ADMIN
+          and(
+            isNull(users.createdBy),
+            eq(users.role, 'user')  // Solo usuarios regulares, no otros admins
+          )
         )
       );
       
@@ -401,11 +413,39 @@ export function registerRoutes(app: Express): Server {
   
   app.patch("/api/users/:userId/role", isAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      
       const userId = parseInt(req.params.userId);
       const { role } = req.body;
       
       if (!role || (role !== 'admin' && role !== 'user')) {
         return res.status(400).json({ message: "Invalid role. Role must be 'admin' or 'user'." });
+      }
+      
+      // Verificar que el usuario a modificar fue creado por este admin o es uno auto-registrado
+      const userToUpdate = await db.select({
+        id: users.id,
+        role: users.role,
+        createdBy: users.createdBy
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+      
+      if (userToUpdate.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Verificar que el admin actual tenga permisos para modificar este usuario
+      if (userToUpdate[0].createdBy !== null && userToUpdate[0].createdBy !== req.user.id) {
+        return res.status(403).json({ message: "You don't have permission to modify this user" });
+      }
+      
+      // No permitir que un admin cambie el rol de otro admin (que no haya creado)
+      if (userToUpdate[0].role === 'admin' && userToUpdate[0].id !== req.user.id && userToUpdate[0].createdBy !== req.user.id) {
+        return res.status(403).json({ message: "You don't have permission to modify this administrator's role" });
       }
       
       const updatedUser = await storage.updateUserRole(userId, role);
