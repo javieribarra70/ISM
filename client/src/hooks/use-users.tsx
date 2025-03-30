@@ -39,17 +39,32 @@ export function UsersProvider({ children }: { children: ReactNode }) {
   // Mutación para actualizar el rol de un usuario
   const updateUserRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: UpdateRoleData) => {
+      // Guardar una referencia a los datos actuales antes de la mutación
+      const currentUsers = queryClient.getQueryData<SelectUser[]>(["/api/users"]) || [];
+      
+      // Hacer la petición API
       const res = await apiRequest("PATCH", `/api/users/${userId}/role`, { role });
-      return await res.json();
+      const responseData = await res.json();
+      
+      // Actualizar la caché manualmente DESPUÉS de la respuesta exitosa
+      queryClient.setQueryData(["/api/users"], 
+        currentUsers.map(user => 
+          user.id === userId 
+            ? { ...user, role } 
+            : user
+        )
+      );
+      
+      return responseData;
     },
     onSuccess: (data) => {
-      // Invalidar la caché de usuarios para forzar una recarga
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      
       toast({
         title: "Rol actualizado",
         description: data.message || "El rol del usuario ha sido actualizado exitosamente.",
       });
+      
+      // Intentar recargar los datos en segundo plano para asegurar sincronización
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
       toast({
@@ -63,24 +78,19 @@ export function UsersProvider({ children }: { children: ReactNode }) {
   // Mutación para eliminar un usuario
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: number) => {
+      // Guardar una referencia a los datos actuales antes de la mutación
+      const currentUsers = queryClient.getQueryData<SelectUser[]>(["/api/users"]) || [];
+      
+      // Hacer la petición API
       const res = await apiRequest("DELETE", `/api/users/${userId}`);
-      return { userId, response: await res.json() };
-    },
-    onMutate: async (userId: number) => {
-      // Cancelar consultas en curso
-      await queryClient.cancelQueries({ queryKey: ["/api/users"] });
+      const responseData = await res.json();
       
-      // Guardar el estado anterior
-      const previousUsers = queryClient.getQueryData<SelectUser[]>(["/api/users"]);
+      // Actualizar la caché manualmente DESPUÉS de la respuesta exitosa
+      queryClient.setQueryData(["/api/users"], 
+        currentUsers.filter(user => user.id !== userId)
+      );
       
-      // Optimistic update
-      if (previousUsers) {
-        queryClient.setQueryData(["/api/users"], 
-          previousUsers.filter(user => user.id !== userId)
-        );
-      }
-      
-      return { previousUsers };
+      return { userId, response: responseData };
     },
     onSuccess: (data) => {
       toast({
@@ -88,7 +98,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
         description: data.response.message || "El usuario ha sido eliminado exitosamente.",
       });
       
-      // Forzar recargar los datos para asegurar sincronización
+      // Intentar recargar los datos en segundo plano para asegurar sincronización
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {

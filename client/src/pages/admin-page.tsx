@@ -52,30 +52,15 @@ function UserManagementSection() {
   // Función para crear usuario
   async function onSubmit(data: CreateUserFormValues) {
     try {
-      // Cancelar consultas en curso
-      await queryClient.cancelQueries({ queryKey: ["/api/users"] });
-      
-      // Guardar la data previa por si necesitamos hacer un rollback
-      const previousUsers = queryClient.getQueryData<SelectUser[]>(["/api/users"]);
-      
-      // Optimistic update con un usuario temporal (id provisional)
-      const tempUser: SelectUser = { 
-        ...data, 
-        id: Date.now(), // ID temporal que se reemplazará con la respuesta del servidor
-        role: 'user',
-        createdBy: 2, // ID del usuario actual 
-        createdAt: new Date()
-      };
-      
-      // Actualizar la lista de usuarios en la caché de forma optimista
-      queryClient.setQueryData(["/api/users"], (oldData: SelectUser[] | undefined) => {
-        if (!oldData) return [tempUser];
-        return [...oldData, tempUser];
-      });
+      // Guardar los usuarios actuales
+      const currentUsers = queryClient.getQueryData<SelectUser[]>(["/api/users"]) || [];
       
       // Realizar la petición real
       const response = await apiRequest("POST", "/api/users", data);
       const newUser = await response.json();
+      
+      // Actualizar manualmente la lista de usuarios en la caché DESPUÉS de la respuesta exitosa
+      queryClient.setQueryData(["/api/users"], [...currentUsers, newUser]);
       
       toast({
         title: "Success",
@@ -86,16 +71,8 @@ function UserManagementSection() {
       setIsDialogOpen(false);
       form.reset();
       
-      // Actualizar la lista de usuarios con el dato real devuelto por el servidor
-      queryClient.setQueryData(["/api/users"], (oldData: SelectUser[] | undefined) => {
-        if (!oldData) return [newUser];
-        // Reemplazar el usuario temporal con el real
-        return oldData.map(user => user.id === tempUser.id ? newUser : user);
-      });
-      
-      // Invalidar la caché para una actualización completa
+      // Intentar recargar los datos en segundo plano
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      
     } catch (error) {
       toast({
         title: "Error",
@@ -103,12 +80,6 @@ function UserManagementSection() {
         variant: "destructive",
       });
       console.error("Error creating user:", error);
-      
-      // Restaurar el estado anterior en caso de error
-      const previousUsers = queryClient.getQueryData<SelectUser[]>(["/api/users"]);
-      if (previousUsers) {
-        queryClient.setQueryData(["/api/users"], previousUsers);
-      }
     }
   }
   
