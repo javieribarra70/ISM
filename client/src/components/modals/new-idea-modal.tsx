@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AVAILABLE_CATEGORIES, type Category } from "@shared/schema";
+import { type Category } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
 
 interface NewIdeaModalProps {
   isOpen: boolean;
@@ -34,16 +35,17 @@ export default function NewIdeaModal({
   const [description, setDescription] = useState("");
   const [clarification, setClarification] = useState(""); // Agregamos estado para clarificación
   const [selectedCategoryValue, setSelectedCategoryValue] = useState<string>("");
+  const { toast } = useToast();
   
-  // Al abrir el modal, establecer una categoría por defecto si hay categorías del proyecto disponibles
+  // Al abrir el modal, establecer una categoría por defecto de entre las del proyecto
   useEffect(() => {
     if (isOpen) {
       if (projectCategories && projectCategories.length > 0) {
-        // Usa la primera categoría del proyecto si está disponible
+        // Usar la primera categoría del proyecto si está disponible
         setSelectedCategoryValue(`custom_${projectCategories[0].id}`);
       } else {
-        // O usa una categoría predeterminada si no hay categorías de proyecto
-        setSelectedCategoryValue("Primary Goal");
+        // Si no hay categorías de proyecto, dejar en blanco
+        setSelectedCategoryValue("");
       }
     }
   }, [isOpen, projectCategories]);
@@ -59,12 +61,25 @@ export default function NewIdeaModal({
     const positionX = Math.floor(Math.random() * 600).toString();
     const positionY = Math.floor(Math.random() * 400).toString();
     
-    // Determinar si estamos usando una categoría personalizada o predeterminada
+    // Validar que se haya seleccionado una categoría válida del proyecto
+    if (!selectedCategoryValue || 
+        selectedCategoryValue === "no_categories" || 
+        selectedCategoryValue === "project_categories_header") {
+      // Mostrar un mensaje de error: se necesita seleccionar una categoría válida
+      toast({
+        title: "Error",
+        description: "Por favor selecciona una categoría válida",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Obtener el ID y nombre de la categoría seleccionada
     let categoryId: number | undefined;
-    let category: string;
+    let category: string = "";
     
     if (selectedCategoryValue.startsWith('custom_')) {
-      // Es una categoría personalizada, extraer el ID
+      // Es una categoría del proyecto, extraer el ID
       const id = parseInt(selectedCategoryValue.replace('custom_', ''), 10);
       const foundCategory = projectCategories.find(cat => cat.id === id);
       
@@ -72,20 +87,31 @@ export default function NewIdeaModal({
         categoryId = foundCategory.id;
         category = foundCategory.name;
       } else {
-        // Fallback si no se encuentra la categoría (no debería ocurrir)
-        category = "Primary Goal";
+        // Si no se encuentra la categoría, mostrar un mensaje de error
+        toast({
+          title: "Error",
+          description: "La categoría seleccionada no es válida o ya no existe",
+          variant: "destructive",
+        });
+        return;
       }
     } else {
-      // Es una categoría predeterminada
-      category = selectedCategoryValue;
+      // Si no es una categoría del proyecto válida, mostrar un mensaje de error
+      toast({
+        title: "Error",
+        description: "Formato de categoría inválido",
+        variant: "destructive",
+      });
+      return;
     }
     
+    // Enviar los datos al componente padre
     onCreateIdea({
       title,
       description,
       clarification,
-      category,
-      categoryId, // Incluir el ID de categoría si existe
+      category, // Nombre de la categoría
+      categoryId, // ID de la categoría
       positionX,
       positionY
     });
@@ -95,11 +121,9 @@ export default function NewIdeaModal({
     setDescription("");
     setClarification("");
     
-    // Reset to default category
+    // Reset to default category if available
     if (projectCategories && projectCategories.length > 0) {
       setSelectedCategoryValue(`custom_${projectCategories[0].id}`);
-    } else {
-      setSelectedCategoryValue("Primary Goal");
     }
   };
   
@@ -159,28 +183,22 @@ export default function NewIdeaModal({
                 </SelectTrigger>
                 <SelectContent>
                   {/* Mostrar categorías del proyecto si están disponibles */}
-                  {projectCategories && projectCategories.length > 0 && (
+                  {projectCategories && projectCategories.length > 0 ? (
                     <>
                       <SelectItem value="project_categories_header" disabled>
-                        <span className="font-semibold">Project Categories</span>
+                        <span className="font-semibold">Categorías del Proyecto</span>
                       </SelectItem>
                       {projectCategories.map((cat) => (
                         <SelectItem key={`custom_${cat.id}`} value={`custom_${cat.id}`}>
                           {cat.name}
                         </SelectItem>
                       ))}
-                      <SelectItem value="default_categories_header" disabled>
-                        <span className="font-semibold">Default Categories</span>
-                      </SelectItem>
                     </>
-                  )}
-                  
-                  {/* Mostrar categorías predeterminadas */}
-                  {AVAILABLE_CATEGORIES.map((categoryName) => (
-                    <SelectItem key={categoryName} value={categoryName}>
-                      {categoryName}
+                  ) : (
+                    <SelectItem value="no_categories" disabled>
+                      No hay categorías disponibles
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
             </div>
