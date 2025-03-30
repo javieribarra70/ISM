@@ -425,6 +425,51 @@ export function registerRoutes(app: Express): Server {
       next(error);
     }
   });
+  
+  // Endpoint para eliminar un usuario
+  app.delete("/api/users/:userId", isAdmin, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      
+      const userId = parseInt(req.params.userId);
+      
+      // Verificar que el usuario a eliminar fue creado por el admin actual o es uno auto-registrado
+      const userToDelete = await db.select({
+        id: users.id,
+        createdBy: users.createdBy
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+      
+      if (userToDelete.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Verificar que el admin actual tenga permisos para eliminar este usuario
+      if (userToDelete[0].createdBy !== null && userToDelete[0].createdBy !== req.user.id) {
+        return res.status(403).json({ message: "You don't have permission to delete this user" });
+      }
+      
+      // Prevenir la auto-eliminación
+      if (userId === req.user.id) {
+        return res.status(400).json({ message: "You cannot delete your own account" });
+      }
+      
+      const deleted = await storage.deleteUser(userId);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "User not found or could not be deleted" });
+      }
+      
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      next(error);
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

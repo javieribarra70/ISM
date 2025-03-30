@@ -34,6 +34,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserRole(userId: number, role: string): Promise<User | undefined>;
+  deleteUser(userId: number): Promise<boolean>;
   getUserProjects(userId: number): Promise<Project[]>;
 
   // Project operations
@@ -153,6 +154,19 @@ export class MemStorage implements IStorage {
     const updatedUser: User = { ...user, role: validRole };
     this.users.set(userId, updatedUser);
     return updatedUser;
+  }
+  
+  async deleteUser(userId: number): Promise<boolean> {
+    const user = this.users.get(userId);
+    if (!user) return false;
+    
+    // Eliminar el usuario
+    const result = this.users.delete(userId);
+    
+    // En una aplicación real aquí deberíamos hacer cleanup de objetos relacionados
+    // por ejemplo, eliminar todas las ideas creadas por el usuario, etc.
+    
+    return result;
   }
 
   async getUserProjects(userId: number): Promise<Project[]> {
@@ -491,6 +505,26 @@ export class DatabaseStorage implements IStorage {
       return result[0];
     } catch (error) {
       console.error('Error updating user role:', error);
+      throw error;
+    }
+  }
+  
+  async deleteUser(userId: number): Promise<boolean> {
+    try {
+      // En una aplicación de producción real, esto debería ser una transacción
+      // y deberíamos realizar limpiezas adicionales (como eliminar ideas del usuario, etc.)
+      
+      // Primero eliminar todos los registros de project_users donde el usuario está
+      await sql`DELETE FROM project_users WHERE user_id = ${userId}`;
+      
+      // Finalmente eliminar el usuario
+      const result = await db.delete(users)
+        .where(eq(users.id, userId))
+        .returning();
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error('Error deleting user:', error);
       throw error;
     }
   }

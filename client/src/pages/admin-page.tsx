@@ -35,7 +35,7 @@ const createUserSchema = z.object({
 type CreateUserFormValues = z.infer<typeof createUserSchema>;
 
 function UserManagementSection() {
-  const { users, isLoading, updateUserRoleMutation } = useUsers();
+  const { users, isLoading, updateUserRoleMutation, deleteUserMutation } = useUsers();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   
@@ -232,6 +232,19 @@ function UserManagementSection() {
                               <SelectItem value="user">Usuario</SelectItem>
                             </SelectContent>
                           </Select>
+                          
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-9 w-9 text-destructive hover:bg-destructive hover:text-white transition-colors"
+                            onClick={() => {
+                              if (confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.')) {
+                                deleteUserMutation.mutate(user.id);
+                              }
+                            }}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
                         </div>
                       </td>
                     </tr>

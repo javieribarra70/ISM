@@ -13,6 +13,7 @@ type UsersContextType = {
   isLoading: boolean;
   error: Error | null;
   updateUserRoleMutation: UseMutationResult<any, Error, UpdateRoleData>;
+  deleteUserMutation: UseMutationResult<any, Error, number>;
 };
 
 type UpdateRoleData = {
@@ -58,6 +59,30 @@ export function UsersProvider({ children }: { children: ReactNode }) {
       });
     },
   });
+  
+  // Mutación para eliminar un usuario
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await apiRequest("DELETE", `/api/users/${userId}`);
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      // Invalidar la caché de usuarios para forzar una recarga
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      
+      toast({
+        title: "Usuario eliminado",
+        description: data.message || "El usuario ha sido eliminado exitosamente.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error al eliminar usuario",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <UsersContext.Provider
@@ -66,6 +91,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
         isLoading,
         error,
         updateUserRoleMutation,
+        deleteUserMutation,
       }}
     >
       {children}
