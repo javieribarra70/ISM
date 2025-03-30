@@ -43,43 +43,42 @@ export default function ProjectPage() {
     refetch: refetchProject 
   } = useQuery<Project>({
     queryKey: [`/api/projects/${parsedProjectId}`],
-    queryFn: undefined,
     retry: 3, // Intente hasta 3 veces
     retryDelay: 1000, // Espere 1 segundo entre reintentos
   });
 
   // Fetch project ideas
   const { 
-    data: ideas, 
+    data: ideas = [], // Default to empty array
     isLoading: isIdeasLoading, 
     isError: isIdeasError,
     refetch: refetchIdeas
   } = useQuery<Idea[]>({
     queryKey: [`/api/projects/${parsedProjectId}/ideas`],
-    queryFn: undefined,
+    enabled: !!project, // Solo cargar ideas si el proyecto existe
     refetchInterval: 5000, // Poll every 5 seconds for updates
   });
 
   // Fetch project relationships
   const { 
-    data: relationships, 
+    data: relationships = [], // Default to empty array 
     isLoading: isRelationshipsLoading, 
     isError: isRelationshipsError,
     refetch: refetchRelationships
   } = useQuery<Relationship[]>({
     queryKey: [`/api/projects/${parsedProjectId}/relationships`],
-    queryFn: undefined,
+    enabled: !!project, // Solo cargar relaciones si el proyecto existe
     refetchInterval: 5000, // Poll every 5 seconds for updates
   });
 
   // Fetch project users
   const { 
-    data: projectUsers, 
+    data: projectUsers = [], // Default to empty array
     isLoading: isProjectUsersLoading,
     refetch: refetchProjectUsers
   } = useQuery<(ProjectUser & { user: {id: number, username: string, email: string}})[]>({
     queryKey: [`/api/projects/${parsedProjectId}/users`],
-    queryFn: undefined,
+    enabled: !!project, // Solo cargar usuarios si el proyecto existe
     refetchInterval: 10000, // Poll every 10 seconds
   });
   
@@ -191,8 +190,8 @@ export default function ProjectPage() {
     },
   });
 
-  // Handle loading state
-  if (isProjectLoading || isIdeasLoading || isRelationshipsLoading) {
+  // Handle loading state for project only
+  if (isProjectLoading) {
     return (
       <div className="flex h-screen">
         <Sidebar />
@@ -206,14 +205,14 @@ export default function ProjectPage() {
     );
   }
 
-  // Handle error state
-  if (isProjectError || isIdeasError || isRelationshipsError || !project) {
+  // Handle error state for project only
+  if (isProjectError || !project) {
     return (
       <div className="flex h-screen">
         <Sidebar />
         <div className="flex-1 p-8 flex justify-center items-center">
           <div className="text-center">
-            <h2 className="text-xl font-bold text-error mb-2">Failed to load project</h2>
+            <h2 className="text-xl font-bold text-destructive mb-2">Failed to load project</h2>
             <p className="text-muted-foreground mb-4">The project may not exist or you don't have access.</p>
             <Button onClick={() => navigate("/")}>Return to Dashboard</Button>
           </div>

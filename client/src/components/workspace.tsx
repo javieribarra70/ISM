@@ -39,9 +39,11 @@ export default function Workspace({
 
   // Get users map for creator lookup
   const usersMap = new Map();
-  if (projectUsers) {
+  if (projectUsers && Array.isArray(projectUsers)) {
     projectUsers.forEach((pu: any) => {
-      usersMap.set(pu.user.id, pu.user);
+      if (pu && pu.user) {
+        usersMap.set(pu.user.id, pu.user);
+      }
     });
   }
 
@@ -222,18 +224,31 @@ export default function Workspace({
                 const y2 = parseInt(toIdea.positionY) + 60;
                 
                 return (
-                  <line 
-                    key={rel.id}
-                    className="relationship-line"
-                    x1={x1}
-                    y1={y1}
-                    x2={x2}
-                    y2={y2}
-                    stroke="#2196F3"
-                    strokeWidth="2"
-                    strokeDasharray="5,5"
-                    markerEnd="url(#arrowhead)"
-                  />
+                  <g key={rel.id}>
+                    {/* Línea de fondo más gruesa para mejorar visibilidad */}
+                    <line 
+                      className="relationship-line-background"
+                      x1={x1}
+                      y1={y1}
+                      x2={x2}
+                      y2={y2}
+                      stroke="#ffffff"
+                      strokeWidth="4"
+                      opacity="0.6"
+                    />
+                    {/* Línea principal de la relación */}
+                    <line 
+                      className="relationship-line"
+                      x1={x1}
+                      y1={y1}
+                      x2={x2}
+                      y2={y2}
+                      stroke="#2196F3"
+                      strokeWidth="2"
+                      strokeDasharray="5,5"
+                      markerEnd="url(#arrowhead)"
+                    />
+                  </g>
                 );
               })}
               
