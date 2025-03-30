@@ -13,6 +13,7 @@ import NewCategoryModal from "@/components/modals/new-category-modal";
 import CategoriesTab from "@/components/tabs/categories-tab";
 import { Avatars } from "@/components/avatars";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ProjectPage() {
@@ -20,6 +21,7 @@ export default function ProjectPage() {
   const projectId = params.projectId;
   const [location, navigate] = useLocation();
   const { user, isLoading: isLoadingUser } = useAuth();
+  const { toast } = useToast();
   const [isNewIdeaModalOpen, setIsNewIdeaModalOpen] = useState(false);
   const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -170,6 +172,30 @@ export default function ProjectPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${parsedProjectId}/relationships`] });
     },
+  });
+
+  // Create a new category
+  const createCategoryMutation = useMutation({
+    mutationFn: async (data: { name: string; description?: string; color: string }) => {
+      const response = await apiRequest("POST", `/api/projects/${parsedProjectId}/categories`, {
+        ...data,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${parsedProjectId}/categories`] });
+      setIsNewCategoryModalOpen(false);
+      // Asegurarse de que la pestaña activa sea "categories"
+      setActiveTab("categories");
+    },
+    onError: (error: Error) => {
+      console.error("Error al crear categoría:", error);
+      toast({
+        title: "Error al crear categoría",
+        description: "Ha ocurrido un error al crear la categoría. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    }
   });
 
   // Update idea position
@@ -360,12 +386,10 @@ export default function ProjectPage() {
         isOpen={isNewCategoryModalOpen}
         onClose={() => setIsNewCategoryModalOpen(false)}
         onSaveCategory={(categoryData) => {
-          console.log("Category created:", categoryData);
-          setIsNewCategoryModalOpen(false);
-          // Asegurarse de que la pestaña activa sea "categories"
-          setActiveTab("categories");
+          console.log("Category created, submitting:", categoryData);
+          createCategoryMutation.mutate(categoryData);
         }}
-        isSubmitting={false}
+        isSubmitting={createCategoryMutation.isPending}
       />
     </div>
   );
