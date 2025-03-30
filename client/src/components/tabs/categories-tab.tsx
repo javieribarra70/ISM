@@ -68,7 +68,7 @@ export default function CategoriesTab({ projectId }: CategoriesTabProps) {
   const updateCategoryMutation = useMutation({
     mutationFn: async (data: { id: number; name: string; description?: string; color: string }) => {
       const { id, ...updateData } = data;
-      const res = await apiRequest("PATCH", `/api/categories/${id}`, updateData);
+      const res = await apiRequest("PATCH", `/api/projects/${projectId}/categories/${id}`, updateData);
       return res.json();
     },
     onSuccess: () => {
@@ -94,9 +94,9 @@ export default function CategoriesTab({ projectId }: CategoriesTabProps) {
   // Mutación para eliminar categoría
   const deleteCategoryMutation = useMutation({
     mutationFn: async (categoryId: number) => {
-      console.log(`Enviando solicitud DELETE a /api/categories/${categoryId}`);
-      const response = await apiRequest("DELETE", `/api/categories/${categoryId}`);
-      console.log(`Respuesta recibida para DELETE a /api/categories/${categoryId}: ${response.status}`);
+      console.log(`Enviando solicitud DELETE a /api/projects/${projectId}/categories/${categoryId}`);
+      const response = await apiRequest("DELETE", `/api/projects/${projectId}/categories/${categoryId}`);
+      console.log(`Respuesta recibida para DELETE a /api/projects/${projectId}/categories/${categoryId}: ${response.status}`);
       return response;
     },
     onSuccess: () => {

@@ -581,13 +581,20 @@ export function registerRoutes(app: Express): Server {
   });
   
   // Endpoint para actualizar una categoría existente
-  app.patch("/api/categories/:categoryId", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
+  app.patch("/api/projects/:projectId/categories/:categoryId", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const categoryId = parseInt(req.params.categoryId);
+      const projectId = parseInt(req.params.projectId);
+      
       const category = await storage.getCategory(categoryId);
       
       if (!category) {
         return res.status(404).json({ message: "Category not found" });
+      }
+      
+      // Verificar que la categoría pertenezca al proyecto especificado
+      if (category.projectId !== projectId) {
+        return res.status(403).json({ message: "Category does not belong to this project" });
       }
       
       const { name, description, color } = req.body;
@@ -605,7 +612,7 @@ export function registerRoutes(app: Express): Server {
   });
   
   // Endpoint para eliminar una categoría
-  app.delete("/api/categories/:categoryId", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
+  app.delete("/api/projects/:projectId/categories/:categoryId", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.user) {
         return res.status(401).json({ message: "User not authenticated" });
@@ -621,8 +628,11 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ message: "Category not found" });
       }
       
-      // Verificar que la categoría pertenezca a un proyecto al que el usuario tiene acceso
-      // El middleware hasProjectAccess ya se encarga de esto, pero es bueno verificarlo de nuevo
+      // Verificar que la categoría pertenezca al proyecto especificado
+      if (category.projectId !== parseInt(req.params.projectId)) {
+        console.log(`La categoría ${categoryId} no pertenece al proyecto ${req.params.projectId}`);
+        return res.status(403).json({ message: "Category does not belong to this project" });
+      }
       
       // Intentar eliminar la categoría
       const deleted = await storage.deleteCategory(categoryId);
