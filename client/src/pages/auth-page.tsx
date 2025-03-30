@@ -26,13 +26,7 @@ export default function AuthPage() {
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("login");
   const [location, navigate] = useLocation();
-
-  // Si el usuario ya está autenticado, redirigir a la página principal
-  // Hacemos esto después de las llamadas a los hooks para evitar errores
-  if (user) {
-    return <Redirect to="/" />;
-  }
-
+  
   // Login form
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -53,6 +47,14 @@ export default function AuthPage() {
       role: "user",
     },
   });
+  
+  // Después de que todos los hooks han sido llamados, podemos usar nuestras condiciones
+  // Si el usuario ya está autenticado, redirigir a la página principal
+  useEffect(() => {
+    if (user) {
+      navigate("/");
+    }
+  }, [user, navigate]);
 
   const onLoginSubmit = async (data: LoginFormValues) => {
     loginMutation.mutate(data, {
