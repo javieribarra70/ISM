@@ -66,20 +66,30 @@ export function UsersProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("DELETE", `/api/users/${userId}`);
       return { userId, response: await res.json() };
     },
+    onMutate: async (userId: number) => {
+      // Cancelar consultas en curso
+      await queryClient.cancelQueries({ queryKey: ["/api/users"] });
+      
+      // Guardar el estado anterior
+      const previousUsers = queryClient.getQueryData<SelectUser[]>(["/api/users"]);
+      
+      // Optimistic update
+      if (previousUsers) {
+        queryClient.setQueryData(["/api/users"], 
+          previousUsers.filter(user => user.id !== userId)
+        );
+      }
+      
+      return { previousUsers };
+    },
     onSuccess: (data) => {
-      // Invalidar la caché de usuarios para forzar una recarga
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      
-      // También actualizar la caché directamente para una actualización más rápida
-      queryClient.setQueryData(["/api/users"], (oldData: SelectUser[] | undefined) => {
-        if (!oldData) return [];
-        return oldData.filter(user => user.id !== data.userId);
-      });
-      
       toast({
         title: "Usuario eliminado",
         description: data.response.message || "El usuario ha sido eliminado exitosamente.",
       });
+      
+      // Forzar recargar los datos para asegurar sincronización
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
       toast({
