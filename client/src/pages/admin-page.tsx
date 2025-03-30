@@ -3,8 +3,123 @@ import { useLocation } from "wouter";
 import Sidebar from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { User, Project } from "@shared/schema";
-import { Loader2, UserPlus, FolderOpen, Edit, Trash, Download, RotateCw } from "lucide-react";
+import { Loader2, UserPlus, FolderOpen, Edit, Trash, Download, RotateCw, UserCog, ShieldAlert, Shield } from "lucide-react";
+import { useUsers } from "@/hooks/use-users";
+import { useAuth } from "@/hooks/use-auth";
+
+function UserManagementSection() {
+  const { users, isLoading, updateUserRoleMutation } = useUsers();
+  const { user: currentUser } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-10">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  const handleRoleChange = (userId: number, newRole: 'admin' | 'user') => {
+    if (confirm(`¿Estás seguro de que deseas cambiar el rol de este usuario a ${newRole}?`)) {
+      updateUserRoleMutation.mutate({ userId, role: newRole });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold">User Management</h2>
+        <Button variant="outline">
+          <UserPlus className="mr-2 h-4 w-4" />
+          Add New User
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Users</CardTitle>
+          <CardDescription>Manage user accounts and permissions</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {users && users.length > 0 ? (
+            <div className="overflow-hidden border rounded-md">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-muted/50 border-b">
+                    <th className="text-left whitespace-nowrap p-2 font-medium">Username</th>
+                    <th className="text-left whitespace-nowrap p-2 font-medium">Email</th>
+                    <th className="text-left whitespace-nowrap p-2 font-medium">Current Role</th>
+                    <th className="text-left whitespace-nowrap p-2 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <tr 
+                      key={user.id} 
+                      className="border-b hover:bg-muted/50 transition-colors"
+                    >
+                      <td className="p-2">
+                        <div className="font-medium">{user.username}</div>
+                      </td>
+                      <td className="p-2 text-muted-foreground">
+                        {user.email || 'No email'}
+                      </td>
+                      <td className="p-2">
+                        <Badge variant={user.role === 'admin' ? "default" : "outline"}>
+                          {user.role === 'admin' ? (
+                            <ShieldAlert className="mr-1 h-3 w-3 inline" />
+                          ) : (
+                            <Shield className="mr-1 h-3 w-3 inline" />
+                          )}
+                          {user.role}
+                        </Badge>
+                      </td>
+                      <td className="p-2">
+                        <div className="flex items-center space-x-2">
+                          {/* No permitir cambiar el rol del usuario actual para evitar bloqueos */}
+                          {currentUser && user.id !== currentUser.id ? (
+                            <Select
+                              onValueChange={(value) => handleRoleChange(user.id, value as 'admin' | 'user')}
+                              defaultValue={user.role}
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue placeholder="Cambiar rol" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="user">Usuario</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">
+                              (Usuario actual)
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <Alert>
+              <UserCog className="h-4 w-4" />
+              <AlertTitle>No users found</AlertTitle>
+              <AlertDescription>
+                There are no users in the system yet.
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null);
@@ -289,27 +404,7 @@ export default function AdminPage() {
             )}
             
             {activeTab === "users" && (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-semibold">User Management</h2>
-                  <Button variant="outline">
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Add New User
-                  </Button>
-                </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Users</CardTitle>
-                    <CardDescription>Manage user accounts and permissions</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground">
-                      This feature will be implemented in the next version.
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
+              <UserManagementSection />
             )}
 
             {activeTab === "reports" && (

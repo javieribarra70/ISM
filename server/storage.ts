@@ -33,6 +33,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserRole(userId: number, role: string): Promise<User | undefined>;
   getUserProjects(userId: number): Promise<Project[]>;
 
   // Project operations
@@ -139,6 +140,19 @@ export class MemStorage implements IStorage {
     const user: User = { ...insertUser, id };
     this.users.set(id, user);
     return user;
+  }
+
+  async updateUserRole(userId: number, role: string): Promise<User | undefined> {
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+
+    // Validar que el rol sea válido
+    const validRole = role === 'admin' || role === 'user' ? role : user.role;
+    
+    // Actualizar el rol del usuario
+    const updatedUser: User = { ...user, role: validRole };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
   }
 
   async getUserProjects(userId: number): Promise<Project[]> {
@@ -453,6 +467,30 @@ export class DatabaseStorage implements IStorage {
       return result[0];
     } catch (error) {
       console.error('Error creating user:', error);
+      throw error;
+    }
+  }
+  
+  async updateUserRole(userId: number, role: string): Promise<User | undefined> {
+    try {
+      // Validar que el rol sea válido
+      const validRole = role === 'admin' || role === 'user' ? role : 'user';
+      
+      // Actualizar el rol del usuario en la base de datos
+      const result = await db.update(users)
+        .set({ role: validRole })
+        .where(eq(users.id, userId))
+        .returning();
+      
+      if (result.length === 0) {
+        console.error(`No user found with ID ${userId}`);
+        return undefined;
+      }
+      
+      console.log(`User ${userId} role updated to ${validRole}`);
+      return result[0];
+    } catch (error) {
+      console.error('Error updating user role:', error);
       throw error;
     }
   }

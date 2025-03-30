@@ -3,11 +3,13 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { randomBytes } from "crypto";
+import { db } from "./db";
 import { 
   insertProjectSchema, 
   insertIdeaSchema, 
   insertRelationshipSchema, 
-  User 
+  User,
+  users
 } from "@shared/schema";
 
 // Extend the Express Request interface
@@ -360,6 +362,53 @@ export function registerRoutes(app: Express): Server {
       }
       
       res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Endpoint para obtener todos los usuarios (solo para administradores)
+  app.get("/api/users", isAdmin, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // En una implementación real, probablemente necesitaríamos paginación aquí
+      // Este es un enfoque simplificado para obtener todos los usuarios
+      
+      // Obtener todos los usuarios de la base de datos
+      const allUsers = await db.select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        role: users.role,
+      }).from(users);
+      
+      res.json(allUsers);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  app.patch("/api/users/:userId/role", isAdmin, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const { role } = req.body;
+      
+      if (!role || (role !== 'admin' && role !== 'user')) {
+        return res.status(400).json({ message: "Invalid role. Role must be 'admin' or 'user'." });
+      }
+      
+      const updatedUser = await storage.updateUserRole(userId, role);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Eliminar la contraseña de la respuesta
+      const { password: _, ...userWithoutPassword } = updatedUser;
+      
+      res.json({ 
+        message: `User role updated successfully to ${role}`,
+        user: userWithoutPassword
+      });
     } catch (error) {
       next(error);
     }
