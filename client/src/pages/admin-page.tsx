@@ -10,9 +10,72 @@ import { User, Project } from "@shared/schema";
 import { Loader2, UserPlus, FolderOpen, Edit, Trash, Download, RotateCw, UserCog, ShieldAlert, Shield } from "lucide-react";
 import { useUsers } from "@/hooks/use-users";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+
+// Schema validación para crear nuevo usuario
+const createUserSchema = z.object({
+  username: z.string().min(3, {
+    message: "Username must be at least 3 characters.",
+  }),
+  email: z.string().email({
+    message: "Please enter a valid email address.",
+  }),
+  password: z.string().min(6, {
+    message: "Password must be at least 6 characters.",
+  }),
+});
+
+type CreateUserFormValues = z.infer<typeof createUserSchema>;
+
 function UserManagementSection() {
   const { users, isLoading, updateUserRoleMutation } = useUsers();
-  // En lugar de usar useAuth, usaremos el userId de la página de administración
+  const { toast } = useToast();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // Formulario para crear nuevo usuario
+  const form = useForm<CreateUserFormValues>({
+    resolver: zodResolver(createUserSchema),
+    defaultValues: {
+      username: "",
+      email: "",
+      password: "",
+    },
+  });
+  
+  // Función para crear usuario
+  async function onSubmit(data: CreateUserFormValues) {
+    try {
+      const response = await apiRequest("POST", "/api/users", data);
+      const newUser = await response.json();
+      
+      toast({
+        title: "Success",
+        description: `User ${newUser.username} created successfully`,
+      });
+      
+      // Cerrar el diálogo y restablecer el formulario
+      setIsDialogOpen(false);
+      form.reset();
+      
+      // Actualizar la lista de usuarios
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create user. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Error creating user:", error);
+    }
+  }
   
   if (isLoading) {
     return (
@@ -32,10 +95,88 @@ function UserManagementSection() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold">User Management</h2>
-        <Button variant="outline">
-          <UserPlus className="mr-2 h-4 w-4" />
-          Add New User
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Add New User
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Create New User</DialogTitle>
+              <DialogDescription>
+                Add a new user to your organization. All users created by you will have regular user permissions.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+                <FormField
+                  control={form.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Username</FormLabel>
+                      <FormControl>
+                        <Input placeholder="username" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="example@email.com" type="email" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input placeholder="password" type="password" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Must be at least 6 characters
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <DialogFooter>
+                  <Button 
+                    type="submit" 
+                    disabled={form.formState.isSubmitting}
+                    className="w-full"
+                  >
+                    {form.formState.isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      'Create User'
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>

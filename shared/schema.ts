@@ -9,6 +9,8 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   email: text("email").notNull().unique(),
   role: text("role").notNull().default("user"), // "admin" or "user"
+  createdBy: integer("created_by").references(() => users.id), // El administrador que creó a este usuario (null para usuarios autodesplegables)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Project model
@@ -69,6 +71,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
   email: true,
   role: true,
+  createdBy: true,
 });
 
 export const insertProjectSchema = createInsertSchema(projects).pick({

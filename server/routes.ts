@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { randomBytes } from "crypto";
 import { db } from "./db";
+import { eq, or, isNull } from "drizzle-orm";
 import { 
   insertProjectSchema, 
   insertIdeaSchema, 
@@ -367,21 +368,32 @@ export function registerRoutes(app: Express): Server {
     }
   });
   
-  // Endpoint para obtener todos los usuarios (solo para administradores)
+  // Endpoint para obtener usuarios (solo para administradores)
+  // Los administradores solo ven los usuarios que ellos crearon y los usuarios auto-registrados
   app.get("/api/users", isAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // En una implementación real, probablemente necesitaríamos paginación aquí
-      // Este es un enfoque simplificado para obtener todos los usuarios
+      if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
       
-      // Obtener todos los usuarios de la base de datos
-      const allUsers = await db.select({
+      // Obtener usuarios que este admin creó o usuarios auto-registrados (createdBy es null)
+      const visibleUsers = await db.select({
         id: users.id,
         username: users.username,
         email: users.email,
         role: users.role,
-      }).from(users);
+        createdBy: users.createdBy,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(
+        or(
+          eq(users.createdBy, req.user.id),
+          isNull(users.createdBy)
+        )
+      );
       
-      res.json(allUsers);
+      res.json(visibleUsers);
     } catch (error) {
       next(error);
     }

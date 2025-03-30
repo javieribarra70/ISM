@@ -77,17 +77,19 @@ export function setupAuth(app: Express) {
     }
   });
 
+  // API para registrarse directamente (todos son administradores por defecto)
   app.post("/api/register", async (req, res, next) => {
     try {
-      const { username, password, email, role } = req.body;
+      const { username, password, email } = req.body;
       
       // Validaciones básicas
       if (!username || !password || !email) {
         return res.status(400).json({ message: "Username, password, and email are required" });
       }
       
-      // Validar que el rol sea válido (solo permitir 'user' o 'admin')
-      const validRole = role === 'admin' || role === 'user' ? role : 'user';
+      // Por defecto, todos los usuarios que se registran son administradores
+      // Esto permite que cada administrador cree sus propios usuarios regulares
+      const validRole = 'admin';
       
       // Check if username or email already exists
       const existingUser = await storage.getUserByUsername(username);
@@ -105,7 +107,9 @@ export function setupAuth(app: Express) {
         username,
         password: hashedPassword,
         email,
-        role: validRole
+        role: validRole,
+        // No createdBy para usuarios que se registran por sí mismos
+        createdBy: null
       });
 
       // Remove password from response
@@ -119,6 +123,61 @@ export function setupAuth(app: Express) {
       });
     } catch (error) {
       console.error("Registration error:", error);
+      next(error);
+    }
+  });
+  
+  // API para que los administradores creen usuarios
+  app.post("/api/users", async (req, res, next) => {
+    try {
+      // Verificar que el usuario está autenticado y es admin
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Forbidden - Admin access required" });
+      }
+      
+      const { username, password, email, role } = req.body;
+      
+      // Validaciones básicas
+      if (!username || !password || !email) {
+        return res.status(400).json({ message: "Username, password, and email are required" });
+      }
+      
+      // Validar que el rol sea válido (solo permitir 'user')
+      // Los administradores solo pueden crear usuarios regulares
+      const validRole = 'user';
+      
+      // Check if username or email already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+      
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+
+      const hashedPassword = await hashPassword(password);
+      const user = await storage.createUser({
+        username,
+        password: hashedPassword,
+        email,
+        role: validRole,
+        createdBy: req.user.id // El administrador que está creando este usuario
+      });
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      
+      console.log(`New user created by admin ${req.user.username}: ${username} with role: ${validRole}`);
+
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      console.error("User creation error:", error);
       next(error);
     }
   });
