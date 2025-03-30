@@ -31,12 +31,13 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
 
   // Obtener las categorías del proyecto
-  const { data: categories, isLoading } = useQuery<Category[]>({
+  const { data: categories, isLoading, refetch: refetchCategories } = useQuery<Category[]>({
     queryKey: [`/api/projects/${projectId}/categories`],
-    staleTime: 1000 * 60, // 1 minuto
+    staleTime: 0, // Sin caché
     retry: 3,
-    refetchOnWindowFocus: false,
-    refetchOnMount: true
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchInterval: 3000 // Refrescar cada 3 segundos
   });
 
   // Mutación para crear categoría
@@ -49,11 +50,15 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/categories`] });
+      // Forzar una recarga inmediata de las categorías
+      refetchCategories();
       toast({
         title: "Categoría creada",
         description: "La categoría ha sido creada correctamente",
       });
       setIsNewCategoryModalOpen(false);
+      // Asegurar que la pestaña permanezca en categorías
+      setActiveTab("categories");
     },
     onError: (error: Error) => {
       console.error("Error al crear categoría:", error);
@@ -74,6 +79,8 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/categories`] });
+      // Forzar una recarga inmediata de las categorías
+      refetchCategories();
       toast({
         title: "Categoría actualizada",
         description: "La categoría ha sido actualizada correctamente",
@@ -81,6 +88,8 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
       setIsNewCategoryModalOpen(false);
       setCurrentCategory(null);
       setIsEditMode(false);
+      // Asegurar que la pestaña permanezca en categorías
+      setActiveTab("categories");
     },
     onError: (error: Error) => {
       console.error("Error al actualizar categoría:", error);
