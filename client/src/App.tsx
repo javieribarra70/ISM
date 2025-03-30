@@ -7,21 +7,25 @@ import ProjectPage from "@/pages/project-page";
 import AdminPage from "@/pages/admin-page";
 import { ProjectsProvider } from "@/hooks/use-projects";
 import { UsersProvider } from "@/hooks/use-users";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/lib/protected-route";
 
 function App() {
   return (
     <>
-      <UsersProvider>
-        <ProjectsProvider>
-          <Switch>
-            <Route path="/" component={HomePage} />
-            <Route path="/project/:projectId" component={ProjectPage} />
-            <Route path="/admin" component={AdminPage} />
-            <Route path="/auth" component={AuthPage} />
-            <Route component={NotFound} />
-          </Switch>
-        </ProjectsProvider>
-      </UsersProvider>
+      <AuthProvider>
+        <UsersProvider>
+          <ProjectsProvider>
+            <Switch>
+              <ProtectedRoute path="/" component={HomePage} />
+              <ProtectedRoute path="/project/:projectId" component={ProjectPage} />
+              <ProtectedRoute path="/admin" component={AdminPage} />
+              <Route path="/auth" component={AuthPage} />
+              <Route component={NotFound} />
+            </Switch>
+          </ProjectsProvider>
+        </UsersProvider>
+      </AuthProvider>
       <Toaster />
     </>
   );

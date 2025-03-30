@@ -35,7 +35,7 @@ const createUserSchema = z.object({
 type CreateUserFormValues = z.infer<typeof createUserSchema>;
 
 function UserManagementSection() {
-  const { users, isLoading, updateUserRoleMutation, deleteUserMutation } = useUsers();
+  const { users, isLoading, updateUserRoleMutation, deleteUserMutation, refetchUsers } = useUsers();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   
@@ -51,19 +51,11 @@ function UserManagementSection() {
   
   // Define una función para recargar la lista de usuarios
   const forceRefreshUsersList = () => {
-    // Hacer una petición fresca a la API
-    queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    // Usar la función refetch directamente del hook
+    refetchUsers();
     
-    // Forzar un refresh UI completo cambiando la pestaña y volviendo
-    const searchParams = new URLSearchParams(window.location.search);
-    
-    // Cambiar a otra pestaña temporalmente y volver
-    window.history.pushState({}, '', `/admin`);
-    setTimeout(() => {
-      window.history.pushState({}, '', `/admin?tab=users`);
-      // Cargar los datos de nuevo
-      queryClient.refetchQueries({ queryKey: ["/api/users"] });
-    }, 100);
+    // Indicamos en la consola que se ha actualizado
+    console.log("Lista de usuarios actualizada con refetchUsers");
   };
   
   // Función para crear usuario

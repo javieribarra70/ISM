@@ -12,6 +12,7 @@ type UsersContextType = {
   users: SelectUser[] | null;
   isLoading: boolean;
   error: Error | null;
+  refetchUsers: () => Promise<any>;
   updateUserRoleMutation: UseMutationResult<any, Error, UpdateRoleData>;
   deleteUserMutation: UseMutationResult<any, Error, number>;
 };
@@ -31,30 +32,21 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     data: users,
     error,
     isLoading,
+    refetch: refetchUsers
   } = useQuery<SelectUser[]>({
     queryKey: ["/api/users"],
     queryFn: getQueryFn({ on401: "throw" }), // Podemos permitir fallos aquí ya que solo los administradores deberían acceder
+    staleTime: 0, // Siempre obtener datos frescos
+    refetchOnWindowFocus: true, // Actualizar cuando el usuario regresa a la ventana
+    refetchOnMount: true, // Actualizar cuando el componente se monta
   });
 
   // Mutación para actualizar el rol de un usuario
   const updateUserRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: UpdateRoleData) => {
-      // Guardar una referencia a los datos actuales antes de la mutación
-      const currentUsers = queryClient.getQueryData<SelectUser[]>(["/api/users"]) || [];
-      
       // Hacer la petición API
       const res = await apiRequest("PATCH", `/api/users/${userId}/role`, { role });
       const responseData = await res.json();
-      
-      // Actualizar la caché manualmente DESPUÉS de la respuesta exitosa
-      queryClient.setQueryData(["/api/users"], 
-        currentUsers.map(user => 
-          user.id === userId 
-            ? { ...user, role } 
-            : user
-        )
-      );
-      
       return responseData;
     },
     onSuccess: (data) => {
@@ -63,8 +55,10 @@ export function UsersProvider({ children }: { children: ReactNode }) {
         description: data.message || "El rol del usuario ha sido actualizado exitosamente.",
       });
       
-      // Intentar recargar los datos en segundo plano para asegurar sincronización
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      // Usar la función refetch directamente para obtener datos frescos
+      setTimeout(() => {
+        refetchUsers();
+      }, 300);
     },
     onError: (error: Error) => {
       toast({
@@ -78,18 +72,9 @@ export function UsersProvider({ children }: { children: ReactNode }) {
   // Mutación para eliminar un usuario
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: number) => {
-      // Guardar una referencia a los datos actuales antes de la mutación
-      const currentUsers = queryClient.getQueryData<SelectUser[]>(["/api/users"]) || [];
-      
       // Hacer la petición API
       const res = await apiRequest("DELETE", `/api/users/${userId}`);
       const responseData = await res.json();
-      
-      // Actualizar la caché manualmente DESPUÉS de la respuesta exitosa
-      queryClient.setQueryData(["/api/users"], 
-        currentUsers.filter(user => user.id !== userId)
-      );
-      
       return { userId, response: responseData };
     },
     onSuccess: (data) => {
@@ -98,8 +83,10 @@ export function UsersProvider({ children }: { children: ReactNode }) {
         description: data.response.message || "El usuario ha sido eliminado exitosamente.",
       });
       
-      // Intentar recargar los datos en segundo plano para asegurar sincronización
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      // Usar la función refetch directamente para obtener datos frescos
+      setTimeout(() => {
+        refetchUsers();
+      }, 300);
     },
     onError: (error: Error) => {
       toast({
@@ -116,6 +103,7 @@ export function UsersProvider({ children }: { children: ReactNode }) {
         users: users ?? null,
         isLoading,
         error,
+        refetchUsers,
         updateUserRoleMutation,
         deleteUserMutation,
       }}

@@ -38,10 +38,7 @@ export async function apiRequest(
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
-// Caché local en memoria para reducir solicitudes idénticas frecuentes
-const requestCache = new Map<string, {data: any, timestamp: number}>();
-const CACHE_TTL = 5000; // 5 segundos en ms
-
+// Eliminando caché local para asegurar datos actualizados
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
@@ -49,23 +46,13 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const url = queryKey[0] as string;
     
-    // Verificar caché local para respuestas recientes
-    const cacheKey = url;
+    // Add cache busting parameter to GET requests para garantizar respuestas frescas
     const now = Date.now();
-    const cachedResponse = requestCache.get(cacheKey);
-    
-    // Si hay datos en caché y son recientes, usarlos
-    if (cachedResponse && (now - cachedResponse.timestamp < CACHE_TTL)) {
-      console.debug(`Using cached response for ${url} (age: ${now - cachedResponse.timestamp}ms)`);
-      return cachedResponse.data;
-    }
-    
-    // Add cache busting parameter to GET requests
     const urlWithCacheBuster = `${url}${url.includes('?') ? '&' : '?'}_t=${now}`;
     
     const res = await fetch(urlWithCacheBuster, {
       headers: {
-        // Add extra headers to ensure proper caching behavior
+        // Cabeceras anti-caché
         "Cache-Control": "no-cache, no-store, must-revalidate",
         "Pragma": "no-cache",
         "Expires": "0"
@@ -84,9 +71,6 @@ export const getQueryFn: <T>(options: {
     await throwIfResNotOk(res);
     const data = await res.json();
     
-    // Guardar en caché local
-    requestCache.set(cacheKey, {data, timestamp: now});
-    
     return data;
   };
 
@@ -98,7 +82,7 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: true,
       refetchOnMount: true,
       refetchOnReconnect: true,
-      staleTime: 5000, // 5 seconds (increased to reduce server load)
+      staleTime: 0, // Reducido a 0 para siempre obtener datos frescos, especialmente importante para la página de usuarios
       retry: (failureCount, error) => {
         // Don't retry on 401 errors
         if (error instanceof Error && error.message.includes('401')) {

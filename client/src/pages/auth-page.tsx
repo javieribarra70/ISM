@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useLocation } from "wouter";
+import { useLocation, Redirect } from "wouter";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { useAuth, registerSchema } from "@/hooks/use-auth";
 
 // Login schema
 const loginSchema = z.object({
@@ -18,50 +19,19 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-// Registration schema
-const registerSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string(),
-  role: z.string().default("user"),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function AuthPage() {
-  const { toast } = useToast();
-  const [location, navigate] = useLocation();
+  const { user, isLoading, loginMutation, registerMutation } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("login");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoginSubmitting, setIsLoginSubmitting] = useState(false);
-  const [isRegisterSubmitting, setIsRegisterSubmitting] = useState(false);
+  const [location, navigate] = useLocation();
 
-  // Check if user is already logged in
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/user', {
-          credentials: 'include',
-        });
-        
-        if (response.ok) {
-          // User is already logged in, redirect to home
-          navigate("/");
-        }
-      } catch (error) {
-        console.error('Error checking auth status', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    checkAuth();
-  }, [navigate]);
+  // Si el usuario ya está autenticado, redirigir a la página principal
+  // Hacemos esto después de las llamadas a los hooks para evitar errores
+  if (user) {
+    return <Redirect to="/" />;
+  }
 
   // Login form
   const loginForm = useForm<LoginFormValues>({
@@ -85,98 +55,21 @@ export default function AuthPage() {
   });
 
   const onLoginSubmit = async (data: LoginFormValues) => {
-    setIsLoginSubmitting(true);
-    try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-      
-      if (response.ok) {
-        const userData = await response.json();
-        toast({
-          title: "Login successful",
-          description: `Welcome back, ${userData.username}!`,
-        });
+    loginMutation.mutate(data, {
+      onSuccess: () => {
         navigate("/");
-      } else {
-        let errorText;
-        try {
-          const errorData = await response.json();
-          errorText = errorData.message;
-        } catch {
-          errorText = "Invalid username or password. Please try again.";
-        }
-        
-        toast({
-          title: "Login failed",
-          description: errorText,
-          variant: "destructive",
-        });
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      toast({
-        title: "Login failed",
-        description: "An error occurred during login",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoginSubmitting(false);
-    }
+    });
   };
 
   const onRegisterSubmit = async (data: RegisterFormValues) => {
-    setIsRegisterSubmitting(true);
-    try {
-      // Remove confirmPassword as it's not in the backend schema
-      const { confirmPassword, ...userDataWithoutConfirm } = data;
-      
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(userDataWithoutConfirm),
-      });
-      
-      if (response.ok) {
-        const userData = await response.json();
-        toast({
-          title: "Registration successful",
-          description: `Welcome, ${userData.username}!`,
-        });
+    // Remove confirmPassword as it's not in the backend schema
+    const { confirmPassword, ...userDataWithoutConfirm } = data;
+    registerMutation.mutate(userDataWithoutConfirm, {
+      onSuccess: () => {
         navigate("/");
-      } else {
-        let errorText;
-        try {
-          const errorData = await response.json();
-          errorText = errorData.message;
-        } catch {
-          errorText = "Could not create account. Username might already exist.";
-        }
-        
-        toast({
-          title: "Registration failed",
-          description: errorText,
-          variant: "destructive",
-        });
       }
-    } catch (error) {
-      console.error('Registration error:', error);
-      toast({
-        title: "Registration failed", 
-        description: "An error occurred during registration",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRegisterSubmitting(false);
-    }
+    });
   };
 
   return (
@@ -229,9 +122,14 @@ export default function AuthPage() {
                     <Button 
                       type="submit" 
                       className="w-full mt-4" 
-                      disabled={isLoginSubmitting}
+                      disabled={loginMutation.isPending}
                     >
-                      {isLoginSubmitting ? "Logging in..." : "Login"}
+                      {loginMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Logging in...
+                        </>
+                      ) : "Login"}
                     </Button>
                   </form>
                 </Form>
@@ -321,9 +219,14 @@ export default function AuthPage() {
                     <Button 
                       type="submit" 
                       className="w-full mt-4" 
-                      disabled={isRegisterSubmitting}
+                      disabled={registerMutation.isPending}
                     >
-                      {isRegisterSubmitting ? "Creating account..." : "Create Account"}
+                      {registerMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating account...
+                        </>
+                      ) : "Create Account"}
                     </Button>
                   </form>
                 </Form>
