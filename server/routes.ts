@@ -10,7 +10,8 @@ import {
   insertIdeaSchema, 
   insertRelationshipSchema, 
   User,
-  users
+  users,
+  AVAILABLE_CATEGORIES
 } from "@shared/schema";
 
 // Extend the Express Request interface
@@ -529,6 +530,48 @@ export function registerRoutes(app: Express): Server {
       }
     } catch (error) {
       console.error("Error deleting user:", error);
+      next(error);
+    }
+  });
+
+  // Endpoint para obtener las categorías disponibles
+  app.get("/api/categories", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.json(AVAILABLE_CATEGORIES);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Endpoint para obtener categorías con conteo de ideas para un proyecto específico
+  app.get("/api/projects/:projectId/categories", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const ideas = await storage.getProjectIdeas(projectId);
+      
+      // Crear un mapa para almacenar las categorías y su conteo
+      const categoryMap = new Map<string, number>();
+      
+      // Inicializar todas las categorías disponibles con conteo 0
+      AVAILABLE_CATEGORIES.forEach(category => {
+        categoryMap.set(category, 0);
+      });
+      
+      // Incrementar el conteo para cada idea según su categoría
+      ideas.forEach(idea => {
+        if (idea.category && categoryMap.has(idea.category)) {
+          categoryMap.set(idea.category, categoryMap.get(idea.category)! + 1);
+        }
+      });
+      
+      // Convertir el mapa a un array de objetos
+      const categoriesWithCount = Array.from(categoryMap.entries()).map(([name, count]) => ({
+        name,
+        count
+      }));
+      
+      res.json(categoriesWithCount);
+    } catch (error) {
       next(error);
     }
   });

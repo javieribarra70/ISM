@@ -10,6 +10,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import NewIdeaModal from "@/components/modals/new-idea-modal";
 import InviteUsersModal from "@/components/modals/invite-users-modal";
 import NewCategoryModal from "@/components/modals/new-category-modal";
+import CategoriesTab from "@/components/tabs/categories-tab";
 import { Avatars } from "@/components/avatars";
 import { useAuth } from "@/hooks/use-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -288,69 +289,7 @@ export default function ProjectPage() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="categories" className="mt-0 p-4">
-              <div className="bg-white rounded-lg shadow p-6 min-h-[600px]">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold">Categorías de Ideas</h2>
-                  <Button 
-                    size="sm" 
-                    className="bg-primary text-white"
-                    onClick={() => setIsNewCategoryModalOpen(true)}
-                  >
-                    <Tags className="h-4 w-4 mr-2" />
-                    Agregar Categoría
-                  </Button>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Lista de categorías existentes */}
-                  <div className="border rounded-lg p-4 hover:border-primary hover:shadow-sm transition-all">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-lg">Problemas Técnicos</h3>
-                        <p className="text-sm text-muted-foreground mt-1">Problemas de infraestructura y tecnología</p>
-                      </div>
-                      <div className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                        4 ideas
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="border rounded-lg p-4 hover:border-primary hover:shadow-sm transition-all">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-lg">Mejoras UX</h3>
-                        <p className="text-sm text-muted-foreground mt-1">Mejoras en la experiencia de usuario</p>
-                      </div>
-                      <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                        2 ideas
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="border rounded-lg p-4 hover:border-primary hover:shadow-sm transition-all">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-lg">Optimización</h3>
-                        <p className="text-sm text-muted-foreground mt-1">Mejoras de rendimiento y optimización</p>
-                      </div>
-                      <div className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded">
-                        1 idea
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Card para crear nueva categoría */}
-                  <div 
-                    className="border border-dashed rounded-lg p-4 flex items-center justify-center hover:border-primary hover:shadow-sm transition-all cursor-pointer"
-                    onClick={() => setIsNewCategoryModalOpen(true)}
-                  >
-                    <div className="text-center">
-                      <Tags className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-sm font-medium">Agregar Nueva Categoría</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <CategoriesTab projectId={parsedProjectId} />
             </TabsContent>
             
             <TabsContent value="ideas" className="mt-0 p-0">

@@ -1,29 +1,33 @@
 import { useState } from "react";
-import { z } from "zod";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Loader2, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
+import { z } from "zod";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { X, Loader2 } from "lucide-react";
-
-// Esquema de validación
-const categorySchema = z.object({
-  name: z.string().min(3, { message: "El nombre debe tener al menos 3 caracteres" }),
-  description: z.string().optional(),
-});
-
-// Tipado para los datos del formulario
-type CategoryFormData = z.infer<typeof categorySchema>;
 
 interface NewCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateCategory: (data: CategoryFormData) => void;
+  onCreateCategory: (categoryData: { name: string; description?: string }) => void;
   isCreating: boolean;
 }
+
+// Schema para validar el formulario
+const formSchema = z.object({
+  name: z.string().min(3, {
+    message: "El nombre debe tener al menos 3 caracteres.",
+  }).max(50, {
+    message: "El nombre no puede exceder los 50 caracteres."
+  }),
+  description: z.string().max(200, {
+    message: "La descripción no puede exceder los 200 caracteres."
+  }).optional(),
+});
 
 export default function NewCategoryModal({
   isOpen,
@@ -31,43 +35,29 @@ export default function NewCategoryModal({
   onCreateCategory,
   isCreating
 }: NewCategoryModalProps) {
-  // Inicializar el formulario con react-hook-form
-  const form = useForm<CategoryFormData>({
-    resolver: zodResolver(categorySchema),
+  // Configuración del formulario con react-hook-form y zod
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       description: "",
     },
   });
 
-  // Función que se ejecuta al enviar el formulario
-  const onSubmit = (data: CategoryFormData) => {
-    onCreateCategory(data);
-  };
-
-  // Resetear el formulario cuando se cierre el modal
-  const handleClose = () => {
-    form.reset();
-    onClose();
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
+    onCreateCategory(values);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="flex justify-between items-center">
-            <span>Crear Nueva Categoría</span>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6 rounded-full" 
-              onClick={handleClose}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogTitle>
+          <DialogTitle className="text-xl font-bold">Crear Nueva Categoría</DialogTitle>
+          <DialogDescription>
+            Las categorías ayudan a organizar las ideas en grupos temáticos.
+          </DialogDescription>
         </DialogHeader>
-
+        
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -75,48 +65,51 @@ export default function NewCategoryModal({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nombre de la categoría</FormLabel>
+                  <FormLabel>Nombre de la Categoría</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Ej: Problemas Técnicos" 
-                      {...field} 
-                      autoFocus
-                    />
+                    <Input placeholder="Ej: Problemas Técnicos" {...field} />
                   </FormControl>
+                  <FormDescription>
+                    Elige un nombre descriptivo para la categoría.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
+            
             <FormField
               control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Descripción (opcional)</FormLabel>
+                  <FormLabel>Descripción (Opcional)</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Breve descripción de la categoría"
-                      className="resize-none"
-                      {...field}
+                      placeholder="Describe el propósito de esta categoría" 
+                      className="resize-none h-24"
+                      {...field} 
                     />
                   </FormControl>
+                  <FormDescription>
+                    Proporciona más contexto sobre el tipo de ideas que pertenecen a esta categoría.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
-            <DialogFooter className="mt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleClose}
+            
+            <DialogFooter className="pt-4">
+              <Button 
+                variant="outline" 
+                type="button" 
+                onClick={onClose}
                 disabled={isCreating}
               >
                 Cancelar
               </Button>
               <Button 
                 type="submit" 
+                className="bg-primary text-white"
                 disabled={isCreating}
               >
                 {isCreating ? (
@@ -125,7 +118,7 @@ export default function NewCategoryModal({
                     Creando...
                   </>
                 ) : (
-                  'Crear Categoría'
+                  "Crear Categoría"
                 )}
               </Button>
             </DialogFooter>

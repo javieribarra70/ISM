@@ -2,6 +2,17 @@ import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Categorías disponibles (constante)
+export const AVAILABLE_CATEGORIES = [
+  "Primary Goal",
+  "Policy",
+  "Strategy",
+  "Implementation",
+  "Problemas Técnicos",
+  "Mejoras UX",
+  "Optimización"
+];
+
 // User model
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
