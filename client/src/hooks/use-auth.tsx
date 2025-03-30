@@ -25,6 +25,8 @@ const registerSchema = insertUserSchema.extend({
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
   email: z.string().email("Invalid email address"),
+  // Forzamos el rol como admin (aunque no se muestre en la interfaz)
+  role: z.literal("admin").default("admin"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
