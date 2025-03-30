@@ -312,8 +312,9 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.patch("/api/ideas/:ideaId/position", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
+  app.patch("/api/projects/:projectId/ideas/:ideaId/position", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const projectId = parseInt(req.params.projectId);
       const ideaId = parseInt(req.params.ideaId);
       const { positionX, positionY } = req.body;
       
@@ -324,6 +325,11 @@ export function registerRoutes(app: Express): Server {
       const idea = await storage.getIdea(ideaId);
       if (!idea) {
         return res.status(404).json({ message: "Idea not found" });
+      }
+      
+      // Verify that idea belongs to the specified project
+      if (idea.projectId !== projectId) {
+        return res.status(403).json({ message: "Idea does not belong to this project" });
       }
       
       const updatedIdea = await storage.updateIdeaPosition(ideaId, positionX, positionY);

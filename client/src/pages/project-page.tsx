@@ -238,7 +238,7 @@ export default function ProjectPage() {
   // Update idea position
   const updateIdeaPositionMutation = useMutation({
     mutationFn: async ({ ideaId, positionX, positionY }: { ideaId: number; positionX: string; positionY: string }) => {
-      const response = await fetch(`/api/ideas/${ideaId}/position`, {
+      const response = await fetch(`/api/projects/${parsedProjectId}/ideas/${ideaId}/position`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
