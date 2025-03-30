@@ -144,33 +144,6 @@ export default function Workspace({
               <PlusCircle className="h-4 w-4 mr-2" />
               New Idea
             </Button>
-            
-            <Button
-              variant="outline"
-              className="border-gray-300 bg-white text-gray-700"
-            >
-              <Pen className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
-            
-            <Button
-              variant="outline"
-              className={`border-gray-300 bg-white text-gray-700 ${isDrawingLine ? 'bg-primary-light text-primary' : ''}`}
-              onClick={() => {
-                if (selectedIdea) {
-                  handleStartConnection(selectedIdea);
-                } else {
-                  toast({
-                    title: "No idea selected",
-                    description: "Please select an idea first to create a connection",
-                    variant: "destructive",
-                  });
-                }
-              }}
-            >
-              <LinkIcon className="h-4 w-4 mr-2" />
-              Connect Ideas
-            </Button>
           </div>
           
           <div className="flex items-center space-x-3">
