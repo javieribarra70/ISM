@@ -1,7 +1,8 @@
 import {
-  users, ideas, projects, projectUsers, relationships, invitations,
-  type User, type Idea, type Project, type ProjectUser, type Relationship, type Invitation,
-  type InsertUser, type InsertIdea, type InsertProject, type InsertProjectUser, type InsertRelationship, type InsertInvitation
+  users, ideas, projects, projectUsers, relationships, invitations, categories,
+  type User, type Idea, type Project, type ProjectUser, type Relationship, type Invitation, type Category,
+  type InsertUser, type InsertIdea, type InsertProject, type InsertProjectUser, 
+  type InsertRelationship, type InsertInvitation, type InsertCategory
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
@@ -44,6 +45,13 @@ export interface IStorage {
   addUserToProject(projectUser: InsertProjectUser): Promise<ProjectUser>;
   getUserProjectRole(userId: number, projectId: number): Promise<string | undefined>;
 
+  // Category operations
+  getProjectCategories(projectId: number): Promise<Category[]>;
+  getCategory(id: number): Promise<Category | undefined>;
+  createCategory(category: InsertCategory): Promise<Category>;
+  updateCategory(id: number, category: Partial<InsertCategory>): Promise<Category | undefined>;
+  deleteCategory(id: number): Promise<boolean>;
+
   // Idea operations
   getProjectIdeas(projectId: number): Promise<Idea[]>;
   getIdea(id: number): Promise<Idea | undefined>;
@@ -69,6 +77,7 @@ export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private projects: Map<number, Project>;
   private projectUsers: Map<number, ProjectUser>;
+  private categories: Map<number, Category>;
   private ideas: Map<number, Idea>;
   private relationships: Map<number, Relationship>;
   private invitations: Map<number, Invitation>;
@@ -78,6 +87,7 @@ export class MemStorage implements IStorage {
   private currentUserId: number;
   private currentProjectId: number;
   private currentProjectUserId: number;
+  private currentCategoryId: number;
   private currentIdeaId: number;
   private currentRelationshipId: number;
   private currentInvitationId: number;
@@ -86,6 +96,7 @@ export class MemStorage implements IStorage {
     this.users = new Map();
     this.projects = new Map();
     this.projectUsers = new Map();
+    this.categories = new Map();
     this.ideas = new Map();
     this.relationships = new Map();
     this.invitations = new Map();
@@ -93,6 +104,7 @@ export class MemStorage implements IStorage {
     this.currentUserId = 1;
     this.currentProjectId = 1;
     this.currentProjectUserId = 1;
+    this.currentCategoryId = 1;
     this.currentIdeaId = 1;
     this.currentRelationshipId = 1;
     this.currentInvitationId = 1;
@@ -228,6 +240,127 @@ export class MemStorage implements IStorage {
       pu => pu.userId === userId && pu.projectId === projectId
     );
     return projectUser?.role;
+  }
+
+  // Category operations
+  async getProjectCategories(projectId: number): Promise<Category[]> {
+    return Array.from(this.categories.values())
+      .filter(category => category.projectId === projectId);
+  }
+
+  async getCategory(id: number): Promise<Category | undefined> {
+    return this.categories.get(id);
+  }
+
+  async createCategory(insertCategory: InsertCategory): Promise<Category> {
+    const id = this.currentCategoryId++;
+    const now = new Date();
+    const category: Category = { 
+      ...insertCategory, 
+      id,
+      createdAt: now
+    };
+    this.categories.set(id, category);
+    return category;
+  }
+
+  async updateCategory(id: number, categoryUpdate: Partial<InsertCategory>): Promise<Category | undefined> {
+    const category = this.categories.get(id);
+    if (!category) return undefined;
+    
+    const updatedCategory: Category = { 
+      ...category, 
+      ...categoryUpdate
+    };
+    
+    this.categories.set(id, updatedCategory);
+    return updatedCategory;
+  }
+
+  async deleteCategory(id: number): Promise<boolean> {
+    // Obtener la categoría
+    const category = this.categories.get(id);
+    if (!category) return false;
+    
+    // Eliminar la categoría
+    return this.categories.delete(id);
+  }
+
+  // Category operations
+  async getProjectCategories(projectId: number): Promise<Category[]> {
+    try {
+      const result = await db.select()
+        .from(categories)
+        .where(eq(categories.projectId, projectId));
+      return result;
+    } catch (error) {
+      console.error('Error getting project categories:', error);
+      throw error;
+    }
+  }
+
+  async getCategory(id: number): Promise<Category | undefined> {
+    try {
+      const result = await db.select()
+        .from(categories)
+        .where(eq(categories.id, id))
+        .limit(1);
+      return result.length > 0 ? result[0] : undefined;
+    } catch (error) {
+      console.error('Error getting category:', error);
+      throw error;
+    }
+  }
+
+  async createCategory(categoryData: InsertCategory): Promise<Category> {
+    try {
+      const result = await db.insert(categories)
+        .values(categoryData)
+        .returning();
+      return result[0];
+    } catch (error) {
+      console.error('Error creating category:', error);
+      throw error;
+    }
+  }
+
+  async updateCategory(id: number, categoryUpdate: Partial<InsertCategory>): Promise<Category | undefined> {
+    try {
+      const result = await db.update(categories)
+        .set(categoryUpdate)
+        .where(eq(categories.id, id))
+        .returning();
+      
+      return result.length > 0 ? result[0] : undefined;
+    } catch (error) {
+      console.error('Error updating category:', error);
+      throw error;
+    }
+  }
+
+  async deleteCategory(id: number): Promise<boolean> {
+    try {
+      // First check if there are ideas using this category
+      const ideasResult = await db.select({ id: ideas.id })
+        .from(ideas)
+        .where(eq(ideas.categoryId, id))
+        .limit(1);
+      
+      if (ideasResult.length > 0) {
+        // Don't delete categories that are in use
+        console.warn(`Category ${id} is in use by ideas and cannot be deleted`);
+        return false;
+      }
+      
+      const result = await db.delete(categories)
+        .where(eq(categories.id, id))
+        .returning();
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      throw error;
+    }
   }
 
   // Idea operations
@@ -415,6 +548,16 @@ export class DatabaseStorage implements IStorage {
           created_by INTEGER NOT NULL REFERENCES users(id)
         );`;
         
+        await sql`CREATE TABLE IF NOT EXISTS categories (
+          id SERIAL PRIMARY KEY,
+          project_id INTEGER NOT NULL REFERENCES projects(id),
+          name TEXT NOT NULL,
+          description TEXT,
+          color TEXT NOT NULL DEFAULT '#2196F3',
+          created_by INTEGER NOT NULL REFERENCES users(id),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );`;
+        
         await sql`CREATE TABLE IF NOT EXISTS invitations (
           id SERIAL PRIMARY KEY,
           project_id INTEGER NOT NULL REFERENCES projects(id),
@@ -556,6 +699,9 @@ export class DatabaseStorage implements IStorage {
           
           // Eliminar ideas
           await sql`DELETE FROM ideas WHERE project_id = ${projectId}`;
+          
+          // Eliminar categorías
+          await sql`DELETE FROM categories WHERE project_id = ${projectId}`;
           
           // Eliminar invitaciones
           await sql`DELETE FROM invitations WHERE project_id = ${projectId}`;
@@ -708,6 +854,83 @@ export class DatabaseStorage implements IStorage {
       return result.length > 0 ? result[0].role : undefined;
     } catch (error) {
       console.error('Error getting user project role:', error);
+      throw error;
+    }
+  }
+
+  // Category operations
+  async getProjectCategories(projectId: number): Promise<Category[]> {
+    try {
+      const result = await db.select()
+        .from(categories)
+        .where(eq(categories.projectId, projectId));
+      return result;
+    } catch (error) {
+      console.error('Error getting project categories:', error);
+      throw error;
+    }
+  }
+
+  async getCategory(id: number): Promise<Category | undefined> {
+    try {
+      const result = await db.select()
+        .from(categories)
+        .where(eq(categories.id, id))
+        .limit(1);
+      return result.length > 0 ? result[0] : undefined;
+    } catch (error) {
+      console.error('Error getting category:', error);
+      throw error;
+    }
+  }
+
+  async createCategory(categoryData: InsertCategory): Promise<Category> {
+    try {
+      const result = await db.insert(categories)
+        .values(categoryData)
+        .returning();
+      return result[0];
+    } catch (error) {
+      console.error('Error creating category:', error);
+      throw error;
+    }
+  }
+
+  async updateCategory(id: number, categoryUpdate: Partial<InsertCategory>): Promise<Category | undefined> {
+    try {
+      const result = await db.update(categories)
+        .set(categoryUpdate)
+        .where(eq(categories.id, id))
+        .returning();
+      
+      return result.length > 0 ? result[0] : undefined;
+    } catch (error) {
+      console.error('Error updating category:', error);
+      throw error;
+    }
+  }
+
+  async deleteCategory(id: number): Promise<boolean> {
+    try {
+      // First check if there are ideas using this category
+      const ideasResult = await db.select({ id: ideas.id })
+        .from(ideas)
+        .where(eq(ideas.categoryId, id))
+        .limit(1);
+      
+      if (ideasResult.length > 0) {
+        // Don't delete categories that are in use
+        console.warn(`Category ${id} is in use by ideas and cannot be deleted`);
+        return false;
+      }
+      
+      const result = await db.delete(categories)
+        .where(eq(categories.id, id))
+        .returning();
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error('Error deleting category:', error);
       throw error;
     }
   }

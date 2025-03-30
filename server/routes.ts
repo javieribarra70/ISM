@@ -8,7 +8,8 @@ import { eq, or, isNull, and } from "drizzle-orm";
 import { 
   insertProjectSchema, 
   insertIdeaSchema, 
-  insertRelationshipSchema, 
+  insertRelationshipSchema,
+  insertCategorySchema,
   User,
   users,
   AVAILABLE_CATEGORIES
@@ -537,40 +538,83 @@ export function registerRoutes(app: Express): Server {
   // Endpoint para obtener las categorías disponibles
   app.get("/api/categories", async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // Retornar categorías predefinidas del sistema
       res.json(AVAILABLE_CATEGORIES);
     } catch (error) {
       next(error);
     }
   });
 
-  // Endpoint para obtener categorías con conteo de ideas para un proyecto específico
+  // Endpoint para obtener categorías específicas de un proyecto
   app.get("/api/projects/:projectId/categories", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = parseInt(req.params.projectId);
-      const ideas = await storage.getProjectIdeas(projectId);
       
-      // Crear un mapa para almacenar las categorías y su conteo
-      const categoryMap = new Map<string, number>();
+      // Obtener las categorías del proyecto desde la base de datos
+      const categories = await storage.getProjectCategories(projectId);
+      res.json(categories);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Endpoint para crear una nueva categoría en un proyecto
+  app.post("/api/projects/:projectId/categories", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
       
-      // Inicializar todas las categorías disponibles con conteo 0
-      AVAILABLE_CATEGORIES.forEach(category => {
-        categoryMap.set(category, 0);
+      const projectId = parseInt(req.params.projectId);
+      
+      const categoryData = insertCategorySchema.parse({
+        ...req.body,
+        projectId,
+        createdBy: req.user.id
       });
       
-      // Incrementar el conteo para cada idea según su categoría
-      ideas.forEach(idea => {
-        if (idea.category && categoryMap.has(idea.category)) {
-          categoryMap.set(idea.category, categoryMap.get(idea.category)! + 1);
-        }
-      });
+      const category = await storage.createCategory(categoryData);
+      res.status(201).json(category);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Endpoint para actualizar una categoría existente
+  app.patch("/api/categories/:categoryId", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const categoryId = parseInt(req.params.categoryId);
+      const category = await storage.getCategory(categoryId);
       
-      // Convertir el mapa a un array de objetos
-      const categoriesWithCount = Array.from(categoryMap.entries()).map(([name, count]) => ({
-        name,
-        count
-      }));
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
       
-      res.json(categoriesWithCount);
+      const { name, description, color } = req.body;
+      const updateData: Partial<typeof category> = {};
+      
+      if (name !== undefined) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
+      if (color !== undefined) updateData.color = color;
+      
+      const updatedCategory = await storage.updateCategory(categoryId, updateData);
+      res.json(updatedCategory);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Endpoint para eliminar una categoría
+  app.delete("/api/categories/:categoryId", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const categoryId = parseInt(req.params.categoryId);
+      const deleted = await storage.deleteCategory(categoryId);
+      
+      if (!deleted) {
+        return res.status(400).json({ message: "Category is in use by ideas and cannot be deleted" });
+      }
+      
+      res.status(204).send();
     } catch (error) {
       next(error);
     }

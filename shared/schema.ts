@@ -2,7 +2,8 @@ import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Categorías disponibles (constante)
+// Mantenemos las categorías predefinidas como referencia inicial
+// pero serán reemplazadas por las categorías en la base de datos
 export const AVAILABLE_CATEGORIES = [
   "Primary Goal",
   "Policy",
@@ -41,13 +42,25 @@ export const projectUsers = pgTable("project_users", {
   role: text("role").notNull().default("user"), // "admin" or "user"
 });
 
+// Categories model
+export const categories = pgTable("categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  color: text("color").default("#E2E8F0"), // Color para mostrar en la UI
+  projectId: integer("project_id").notNull().references(() => projects.id), // Categoría asociada a un proyecto
+  createdBy: integer("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Ideas model
 export const ideas = pgTable("ideas", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
   clarification: text("clarification"), // Agregando el campo clarificación
-  category: text("category").notNull(),
+  categoryId: integer("category_id").references(() => categories.id), // Relación con la tabla de categorías
+  category: text("category"), // Mantenemos este campo para compatibilidad (se eliminará en el futuro)
   projectId: integer("project_id").notNull().references(() => projects.id),
   createdBy: integer("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -98,11 +111,20 @@ export const insertProjectUserSchema = createInsertSchema(projectUsers).pick({
   role: true,
 });
 
+export const insertCategorySchema = createInsertSchema(categories).pick({
+  name: true,
+  description: true,
+  color: true,
+  projectId: true,
+  createdBy: true,
+});
+
 export const insertIdeaSchema = createInsertSchema(ideas).pick({
   title: true,
   description: true,
   clarification: true, // Agregando el campo de clarificación
-  category: true,
+  categoryId: true,  // Usamos el ID de categoría en el futuro
+  category: true,    // Mantenemos para compatibilidad
   projectId: true,
   createdBy: true,
   positionX: true,
@@ -133,6 +155,9 @@ export type Project = typeof projects.$inferSelect;
 
 export type InsertProjectUser = z.infer<typeof insertProjectUserSchema>;
 export type ProjectUser = typeof projectUsers.$inferSelect;
+
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
+export type Category = typeof categories.$inferSelect;
 
 export type InsertIdea = z.infer<typeof insertIdeaSchema>;
 export type Idea = typeof ideas.$inferSelect;
