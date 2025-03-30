@@ -56,6 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Login successful",
         description: `Welcome back, ${userData.username}!`,
       });
+      // Forzar la redirección directamente
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       toast({
@@ -79,6 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Registration successful",
         description: `Welcome, ${userData.username}!`,
       });
+      // Forzar la redirección directamente
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       toast({
@@ -99,6 +103,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Logged out",
         description: "You have been logged out successfully.",
       });
+      // Forzar la redirección directamente
+      window.location.href = "/auth";
     },
     onError: (error: Error) => {
       toast({
