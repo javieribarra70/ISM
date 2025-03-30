@@ -9,11 +9,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { User, Project } from "@shared/schema";
 import { Loader2, UserPlus, FolderOpen, Edit, Trash, Download, RotateCw, UserCog, ShieldAlert, Shield } from "lucide-react";
 import { useUsers } from "@/hooks/use-users";
-import { useAuth } from "@/hooks/use-auth";
 
 function UserManagementSection() {
   const { users, isLoading, updateUserRoleMutation } = useUsers();
-  const { user: currentUser } = useAuth();
+  // En lugar de usar useAuth, usaremos el userId de la página de administración
   
   if (isLoading) {
     return (
@@ -80,25 +79,18 @@ function UserManagementSection() {
                       </td>
                       <td className="p-2">
                         <div className="flex items-center space-x-2">
-                          {/* No permitir cambiar el rol del usuario actual para evitar bloqueos */}
-                          {currentUser && user.id !== currentUser.id ? (
-                            <Select
-                              onValueChange={(value) => handleRoleChange(user.id, value as 'admin' | 'user')}
-                              defaultValue={user.role}
-                            >
-                              <SelectTrigger className="w-32">
-                                <SelectValue placeholder="Cambiar rol" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="user">Usuario</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <span className="text-xs text-muted-foreground italic">
-                              (Usuario actual)
-                            </span>
-                          )}
+                          <Select
+                            onValueChange={(value) => handleRoleChange(user.id, value as 'admin' | 'user')}
+                            defaultValue={user.role}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue placeholder="Cambiar rol" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="user">Usuario</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </td>
                     </tr>
