@@ -267,7 +267,8 @@ export default function ProjectPage() {
           
           {/* Pestañas de navegación */}
           <Tabs 
-            defaultValue="ideas" 
+            value={activeTab}
+            onValueChange={setActiveTab}
             className="w-full px-4 sm:px-6 lg:px-8"
           >
             <TabsList className="grid w-full max-w-lg grid-cols-4 mb-4">
@@ -355,11 +356,13 @@ export default function ProjectPage() {
       <NewCategoryModal
         isOpen={isNewCategoryModalOpen}
         onClose={() => setIsNewCategoryModalOpen(false)}
-        onCreateCategory={(categoryData) => {
+        onSaveCategory={(categoryData) => {
           console.log("Category created:", categoryData);
           setIsNewCategoryModalOpen(false);
+          // Asegurarse de que la pestaña activa sea "categories"
+          setActiveTab("categories");
         }}
-        isCreating={false}
+        isSubmitting={false}
       />
     </div>
   );
