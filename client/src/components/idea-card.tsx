@@ -40,11 +40,12 @@ export default function IdeaCard({
   
   // Actualizar la posición cuando cambian las props de la idea
   useEffect(() => {
+    console.log(`IdeaCard ${idea.id} recibió actualización de posición: X:${idea.positionX}, Y:${idea.positionY}`);
     setPosition({
       x: parseInt(idea.positionX) || 0,
       y: parseInt(idea.positionY) || 0,
     });
-  }, [idea.positionX, idea.positionY]);
+  }, [idea.id, idea.positionX, idea.positionY]);
   const cardRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   

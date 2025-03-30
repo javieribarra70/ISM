@@ -128,6 +128,12 @@ export default function Workspace({
     }
   };
 
+  // Efecto para registrar actualizaciones de ideas
+  useEffect(() => {
+    console.log("Workspace recibió actualización de ideas:", 
+      ideas.map(i => `Idea ${i.id}: X:${i.positionX}, Y:${i.positionY}`).join(", "));
+  }, [ideas]);
+
   // Find idea by id (for positioning)
   const findIdeaById = (id: number) => {
     return ideas.find(idea => idea.id === id);

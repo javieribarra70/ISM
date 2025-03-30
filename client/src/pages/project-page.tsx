@@ -74,6 +74,7 @@ export default function ProjectPage() {
     queryKey: [`/api/projects/${parsedProjectId}/ideas`],
     enabled: !!project, // Solo cargar ideas si el proyecto existe
     refetchInterval: 5000, // Poll every 5 seconds for updates
+    staleTime: 0, // Siempre tratar los datos como obsoletos para forzar recargas
   });
 
   // Fetch project relationships
