@@ -912,20 +912,25 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCategory(id: number): Promise<boolean> {
     try {
-      console.log(`Intentando eliminar categoría con ID: ${id}`);
+      // First check if there are ideas using this category
+      const ideasResult = await db.select({ id: ideas.id })
+        .from(ideas)
+        .where(eq(ideas.categoryId, id))
+        .limit(1);
       
-      // Eliminar la categoría directamente sin verificar las ideas que la usan
-      // Esto es seguro porque categoryId es una referencia opcional en las ideas
+      if (ideasResult.length > 0) {
+        // Don't delete categories that are in use
+        console.warn(`Category ${id} is in use by ideas and cannot be deleted`);
+        return false;
+      }
+      
       const result = await db.delete(categories)
         .where(eq(categories.id, id))
         .returning();
       
-      const deleted = result.length > 0;
-      console.log(`Resultado de la eliminación de categoría: ${deleted ? 'Exitoso' : 'Fallido'}`);
-      
-      return deleted;
+      return result.length > 0;
     } catch (error) {
-      console.error('Error eliminando categoría:', error);
+      console.error('Error deleting category:', error);
       throw error;
     }
   }

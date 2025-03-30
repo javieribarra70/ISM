@@ -1,0 +1,19 @@
+  async deleteCategory(id: number): Promise<boolean> {
+    try {
+      console.log(`Intentando eliminar categoría con ID: ${id}`);
+      
+      // Eliminar la categoría directamente sin verificar las ideas que la usan
+      // Esto es seguro porque categoryId es una referencia opcional en las ideas
+      const result = await db.delete(categories)
+        .where(eq(categories.id, id))
+        .returning();
+      
+      const deleted = result.length > 0;
+      console.log(`Resultado de la eliminación de categoría: ${deleted ? 'Exitoso' : 'Fallido'}`);
+      
+      return deleted;
+    } catch (error) {
+      console.error('Error eliminando categoría:', error);
+      throw error;
+    }
+  }
