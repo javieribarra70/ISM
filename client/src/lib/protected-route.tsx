@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { Redirect, Route, useLocation } from "wouter";
+import { useEffect } from "react";
 
 interface ProtectedRouteProps {
   path: string;
@@ -8,8 +9,19 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ path, component: Component }: ProtectedRouteProps) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, refreshUser } = useAuth();
   const [location] = useLocation();
+  
+  // Refrescar los datos del usuario cuando se monta el componente
+  useEffect(() => {
+    // Refrescar los datos del usuario solo si parece que hay un usuario
+    if (user) {
+      console.log("ProtectedRoute: Refrescando datos del usuario...");
+      refreshUser().catch(err => {
+        console.error("Error al refrescar datos del usuario:", err);
+      });
+    }
+  }, [refreshUser, location, user]);
 
   return (
     <Route

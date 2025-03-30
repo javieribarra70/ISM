@@ -10,53 +10,42 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import NewIdeaModal from "@/components/modals/new-idea-modal";
 import InviteUsersModal from "@/components/modals/invite-users-modal";
 import { Avatars } from "@/components/avatars";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function ProjectPage() {
   const params = useParams<{ projectId: string }>();
   const projectId = params.projectId;
   const [location, navigate] = useLocation();
-  const [user, setUser] = useState<any>(null);
-  
-  // Fetch user data
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const response = await fetch('/api/user', {
-          credentials: 'include',
-        });
-        
-        if (response.status === 401) {
-          navigate('/auth');
-          return;
-        }
-        
-        if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        navigate('/auth');
-      }
-    };
-    
-    fetchUserData();
-  }, [navigate]);
+  const { user, isLoading: isLoadingUser } = useAuth();
   const [isNewIdeaModalOpen, setIsNewIdeaModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [lastPolled, setLastPolled] = useState<Date>(new Date());
-
+  
   // Validate projectId
   const parsedProjectId = parseInt(projectId || "");
   if (isNaN(parsedProjectId)) {
     navigate("/");
     return null;
   }
+  
+  // Redirect to auth page if user is not authenticated
+  useEffect(() => {
+    if (!isLoadingUser && !user) {
+      navigate('/auth');
+    }
+  }, [user, isLoadingUser, navigate]);
 
   // Fetch project details
-  const { data: project, isLoading: isProjectLoading, isError: isProjectError } = useQuery<Project>({
+  const { 
+    data: project, 
+    isLoading: isProjectLoading, 
+    isError: isProjectError,
+    refetch: refetchProject 
+  } = useQuery<Project>({
     queryKey: [`/api/projects/${parsedProjectId}`],
     queryFn: undefined,
+    retry: 3, // Intente hasta 3 veces
+    retryDelay: 1000, // Espere 1 segundo entre reintentos
   });
 
   // Fetch project ideas
@@ -93,6 +82,34 @@ export default function ProjectPage() {
     queryFn: undefined,
     refetchInterval: 10000, // Poll every 10 seconds
   });
+  
+  // Efecto para refrescar los datos del proyecto cuando cambie el usuario
+  useEffect(() => {
+    if (user && parsedProjectId) {
+      console.log(`Refrescando datos del proyecto ${parsedProjectId}...`);
+      
+      // Refrescar inmediatamente
+      const refreshAll = async () => {
+        try {
+          await refetchProject();
+          await refetchIdeas();
+          await refetchRelationships();
+          await refetchProjectUsers();
+          console.log("Datos del proyecto actualizados correctamente");
+        } catch (error) {
+          console.error("Error al refrescar datos del proyecto:", error);
+        }
+      };
+      
+      refreshAll();
+      
+      // Configurar un intervalo para refrescar periódicamente
+      const interval = setInterval(refreshAll, 10000);
+      
+      // Limpiar el intervalo al desmontar el componente
+      return () => clearInterval(interval);
+    }
+  }, [user, parsedProjectId, refetchProject, refetchIdeas, refetchRelationships, refetchProjectUsers]);
 
   // Update the lastPolled time after a successful poll
   useEffect(() => {

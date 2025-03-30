@@ -11,7 +11,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import { useAuth, registerSchema } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth";
+
+// Register schema
+const registerSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string(),
+  email: z.string().email("Invalid email address"),
+  role: z.literal("admin").default("admin"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
 
 // Login schema
 const loginSchema = z.object({
@@ -40,7 +52,7 @@ export default function AuthPage() {
   const registerForm = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      username: "",
+      username: "",  // Asegúrate de incluir username en defaultValues
       password: "",
       confirmPassword: "",
       email: "",
@@ -58,11 +70,17 @@ export default function AuthPage() {
   }, [user, navigate]);
 
   const onLoginSubmit = async (data: LoginFormValues) => {
-    loginMutation.mutate(data, {
-      onSuccess: () => {
-        navigate("/");
-      }
-    });
+    // Asegurar que ambos campos estén presentes antes de enviar
+    if (data.username && data.password) {
+      loginMutation.mutate({
+        username: data.username,
+        password: data.password
+      }, {
+        onSuccess: () => {
+          navigate("/");
+        }
+      });
+    }
   };
 
   const onRegisterSubmit = async (data: RegisterFormValues) => {

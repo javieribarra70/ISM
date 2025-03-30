@@ -24,7 +24,7 @@ declare global {
 
 // Middleware to check if user is authenticated
 const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
-  if (req.isAuthenticated()) {
+  if (req.isAuthenticated() && req.user) {
     return next();
   }
   res.status(401).json({ message: "Unauthorized" });
@@ -40,23 +40,31 @@ const isAdmin = (req: Request, res: Response, next: NextFunction) => {
 
 // Middleware to check if user has access to project
 const hasProjectAccess = async (req: Request, res: Response, next: NextFunction) => {
+  // Verificar autenticación
   if (!req.isAuthenticated() || !req.user) {
+    console.log("No está autenticado o no hay usuario en la solicitud");
     return res.status(401).json({ message: "Unauthorized" });
   }
+  
+  console.log(`Usuario autenticado: ${req.user.id} - ${req.user.username} - Rol: ${req.user.role}`);
 
   const projectId = parseInt(req.params.projectId);
   if (isNaN(projectId)) {
+    console.log(`ID de proyecto inválido: ${req.params.projectId}`);
     return res.status(400).json({ message: "Invalid project ID" });
   }
 
   try {
     // Check if user is an admin (system-wide)
     if (req.user.role === "admin") {
+      console.log(`Usuario es admin global, acceso permitido a proyecto ${projectId}`);
       return next();
     }
 
     // Check if user has access to this specific project
     const role = await storage.getUserProjectRole(req.user.id, projectId);
+    console.log(`Rol del usuario en el proyecto ${projectId}: ${role || 'ninguno'}`);
+    
     if (!role) {
       return res.status(403).json({ message: "You don't have access to this project" });
     }
@@ -65,6 +73,7 @@ const hasProjectAccess = async (req: Request, res: Response, next: NextFunction)
     req.projectRole = role;
     next();
   } catch (error) {
+    console.error(`Error al verificar acceso al proyecto: ${error}`);
     next(error);
   }
 };

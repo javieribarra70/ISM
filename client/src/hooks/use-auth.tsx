@@ -14,11 +14,16 @@ type AuthContextType = {
   isLoading: boolean;
   error: Error | null;
   loginMutation: UseMutationResult<any, Error, LoginData>;
-  logoutMutation: UseMutationResult<void, Error, void>;
+  logoutMutation: UseMutationResult<any, Error, void>;
   registerMutation: UseMutationResult<any, Error, RegisterData>;
+  refreshUser: () => Promise<void>;
 };
 
-type LoginData = Pick<InsertUser, "username" | "password">;
+// Definición manual en lugar de usar Pick para evitar errores de tipo
+type LoginData = {
+  username: string;
+  password: string;
+};
 
 // Extend the insert schema with validation rules for registration
 const registerSchema = insertUserSchema.extend({
@@ -49,22 +54,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
-      return await res.json();
+      try {
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(credentials),
+          credentials: "include",
+        });
+        
+        if (!res.ok) {
+          const errorData = await res.text();
+          throw new Error(errorData || `${res.status}: ${res.statusText}`);
+        }
+        
+        return await res.json();
+      } catch (error) {
+        console.error("Login error:", error);
+        throw error;
+      }
     },
     onSuccess: (userData: SelectUser) => {
+      console.log("Login successful, user data:", userData);
       queryClient.setQueryData(["/api/user"], userData);
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
       toast({
         title: "Login successful",
         description: `Welcome back, ${userData.username}!`,
       });
-      // Forzar la redirección directamente
-      window.location.href = "/";
+      
+      // Usar un pequeño retraso para asegurar que el contexto de autenticación se actualice
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 500);
     },
     onError: (error: Error) => {
+      console.error("Login mutation error:", error);
       toast({
         title: "Login failed",
-        description: error.message,
+        description: error.message || "Error al iniciar sesión",
         variant: "destructive",
       });
     },
@@ -72,24 +102,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const registerMutation = useMutation({
     mutationFn: async (userData: RegisterData) => {
-      // Remove confirmPassword as it's not in the backend schema
-      const { confirmPassword, ...userDataWithoutConfirm } = userData;
-      const res = await apiRequest("POST", "/api/register", userDataWithoutConfirm);
-      return await res.json();
+      try {
+        // Remove confirmPassword as it's not in the backend schema
+        const { confirmPassword, ...userDataWithoutConfirm } = userData;
+        
+        const res = await fetch("/api/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(userDataWithoutConfirm),
+          credentials: "include",
+        });
+        
+        if (!res.ok) {
+          const errorData = await res.text();
+          throw new Error(errorData || `${res.status}: ${res.statusText}`);
+        }
+        
+        return await res.json();
+      } catch (error) {
+        console.error("Registration error:", error);
+        throw error;
+      }
     },
     onSuccess: (userData: SelectUser) => {
+      console.log("Registration successful, user data:", userData);
       queryClient.setQueryData(["/api/user"], userData);
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
       toast({
         title: "Registration successful",
         description: `Welcome, ${userData.username}!`,
       });
-      // Forzar la redirección directamente
-      window.location.href = "/";
+      
+      // Usar un pequeño retraso para asegurar que el contexto de autenticación se actualice
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 500);
     },
     onError: (error: Error) => {
+      console.error("Registration mutation error:", error);
       toast({
         title: "Registration failed",
-        description: error.message,
+        description: error.message || "Error al registrarse",
         variant: "destructive",
       });
     },
@@ -97,25 +153,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/logout");
+      try {
+        const res = await fetch("/api/logout", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+          }
+        });
+        
+        if (!res.ok) {
+          const errorData = await res.text();
+          throw new Error(errorData || `${res.status}: ${res.statusText}`);
+        }
+        
+        return res;
+      } catch (error) {
+        console.error("Logout error:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
+      console.log("Logout successful");
+      // Limpiar los datos del usuario en el caché
       queryClient.setQueryData(["/api/user"], null);
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
       toast({
-        title: "Logged out",
-        description: "You have been logged out successfully.",
+        title: "Sesión cerrada",
+        description: "Has cerrado sesión correctamente.",
       });
-      // Forzar la redirección directamente
-      window.location.href = "/auth";
+      
+      // Usar un pequeño retraso para asegurar que el contexto de autenticación se actualice
+      setTimeout(() => {
+        window.location.href = "/auth";
+      }, 500);
     },
     onError: (error: Error) => {
+      console.error("Logout mutation error:", error);
       toast({
-        title: "Logout failed",
-        description: error.message,
+        title: "Error al cerrar sesión",
+        description: error.message || "No se pudo cerrar la sesión",
         variant: "destructive",
       });
     },
   });
+
+  // Función para actualizar manualmente los datos del usuario
+  const refreshUser = async () => {
+    console.log("Refreshing user data...");
+    try {
+      const refreshed = await queryClient.refetchQueries({ 
+        queryKey: ["/api/user"]
+      });
+      console.log("User data refreshed:", refreshed);
+    } catch (error) {
+      console.error("Error refreshing user data:", error);
+    }
+  };
 
   return (
     <AuthContext.Provider
@@ -126,6 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginMutation,
         logoutMutation,
         registerMutation,
+        refreshUser
       }}
     >
       {children}
