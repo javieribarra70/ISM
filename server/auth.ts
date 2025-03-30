@@ -79,7 +79,15 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      const { username, password, email, role = "user" } = req.body;
+      const { username, password, email, role } = req.body;
+      
+      // Validaciones básicas
+      if (!username || !password || !email) {
+        return res.status(400).json({ message: "Username, password, and email are required" });
+      }
+      
+      // Validar que el rol sea válido (solo permitir 'user' o 'admin')
+      const validRole = role === 'admin' || role === 'user' ? role : 'user';
       
       // Check if username or email already exists
       const existingUser = await storage.getUserByUsername(username);
@@ -97,17 +105,20 @@ export function setupAuth(app: Express) {
         username,
         password: hashedPassword,
         email,
-        role
+        role: validRole
       });
 
       // Remove password from response
       const { password: _, ...userWithoutPassword } = user;
+      
+      console.log(`New user registered: ${username} with role: ${validRole}`);
 
       req.login(user, (err) => {
         if (err) return next(err);
         res.status(201).json(userWithoutPassword);
       });
     } catch (error) {
+      console.error("Registration error:", error);
       next(error);
     }
   });

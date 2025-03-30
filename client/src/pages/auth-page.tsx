@@ -292,6 +292,32 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={registerForm.control}
+                      name="role"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Account Type</FormLabel>
+                          <div className="flex gap-4">
+                            <div 
+                              className={`flex-1 p-3 border rounded-md cursor-pointer transition-all ${field.value === 'user' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
+                              onClick={() => field.onChange('user')}
+                            >
+                              <div className="font-medium mb-1">User</div>
+                              <div className="text-xs text-muted-foreground">Collaborate on projects, create and connect ideas</div>
+                            </div>
+                            <div 
+                              className={`flex-1 p-3 border rounded-md cursor-pointer transition-all ${field.value === 'admin' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
+                              onClick={() => field.onChange('admin')}
+                            >
+                              <div className="font-medium mb-1">Administrator</div>
+                              <div className="text-xs text-muted-foreground">Full system access, manage users and all projects</div>
+                            </div>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <Button 
                       type="submit" 
                       className="w-full mt-4" 
