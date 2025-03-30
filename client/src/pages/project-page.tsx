@@ -5,10 +5,11 @@ import Sidebar from "@/components/sidebar";
 import Workspace from "@/components/workspace";
 import { Button } from "@/components/ui/button";
 import { Project, Idea, Relationship, ProjectUser } from "@shared/schema";
-import { Loader2, Share2, Users, UserPlus, ListChecks, Network, FileText } from "lucide-react";
+import { Loader2, Share2, Users, UserPlus, ListChecks, Network, FileText, Tags } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import NewIdeaModal from "@/components/modals/new-idea-modal";
 import InviteUsersModal from "@/components/modals/invite-users-modal";
+import NewCategoryModal from "@/components/modals/new-category-modal";
 import { Avatars } from "@/components/avatars";
 import { useAuth } from "@/hooks/use-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,6 +20,7 @@ export default function ProjectPage() {
   const [location, navigate] = useLocation();
   const { user, isLoading: isLoadingUser } = useAuth();
   const [isNewIdeaModalOpen, setIsNewIdeaModalOpen] = useState(false);
+  const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [lastPolled, setLastPolled] = useState<Date>(new Date());
   // Estado para controlar la pestaña activa - debe estar aquí con los otros estados
@@ -267,7 +269,11 @@ export default function ProjectPage() {
             defaultValue="ideas" 
             className="w-full px-4 sm:px-6 lg:px-8"
           >
-            <TabsList className="grid w-full max-w-lg grid-cols-3 mb-4">
+            <TabsList className="grid w-full max-w-lg grid-cols-4 mb-4">
+              <TabsTrigger value="categories" className="flex items-center">
+                <Tags className="h-4 w-4 mr-2" />
+                Categories
+              </TabsTrigger>
               <TabsTrigger value="ideas" className="flex items-center">
                 <ListChecks className="h-4 w-4 mr-2" />
                 Ideas
@@ -281,6 +287,71 @@ export default function ProjectPage() {
                 Connection
               </TabsTrigger>
             </TabsList>
+            <TabsContent value="categories" className="mt-0 p-4">
+              <div className="bg-white rounded-lg shadow p-6 min-h-[600px]">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-semibold">Categorías de Ideas</h2>
+                  <Button 
+                    size="sm" 
+                    className="bg-primary text-white"
+                    onClick={() => setIsNewCategoryModalOpen(true)}
+                  >
+                    <Tags className="h-4 w-4 mr-2" />
+                    Agregar Categoría
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Lista de categorías existentes */}
+                  <div className="border rounded-lg p-4 hover:border-primary hover:shadow-sm transition-all">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-medium text-lg">Problemas Técnicos</h3>
+                        <p className="text-sm text-muted-foreground mt-1">Problemas de infraestructura y tecnología</p>
+                      </div>
+                      <div className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                        4 ideas
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="border rounded-lg p-4 hover:border-primary hover:shadow-sm transition-all">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-medium text-lg">Mejoras UX</h3>
+                        <p className="text-sm text-muted-foreground mt-1">Mejoras en la experiencia de usuario</p>
+                      </div>
+                      <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                        2 ideas
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="border rounded-lg p-4 hover:border-primary hover:shadow-sm transition-all">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-medium text-lg">Optimización</h3>
+                        <p className="text-sm text-muted-foreground mt-1">Mejoras de rendimiento y optimización</p>
+                      </div>
+                      <div className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded">
+                        1 idea
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Card para crear nueva categoría */}
+                  <div 
+                    className="border border-dashed rounded-lg p-4 flex items-center justify-center hover:border-primary hover:shadow-sm transition-all cursor-pointer"
+                    onClick={() => setIsNewCategoryModalOpen(true)}
+                  >
+                    <div className="text-center">
+                      <Tags className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm font-medium">Agregar Nueva Categoría</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
             
             <TabsContent value="ideas" className="mt-0 p-0">
               {/* Main workspace content */}
@@ -340,6 +411,16 @@ export default function ProjectPage() {
           refetchProjectUsers();
           setIsInviteModalOpen(false);
         }}
+      />
+
+      <NewCategoryModal
+        isOpen={isNewCategoryModalOpen}
+        onClose={() => setIsNewCategoryModalOpen(false)}
+        onCreateCategory={(categoryData) => {
+          console.log("Category created:", categoryData);
+          setIsNewCategoryModalOpen(false);
+        }}
+        isCreating={false}
       />
     </div>
   );
