@@ -22,6 +22,13 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
   const [selectedIdeas, setSelectedIdeas] = useState<number[]>([]);
   const [votingLimit, setVotingLimit] = useState<number>(0);
 
+  // Determine if user is admin of this project
+  const isUserProjectAdmin = () => {
+    if (!user) return false;
+    // Fetch project users separately would be better, but for simplicity:
+    return user.role === "admin";
+  };
+
   // Fetch project ideas
   const { 
     data: ideas = [], 
@@ -59,20 +66,19 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
     isLoading: isLimitLoading
   } = useQuery<{limit: number}>({
     queryKey: [`/api/projects/${projectId}/voting-limit`],
-    enabled: !!projectId,
-    onSuccess: (data) => {
-      if (data && data.limit) {
-        setVotingLimit(data.limit);
-      }
-    }
+    enabled: !!projectId
   });
-
-  // Determine if user is admin of this project
-  const isUserProjectAdmin = () => {
-    if (!user) return false;
-    // Fetch project users separately would be better, but for simplicity:
-    return user.role === "admin";
-  };
+  
+  // Set voting limit when data is loaded
+  useEffect(() => {
+    if (limitData && limitData.limit) {
+      setVotingLimit(limitData.limit);
+    } else {
+      // Default voting limit calculation: 1/3 + 1 of total ideas
+      const defaultLimit = Math.ceil(ideas.length / 3) + 1;
+      setVotingLimit(defaultLimit);
+    }
+  }, [limitData, ideas.length]);
 
   // Load existing votes into selected state
   useEffect(() => {

@@ -761,7 +761,13 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/projects/:projectId/voting-limit", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = parseInt(req.params.projectId);
-      const limit = await storage.getVotingLimitForProject(projectId);
+      
+      // Get all ideas for the project to calculate the limit
+      const ideas = await storage.getProjectIdeas(projectId);
+      
+      // Voting limit calculation: 1/3 + 1 of total ideas
+      const limit = Math.ceil(ideas.length / 3) + 1;
+      
       res.json({ limit });
     } catch (error) {
       next(error);
@@ -795,8 +801,11 @@ export function registerRoutes(app: Express): Server {
       
       // Si no hay voto existente, verificar si no excede el límite
       if (!existingVote) {
-        // Obtener el límite de votos para el proyecto
-        const votingLimit = await storage.getVotingLimitForProject(projectId);
+        // Get all ideas for the project to calculate the limit
+        const ideas = await storage.getProjectIdeas(projectId);
+        
+        // Voting limit calculation: 1/3 + 1 of total ideas
+        const votingLimit = Math.ceil(ideas.length / 3) + 1;
         
         // Si ya alcanzó el límite, no permitir más votos
         if (userVotes.length >= votingLimit) {
@@ -812,6 +821,7 @@ export function registerRoutes(app: Express): Server {
       const voteResult = await storage.toggleIdeaVote({
         userId,
         ideaId,
+        projectId,
         createdAt: new Date()
       });
       
