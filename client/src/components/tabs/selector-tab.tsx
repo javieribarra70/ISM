@@ -162,13 +162,17 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
   
   // Función para manejar la selección/deselección de ideas para el proceso de conexión
   const handleConnectionToggle = (ideaId: number) => {
+    console.log(`Toggle connection for idea ${ideaId}. Current selected:`, connectionIdeas);
+    
     setConnectionIdeas(prevSelected => {
       // Si ya está seleccionada, la quitamos
       if (prevSelected.includes(ideaId)) {
+        console.log(`Removing idea ${ideaId} from selection`);
         return prevSelected.filter(id => id !== ideaId);
       } 
       // Si no está seleccionada, la añadimos
       else {
+        console.log(`Adding idea ${ideaId} to selection`);
         return [...prevSelected, ideaId];
       }
     });
@@ -176,29 +180,34 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
   
   // Efecto para guardar en localStorage cuando cambian las ideas seleccionadas
   useEffect(() => {
+    console.log("Saving to localStorage:", connectionIdeas);
     localStorage.setItem(`project_${projectId}_connection_ideas`, JSON.stringify(connectionIdeas));
     
-    if (connectionIdeas.length > 0) {
-      toast({
-        title: "Selection saved",
-        description: `${connectionIdeas.length} ideas selected for the connection process.`,
-        duration: 2000,
-      });
-    }
+    // No mostrar notificación toast en cada renderizado, solo cuando el usuario hace clic en el checkbox
   }, [connectionIdeas, projectId]);
   
   // Cargar las ideas previamente seleccionadas para conexión, si existen
   useEffect(() => {
+    console.log("Loading ideas for project", projectId);
     const savedIdeas = localStorage.getItem(`project_${projectId}_connection_ideas`);
+    console.log("Retrieved from localStorage:", savedIdeas);
+    
     if (savedIdeas) {
       try {
         const parsedIdeas = JSON.parse(savedIdeas);
+        console.log("Parsed ideas:", parsedIdeas);
+        
         if (Array.isArray(parsedIdeas)) {
+          console.log("Setting connection ideas to:", parsedIdeas);
           setConnectionIdeas(parsedIdeas);
         }
       } catch (e) {
         console.error("Error loading saved ideas for connection:", e);
       }
+    } else {
+      // Initialize with empty array if nothing is saved
+      console.log("No saved ideas found, initializing with empty array");
+      setConnectionIdeas([]);
     }
   }, [projectId]);
 
