@@ -20,7 +20,6 @@ function App() {
             <Switch>
               <ProtectedRoute path="/" component={HomePage} />
               <ProtectedRoute path="/projects/:projectId" component={ProjectPage} />
-              <ProtectedRoute path="/projects/:projectId/settings" component={SettingsPage} />
               <ProtectedRoute path="/admin" component={AdminPage} />
               <Route path="/auth" component={AuthPage} />
               <Route component={NotFound} />

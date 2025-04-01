@@ -13,6 +13,7 @@ import InviteUsersModal from "@/components/modals/invite-users-modal";
 import NewCategoryModal from "@/components/modals/new-category-modal";
 import CategoriesTab from "@/components/tabs/categories-tab";
 import SelectorTab from "@/components/tabs/selector-tab";
+import SettingsTab from "@/components/tabs/settings-tab";
 import { Avatars } from "@/components/avatars";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -474,10 +475,7 @@ export default function ProjectPage() {
                 Connection
               </TabsTrigger>
               {isUserProjectAdmin() && (
-                <TabsTrigger 
-                  value="settings"
-                  onClick={() => navigate(`/projects/${projectId}/settings`)}
-                >
+                <TabsTrigger value="settings">
                   Settings
                 </TabsTrigger>
               )}
@@ -543,6 +541,12 @@ export default function ProjectPage() {
                 </p>
               </div>
             </TabsContent>
+            
+            {isUserProjectAdmin() && (
+              <TabsContent value="settings" className="mt-0 p-4">
+                <SettingsTab projectId={parsedProjectId} />
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </div>

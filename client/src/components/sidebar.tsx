@@ -233,13 +233,18 @@ export default function Sidebar() {
                 {(projectRoles[project.id] === "admin" || user?.role === "admin") && (
                   <div
                     onClick={() => {
-                      console.log(`Navegando a la configuración del proyecto ${project.id}`);
-                      window.location.href = `/projects/${project.id}/settings`;
+                      console.log(`Abriendo configuración del proyecto ${project.id} como pestaña`);
+                      // Navegar al proyecto primero y luego configurar la pestaña activa
+                      const targetUrl = `/projects/${project.id}`;
+                      // Usar storage para indicar que se debe mostrar la pestaña de configuración
+                      sessionStorage.setItem(`project_${project.id}_active_tab`, "settings");
+                      // Redirigir a la página del proyecto
+                      window.location.href = targetUrl;
                       isMobile && setOpen(false);
                     }}
                     className={cn(
                       "flex items-center px-3 py-2 ml-4 text-sm font-medium rounded-md truncate cursor-pointer",
-                      location === `/projects/${project.id}/settings`
+                      isCurrentProject(project.id) && sessionStorage.getItem(`project_${project.id}_active_tab`) === "settings"
                         ? "bg-primary-light text-primary" 
                         : "text-gray-700 hover:bg-gray-50"
                     )}
