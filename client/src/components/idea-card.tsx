@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Idea, User, Category } from "@shared/schema";
 import { Edit } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import IdeaContextMenu from "./idea-context-menu";
 
@@ -24,6 +25,8 @@ interface IdeaCardProps {
   onDelete?: (idea: Idea) => void;
   onContextMenu?: boolean;
   anonymousMode?: boolean; // Modo anónimo para ocultar nombres de creadores
+  clusteringMode?: boolean; // Modo de agrupación de ideas
+  allIdeas?: Idea[]; // Todas las ideas para detectar colisiones
 }
 
 export default function IdeaCard({
@@ -39,13 +42,18 @@ export default function IdeaCard({
   onDelete,
   onContextMenu = false,
   anonymousMode = false,
+  clusteringMode = false,
+  allIdeas = [],
 }: IdeaCardProps) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState({
     x: parseInt(idea.positionX) || 0,
     y: parseInt(idea.positionY) || 0,
   });
+  const [overlappingIdeaId, setOverlappingIdeaId] = useState<number | null>(null);
+  const originalPosition = useRef({ x: 0, y: 0 });
   
   // Actualizar la posición cuando cambian las props de la idea
   useEffect(() => {
@@ -117,9 +125,62 @@ export default function IdeaCard({
 
   // Función getTimeAgo eliminada ya que no la necesitamos más
 
+  // Función para detectar colisiones entre ideas
+  const checkForCollisions = (currentPosition: { x: number, y: number }) => {
+    if (!clusteringMode || !cardRef.current) return null;
+    
+    const currentRect = {
+      left: currentPosition.x,
+      top: currentPosition.y,
+      right: currentPosition.x + cardRef.current.offsetWidth,
+      bottom: currentPosition.y + cardRef.current.offsetHeight
+    };
+    
+    // Buscar tarjetas que se superpongan
+    for (const otherIdea of allIdeas) {
+      // No detectar colisión con la misma idea
+      if (otherIdea.id === idea.id) continue;
+      
+      // Obtener posición de la otra idea
+      const otherX = parseInt(otherIdea.positionX) || 0;
+      const otherY = parseInt(otherIdea.positionY) || 0;
+      
+      // Suponer que todas las tarjetas son del mismo tamaño
+      const cardWidth = cardRef.current.offsetWidth;
+      const cardHeight = cardRef.current.offsetHeight;
+      
+      const otherRect = {
+        left: otherX,
+        top: otherY,
+        right: otherX + cardWidth,
+        bottom: otherY + cardHeight
+      };
+      
+      // Comprobar si hay colisión (algoritmo simple de detección de colisión de cajas)
+      const hasCollision = !(
+        currentRect.right < otherRect.left || 
+        currentRect.left > otherRect.right || 
+        currentRect.bottom < otherRect.top || 
+        currentRect.top > otherRect.bottom
+      );
+      
+      if (hasCollision) {
+        return otherIdea.id;
+      }
+    }
+    
+    return null;
+  };
+
   // Mouse/Touch handlers for dragging
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!cardRef.current) return;
+    
+    // Guardar la posición original para poder volver si se cancela
+    originalPosition.current = { 
+      x: position.x, 
+      y: position.y 
+    };
     
     // Activar el estado de arrastre
     setIsDragging(true);
@@ -164,6 +225,27 @@ export default function IdeaCard({
     cardRef.current.style.left = `${newX}px`;
     cardRef.current.style.top = `${newY}px`;
     
+    // Verificar colisiones cuando está en modo clustering
+    if (clusteringMode) {
+      const collidingIdeaId = checkForCollisions({ x: newX, y: newY });
+      
+      // Si hay una colisión con otra idea, cambiamos el estilo del borde para indicar
+      // que se puede fusionar si se suelta
+      if (collidingIdeaId !== overlappingIdeaId) {
+        setOverlappingIdeaId(collidingIdeaId);
+        
+        // Si hay una idea con la que se puede fusionar, mostramos un estilo visual
+        if (collidingIdeaId !== null && cardRef.current) {
+          cardRef.current.style.boxShadow = "0 0 0 3px rgba(34, 197, 94, 0.7)"; // Verde para indicar fusión
+          cardRef.current.style.transform = "scale(1.02)";
+        } else if (cardRef.current) {
+          // Si no hay colisión, volvemos al estilo normal
+          cardRef.current.style.boxShadow = "";
+          cardRef.current.style.transform = "";
+        }
+      }
+    }
+    
     // Luego actualizamos el estado React
     setPosition({ x: newX, y: newY });
     
@@ -172,33 +254,104 @@ export default function IdeaCard({
   };
 
   const handleMouseUp = () => {
-    if (isDragging && onPositionChange && cardRef.current) {
-      // Obtener la posición ACTUAL directamente del elemento DOM
-      // Esto garantiza que usamos la posición final exacta donde el usuario soltó el cursor
-      const finalPosition = {
-        x: parseInt(cardRef.current.style.left || '0px') || position.x,
-        y: parseInt(cardRef.current.style.top || '0px') || position.y
-      };
+    if (!isDragging || !cardRef.current) {
+      setIsDragging(false);
+      return;
+    }
+    
+    // Restaurar los estilos visuales aplicados durante el arrastre
+    if (cardRef.current) {
+      cardRef.current.style.boxShadow = "";
+      cardRef.current.style.transform = "";
+    }
+    
+    // Comprobar si estamos en modo clustering y si hay una idea superpuesta
+    if (clusteringMode && overlappingIdeaId !== null) {
+      // Encontrar la idea con la que se superpone
+      const targetIdea = allIdeas.find(i => i.id === overlappingIdeaId);
       
-      // Convertir a string para la API
-      const newPosX = finalPosition.x.toString();
-      const newPosY = finalPosition.y.toString();
-      
-      console.log(`Card dropped at final DOM position: X:${newPosX}, Y:${newPosY}`);
-      
-      // Actualizar el estado React para mantener sincronizado el componente
-      setPosition(finalPosition);
-      
-      // Actualizar los valores de la idea para mantener la coherencia
-      idea.positionX = newPosX;
-      idea.positionY = newPosY;
-      
-      // Asegurar que el DOM refleja exactamente esta posición final
-      cardRef.current.style.left = `${finalPosition.x}px`;
-      cardRef.current.style.top = `${finalPosition.y}px`;
-      
-      // Notificar al componente padre para guardar la posición en la base de datos
-      // con un pequeño retraso para asegurar que todo está actualizado
+      if (targetIdea) {
+        // Mostrar confirmación al usuario
+        const confirmMerge = window.confirm(
+          `¿Quieres fusionar estas ideas?\n\n` +
+          `"${idea.title}" y "${targetIdea.title}"`
+        );
+        
+        if (confirmMerge) {
+          toast({
+            title: "Fusionando ideas",
+            description: "Se combinarán ambas ideas en una nueva",
+          });
+          
+          // Simulamos la fusión para la demo
+          // En una implementación real, aquí se llamaría a la API de OpenAI
+          // para fusionar el contenido de las ideas
+          
+          // Por ahora, abrimos el modal de edición con la idea actual
+          // En la implementación completa, esto debería abrir un nuevo modal
+          // con una fusión generada por IA 
+          if (onEdit) {
+            onEdit(idea);
+          }
+          
+          // Resetear el estado de superposición
+          setOverlappingIdeaId(null);
+          setIsDragging(false);
+          return;
+        } else {
+          // Si el usuario cancela, devolvemos la idea a su posición original
+          if (cardRef.current) {
+            cardRef.current.style.left = `${originalPosition.current.x}px`;
+            cardRef.current.style.top = `${originalPosition.current.y}px`;
+            
+            // Actualizar el estado y la idea
+            setPosition(originalPosition.current);
+            idea.positionX = originalPosition.current.x.toString();
+            idea.positionY = originalPosition.current.y.toString();
+            
+            // Notificar al componente padre la posición original
+            if (onPositionChange) {
+              onPositionChange(
+                originalPosition.current.x.toString(),
+                originalPosition.current.y.toString()
+              );
+            }
+            
+            setIsDragging(false);
+            setOverlappingIdeaId(null);
+            return;
+          }
+        }
+      }
+    }
+    
+    // Si no hubo fusión, procedemos con el comportamiento normal
+    // Obtener la posición ACTUAL directamente del elemento DOM
+    const finalPosition = {
+      x: parseInt(cardRef.current.style.left || '0px') || position.x,
+      y: parseInt(cardRef.current.style.top || '0px') || position.y
+    };
+    
+    // Convertir a string para la API
+    const newPosX = finalPosition.x.toString();
+    const newPosY = finalPosition.y.toString();
+    
+    console.log(`Card dropped at final DOM position: X:${newPosX}, Y:${newPosY}`);
+    
+    // Actualizar el estado React para mantener sincronizado el componente
+    setPosition(finalPosition);
+    
+    // Actualizar los valores de la idea para mantener la coherencia
+    idea.positionX = newPosX;
+    idea.positionY = newPosY;
+    
+    // Asegurar que el DOM refleja exactamente esta posición final
+    cardRef.current.style.left = `${finalPosition.x}px`;
+    cardRef.current.style.top = `${finalPosition.y}px`;
+    
+    // Notificar al componente padre para guardar la posición en la base de datos
+    // con un pequeño retraso para asegurar que todo está actualizado
+    if (onPositionChange) {
       setTimeout(() => {
         onPositionChange(newPosX, newPosY);
       }, 0);
@@ -206,6 +359,7 @@ export default function IdeaCard({
     
     // Desactivar el estado de arrastre al finalizar
     setIsDragging(false);
+    setOverlappingIdeaId(null);
   };
 
   // Add/remove event listeners for mouse movement

@@ -2,10 +2,12 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import IdeaCard from "@/components/idea-card";
 import { Idea, Project, Relationship, Category } from "@shared/schema";
-import { PlusCircle, Pen, Link as LinkIcon, ArrowRightCircle } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { PlusCircle, Pen, Link as LinkIcon, ArrowRightCircle, MoveHorizontal } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface WorkspaceProps {
   project: Project;
@@ -33,12 +35,14 @@ export default function Workspace({
   anonymousMode = false,
 }: WorkspaceProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const svgRef = useRef<SVGSVGElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const [selectedIdea, setSelectedIdea] = useState<number | null>(null);
   const [connectingFrom, setConnectingFrom] = useState<number | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isDrawingLine, setIsDrawingLine] = useState(false);
+  const [clusteringMode, setClusteringMode] = useState(false);
 
   // Fetch users info for displaying creator names
   const { data: projectUsers } = useQuery({
@@ -182,6 +186,19 @@ export default function Workspace({
                 Drawing connection...
               </div>
             )}
+            
+            {/* Clustering Mode Toggle */}
+            <div className="flex items-center space-x-2 bg-white/80 rounded-md px-3 py-1.5 border">
+              <Label htmlFor="clustering-mode" className="text-sm cursor-pointer flex items-center gap-1.5">
+                <MoveHorizontal className="h-4 w-4" />
+                Clustering Mode
+              </Label>
+              <Switch 
+                id="clustering-mode" 
+                checked={clusteringMode}
+                onCheckedChange={setClusteringMode}
+              />
+            </div>
           </div>
         </div>
         
@@ -287,6 +304,8 @@ export default function Workspace({
                 onDelete={onDeleteIdea}
                 onContextMenu={true}
                 anonymousMode={anonymousMode}
+                clusteringMode={clusteringMode}
+                allIdeas={ideas}
               />
             ))}
             
