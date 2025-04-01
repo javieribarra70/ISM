@@ -139,16 +139,32 @@ export default function IdeaCard({
     
     // Calcular la nueva posición restando el offset inicial
     // Esto hace que el movimiento sea relativo al punto donde el usuario hizo clic inicialmente
-    const newX = Math.round(e.clientX - dragStartRef.current.x);
-    const newY = Math.round(e.clientY - dragStartRef.current.y);
+    let newX = Math.round(e.clientX - dragStartRef.current.x);
+    let newY = Math.round(e.clientY - dragStartRef.current.y);
+    
+    // Restringir posición dentro de los límites
+    // Límite izquierdo (X no puede ser < 0)
+    newX = Math.max(0, newX);
+    
+    // Límite superior (Y no puede ser < 0)
+    newY = Math.max(0, newY);
+    
+    // Obtener el ancho del contenedor padre (el canvas)
+    const canvas = cardRef.current.closest('[data-testid="canvas"]') || cardRef.current.parentElement;
+    if (canvas) {
+      const canvasWidth = canvas.clientWidth;
+      const cardWidth = cardRef.current.offsetWidth;
+      
+      // Límite derecho (X + cardWidth no puede ser > canvasWidth)
+      // Agregar padding de 24px (equivalente a p-6)
+      newX = Math.min(newX, canvasWidth - cardWidth - 24);
+    }
     
     // Actualizar directamente el DOM primero para un movimiento más fluido
-    // Esto es lo más importante para que el elemento siga exactamente al cursor
     cardRef.current.style.left = `${newX}px`;
     cardRef.current.style.top = `${newY}px`;
     
-    // Luego actualizamos el estado React (pero el DOM ya está actualizado)
-    // Usamos los mismos valores exactos para evitar cualquier discrepancia
+    // Luego actualizamos el estado React
     setPosition({ x: newX, y: newY });
     
     // Prevenir comportamientos por defecto como la selección de texto

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import IdeaCard from "@/components/idea-card";
 import { Idea, Project, Relationship, Category } from "@shared/schema";
@@ -145,6 +145,20 @@ export default function Workspace({
   const findIdeaById = (id: number) => {
     return ideas.find(idea => idea.id === id);
   };
+  
+  // Calculate the minimum canvas height based on idea positions
+  const calculateCanvasHeight = useMemo(() => {
+    if (!ideas || ideas.length === 0) return 600; // Default minimum height
+    
+    // Find the idea with the highest y-position + reasonable card height (140px)
+    const maxY = ideas.reduce((max, idea) => {
+      const y = parseInt(idea.positionY) || 0;
+      return Math.max(max, y + 140); // Adding card height
+    }, 0);
+    
+    // Make sure canvas is at least 600px high, and add padding (100px) at the bottom
+    return Math.max(600, maxY + 100);
+  }, [ideas]);
 
   return (
     <main className="flex-1 relative overflow-y-auto bg-gray-100">
@@ -178,8 +192,10 @@ export default function Workspace({
         >
           <div 
             ref={canvasRef}
-            className="bg-white rounded-lg shadow p-6 min-h-[600px] relative"
+            className="bg-white rounded-lg shadow p-6 relative"
+            style={{ minHeight: `${calculateCanvasHeight}px` }}
             onClick={handleCanvasClick}
+            data-testid="canvas"
           >
             {/* SVG Connector Lines */}
             <svg 
