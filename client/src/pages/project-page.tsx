@@ -5,7 +5,7 @@ import Sidebar from "@/components/sidebar";
 import Workspace from "@/components/workspace";
 import { Button } from "@/components/ui/button";
 import { Project, Idea, Relationship, ProjectUser, Category } from "@shared/schema";
-import { Loader2, Share2, Users, UserPlus, ListChecks, Network, FileText, Tags } from "lucide-react";
+import { Loader2, Share2, Users, UserPlus, ListChecks, Network, FileText, Tags, Settings } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import NewIdeaModal from "@/components/modals/new-idea-modal";
 import EditIdeaModal from "@/components/modals/edit-idea-modal";
@@ -76,6 +76,18 @@ export default function ProjectPage() {
       navigate('/auth');
     }
   }, [user, isLoadingUser, navigate]);
+  
+  // Función para verificar si el usuario actual es administrador del proyecto
+  const isUserProjectAdmin = () => {
+    if (!user || !projectUsers) return false;
+    
+    // Si el usuario es admin global, tiene acceso de administrador a todos los proyectos
+    if (user.role === "admin") return true;
+    
+    // Buscar el rol del usuario en este proyecto específico
+    const userProjectRole = projectUsers.find(pu => pu.userId === user.id)?.role;
+    return userProjectRole === "admin";
+  };
 
   // Fetch project details
   const { 
@@ -421,7 +433,7 @@ export default function ProjectPage() {
             onValueChange={handleTabChange}
             className="w-full px-4 sm:px-6 lg:px-8"
           >
-            <TabsList className="grid w-full max-w-lg grid-cols-4 mb-4">
+            <TabsList className={`grid w-full max-w-lg ${isUserProjectAdmin() ? 'grid-cols-5' : 'grid-cols-4'} mb-4`}>
               <TabsTrigger value="categories" className="flex items-center">
                 <Tags className="h-4 w-4 mr-2" />
                 Categories
@@ -438,6 +450,16 @@ export default function ProjectPage() {
                 <Network className="h-4 w-4 mr-2" />
                 Connection
               </TabsTrigger>
+              {isUserProjectAdmin() && (
+                <TabsTrigger 
+                  value="settings" 
+                  className="flex items-center"
+                  onClick={() => navigate(`/projects/${projectId}/settings`)}
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </TabsTrigger>
+              )}
             </TabsList>
             <TabsContent value="categories" className="mt-0 p-4">
               <CategoriesTab 

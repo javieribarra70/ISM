@@ -19,8 +19,8 @@ function App() {
           <ProjectsProvider>
             <Switch>
               <ProtectedRoute path="/" component={HomePage} />
-              <ProtectedRoute path="/project/:projectId" component={ProjectPage} />
-              <ProtectedRoute path="/project/:projectId/settings" component={SettingsPage} />
+              <ProtectedRoute path="/projects/:projectId" component={ProjectPage} />
+              <ProtectedRoute path="/projects/:projectId/settings" component={SettingsPage} />
               <ProtectedRoute path="/admin" component={AdminPage} />
               <Route path="/auth" component={AuthPage} />
               <Route component={NotFound} />
