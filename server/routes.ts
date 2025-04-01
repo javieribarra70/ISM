@@ -319,15 +319,15 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ message: "Idea not found" });
       }
       
-      // Only allow update if user is global admin or created the idea
-      // Como cambiamos a isAuthenticated en lugar de hasProjectAccess, req.projectRole no está disponible
-      // Así que hacemos la verificación directa desde el rol global del usuario o si creó la idea
+      // Verificar permisos: Administradores pueden editar cualquier idea, usuarios regulares solo las propias
       const isAdmin = req.user.role === "admin";
+      const isCreator = idea.createdBy === req.user.id;
       
       console.log(`Verificando permisos para editar idea: isAdmin=${isAdmin}, userID=${req.user.id}, creadorIdea=${idea.createdBy}`);
       
-      if (!isAdmin && idea.createdBy !== req.user.id) {
-        return res.status(403).json({ message: "You can only edit your own ideas unless you're an admin" });
+      // Si el usuario no es admin y tampoco es el creador, no tiene permisos
+      if (!isAdmin && !isCreator) {
+        return res.status(403).json({ message: "No tienes permisos para editar esta idea" });
       }
       
       const { title, description, clarification, category } = req.body;
@@ -358,13 +358,15 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ message: "Idea not found" });
       }
       
-      // Only allow deletion if user is global admin or created the idea
+      // Verificar permisos: Administradores pueden eliminar cualquier idea, usuarios regulares solo las propias
       const isAdmin = req.user.role === "admin";
+      const isCreator = idea.createdBy === req.user.id;
       
       console.log(`Verificando permisos para eliminar idea: isAdmin=${isAdmin}, userID=${req.user.id}, creadorIdea=${idea.createdBy}`);
       
-      if (!isAdmin && idea.createdBy !== req.user.id) {
-        return res.status(403).json({ message: "You can only delete your own ideas unless you're an admin" });
+      // Si el usuario no es admin y tampoco es el creador, no tiene permisos
+      if (!isAdmin && !isCreator) {
+        return res.status(403).json({ message: "No tienes permisos para eliminar esta idea" });
       }
       
       // Eliminar la idea
