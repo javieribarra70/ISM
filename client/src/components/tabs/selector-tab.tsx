@@ -247,10 +247,10 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
           <h3 className="text-xl font-semibold mb-2">Vote Summary (Admin View)</h3>
           <div className="flex justify-between items-center">
             <p className="text-muted-foreground mb-4">
-              Selecciona las ideas que se utilizarán en el proceso de conexión, independientemente del número de votos.
+              Select the ideas to be used in the connection process, regardless of the number of votes.
             </p>
             <Badge variant="outline" className="mb-4">
-              {connectionIdeas.length} ideas seleccionadas para conexión
+              {connectionIdeas.length} ideas selected for connection
             </Badge>
           </div>
           <Separator className="mb-4" />
@@ -275,7 +275,7 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
                         <div className="flex items-center space-x-2 mt-1">
                           <Badge variant="outline">{getVoteCount(idea.id)} votes</Badge>
                           {isSelectedForConnection && (
-                            <Badge variant="secondary">Seleccionada para conexión</Badge>
+                            <Badge variant="secondary">Selected for connection</Badge>
                           )}
                         </div>
                       </div>
@@ -295,7 +295,7 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
                         htmlFor={`connection-checkbox-${idea.id}`}
                         className="text-sm font-medium cursor-pointer"
                       >
-                        Seleccionar para el proceso de conexión
+                        Select for connection process
                       </Label>
                     </div>
                   </CardContent>
@@ -311,21 +311,21 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
               onClick={() => setConnectionIdeas([])}
               disabled={connectionIdeas.length === 0}
             >
-              Limpiar selección
+              Clear Selection
             </Button>
             <Button 
               variant="default"
               size="sm"
               onClick={() => {
                 toast({
-                  title: "Ideas guardadas para conexión",
-                  description: `${connectionIdeas.length} ideas están listas para el proceso de conexión.`,
+                  title: "Ideas saved for connection",
+                  description: `${connectionIdeas.length} ideas are ready for the connection process.`,
                 });
                 // Aquí se puede añadir lógica adicional para la pestaña de conexión
               }}
               disabled={connectionIdeas.length === 0}
             >
-              Confirmar selección
+              Confirm Selection
             </Button>
           </div>
         </div>
