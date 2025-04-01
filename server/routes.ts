@@ -687,6 +687,25 @@ export function registerRoutes(app: Express): Server {
       if (color !== undefined) updateData.color = color;
       
       const updatedCategory = await storage.updateCategory(categoryId, updateData);
+      
+      // If the name was updated, also update all ideas with this category
+      if (name && name !== category.name) {
+        console.log(`Category name changed from ${category.name} to ${name}, updating all ideas with this category.`);
+        
+        // Get all ideas that use this category
+        const projectIdeas = await storage.getProjectIdeas(projectId);
+        
+        // Filter ideas with the old category name
+        const ideasToUpdate = projectIdeas.filter(idea => idea.category === category.name);
+        
+        // Update each idea with the new category name
+        for (const idea of ideasToUpdate) {
+          await storage.updateIdea(idea.id, { category: name });
+        }
+        
+        console.log(`Updated ${ideasToUpdate.length} ideas with the new category name.`);
+      }
+      
       res.json(updatedCategory);
     } catch (error) {
       next(error);
