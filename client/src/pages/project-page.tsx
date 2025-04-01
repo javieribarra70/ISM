@@ -5,7 +5,8 @@ import Sidebar from "@/components/sidebar";
 import Workspace from "@/components/workspace";
 import { Button } from "@/components/ui/button";
 import { Project, Idea, Relationship, ProjectUser, Category } from "@shared/schema";
-import { Loader2, Share2, Users, UserPlus, ListChecks, Network, FileText, Tags, Settings } from "lucide-react";
+import { Loader2, Share2, Users, UserPlus, ListChecks, Network, FileText, Tags, Settings, 
+         Layers, Lightbulb, BookOpen, CheckSquare, GitBranch } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import NewIdeaModal from "@/components/modals/new-idea-modal";
 import EditIdeaModal from "@/components/modals/edit-idea-modal";
@@ -459,23 +460,23 @@ export default function ProjectPage() {
           >
             <TabsList className={`grid w-full max-w-lg ${isUserProjectAdmin() ? 'grid-cols-6' : 'grid-cols-5'} mb-4`}>
               <TabsTrigger value="categories" className="flex items-center">
-                <Tags className="h-4 w-4 mr-2" />
+                <Layers className="h-4 w-4 mr-2" />
                 Categories
               </TabsTrigger>
               <TabsTrigger value="ideas" className="flex items-center">
-                <ListChecks className="h-4 w-4 mr-2" />
+                <Lightbulb className="h-4 w-4 mr-2" />
                 Ideas
               </TabsTrigger>
               <TabsTrigger value="context" className="flex items-center">
-                <FileText className="h-4 w-4 mr-2" />
+                <BookOpen className="h-4 w-4 mr-2" />
                 Context
               </TabsTrigger>
               <TabsTrigger value="selector" className="flex items-center">
-                <Share2 className="h-4 w-4 mr-2" />
+                <CheckSquare className="h-4 w-4 mr-2" />
                 Selector
               </TabsTrigger>
               <TabsTrigger value="connection" className="flex items-center">
-                <Network className="h-4 w-4 mr-2" />
+                <GitBranch className="h-4 w-4 mr-2" />
                 Connection
               </TabsTrigger>
               {isUserProjectAdmin() && (
