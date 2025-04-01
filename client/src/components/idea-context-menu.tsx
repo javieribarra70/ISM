@@ -36,11 +36,6 @@ export default function IdeaContextMenu({
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onEdit(idea)}>
-          <Edit className="h-4 w-4 mr-2" />
-          Editar idea
-        </DropdownMenuItem>
-        
         {onDuplicate && (
           <DropdownMenuItem onClick={() => onDuplicate(idea)}>
             <Copy className="h-4 w-4 mr-2" />
@@ -56,16 +51,13 @@ export default function IdeaContextMenu({
         )}
         
         {onDelete && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={() => onDelete(idea)}
-              className="text-red-600 hover:text-red-700 focus:text-red-700"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Eliminar
-            </DropdownMenuItem>
-          </>
+          <DropdownMenuItem 
+            onClick={() => onDelete(idea)}
+            className="text-red-600 hover:text-red-700 focus:text-red-700"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Eliminar idea
+          </DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

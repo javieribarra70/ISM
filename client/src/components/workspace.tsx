@@ -5,6 +5,7 @@ import { Idea, Project, Relationship, Category } from "@shared/schema";
 import { PlusCircle, Pen, Link as LinkIcon, ArrowRightCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 interface WorkspaceProps {
   project: Project;

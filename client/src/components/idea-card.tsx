@@ -235,18 +235,20 @@ export default function IdeaCard({
             {idea.category || "Sin categoría"}
           </Badge>
           <div className="flex space-x-1">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6 text-gray-400 hover:text-gray-500"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onEdit) onEdit(idea);
-              }}
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-            {onContextMenu && (
+            {user && idea.createdBy === user.id && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 text-gray-400 hover:text-gray-500"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onEdit) onEdit(idea);
+                }}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            )}
+            {onContextMenu && user && idea.createdBy === user.id && (
               <IdeaContextMenu 
                 idea={idea} 
                 onEdit={onEdit || (() => {})}
