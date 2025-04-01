@@ -245,7 +245,7 @@ export default function Sidebar() {
                     )}
                   >
                     <Settings className="h-4 w-4 mr-2 flex-shrink-0" />
-                    <span className="truncate">Configuración</span>
+                    <span className="truncate">Settings</span>
                   </div>
                 )}
               </div>

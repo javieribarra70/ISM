@@ -52,13 +52,13 @@ export default function EditIdeaModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Editar Idea</DialogTitle>
+          <DialogTitle>Edit Idea</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="title" className="text-right">
-                Título
+                Title
               </Label>
               <Input
                 id="title"
@@ -70,15 +70,15 @@ export default function EditIdeaModal({
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="category" className="text-right">
-                Categoría
+                Category
               </Label>
               <div className="col-span-3">
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar categoría" />
+                    <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="sin_categoria">Sin categoría</SelectItem>
+                    <SelectItem value="sin_categoria">No category</SelectItem>
                     {projectCategories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.name}>
                         {cat.name}
@@ -90,7 +90,7 @@ export default function EditIdeaModal({
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="description" className="text-right">
-                Descripción
+                Description
               </Label>
               <Textarea
                 id="description"
@@ -102,7 +102,7 @@ export default function EditIdeaModal({
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="clarification" className="text-right">
-                Aclaración
+                Clarification
               </Label>
               <Textarea
                 id="clarification"
@@ -115,10 +115,10 @@ export default function EditIdeaModal({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
+              Cancel
             </Button>
             <Button type="submit" disabled={isUpdating}>
-              {isUpdating ? "Guardando..." : "Guardar cambios"}
+              {isUpdating ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </form>

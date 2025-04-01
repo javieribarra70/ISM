@@ -521,20 +521,20 @@ export default function ProjectPage() {
             
             <TabsContent value="context" className="mt-0 p-4">
               <div className="bg-white rounded-lg shadow p-6 min-h-[600px]">
-                <h2 className="text-xl font-semibold mb-4">Contexto del Proyecto</h2>
+                <h2 className="text-xl font-semibold mb-4">Project Context</h2>
                 <p className="text-muted-foreground">
-                  Esta sección permitirá añadir y editar información contextual sobre el proyecto,
-                  como documentos de referencia, objetivos y alcance.
+                  This section will allow adding and editing contextual information about the project,
+                  such as reference documents, objectives, and scope.
                 </p>
               </div>
             </TabsContent>
             
             <TabsContent value="connection" className="mt-0 p-4">
               <div className="bg-white rounded-lg shadow p-6 min-h-[600px]">
-                <h2 className="text-xl font-semibold mb-4">Administración de Conexiones</h2>
+                <h2 className="text-xl font-semibold mb-4">Connection Management</h2>
                 <p className="text-muted-foreground">
-                  Esta sección permitirá visualizar y editar las relaciones entre las ideas del proyecto,
-                  creando estructuras y jerarquías más complejas.
+                  This section will allow viewing and editing relationships between project ideas,
+                  creating more complex structures and hierarchies.
                 </p>
               </div>
             </TabsContent>
