@@ -85,8 +85,8 @@ export default function Sidebar() {
   };
 
   const isCurrentProject = (projectId: number) => {
-    const result = location.startsWith(`/project/${projectId}`);
-    console.log(`Checking if ${location} starts with /project/${projectId}: ${result}`);
+    const result = location.startsWith(`/projects/${projectId}`);
+    console.log(`Checking if ${location} starts with /projects/${projectId}: ${result}`);
     return result;
   };
 
@@ -186,12 +186,12 @@ export default function Sidebar() {
                 <div
                   onClick={() => {
                     console.log(`Navegando al proyecto ${project.id}`);
-                    window.location.href = `/project/${project.id}`;
+                    window.location.href = `/projects/${project.id}`;
                     isMobile && setOpen(false);
                   }}
                   className={cn(
                     "flex items-center px-3 py-2 text-sm font-medium rounded-md truncate cursor-pointer",
-                    location === `/project/${project.id}`
+                    location === `/projects/${project.id}`
                       ? "bg-primary-light text-primary" 
                       : "text-gray-700 hover:bg-gray-50"
                   )}
@@ -203,12 +203,12 @@ export default function Sidebar() {
                 <div
                   onClick={() => {
                     console.log(`Navegando a la configuración del proyecto ${project.id}`);
-                    window.location.href = `/project/${project.id}/settings`;
+                    window.location.href = `/projects/${project.id}/settings`;
                     isMobile && setOpen(false);
                   }}
                   className={cn(
                     "flex items-center px-3 py-2 ml-4 text-sm font-medium rounded-md truncate cursor-pointer",
-                    location === `/project/${project.id}/settings`
+                    location === `/projects/${project.id}/settings`
                       ? "bg-primary-light text-primary" 
                       : "text-gray-700 hover:bg-gray-50"
                   )}

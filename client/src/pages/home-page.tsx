@@ -290,7 +290,7 @@ export default function HomePage() {
                 <Card 
                   key={project.id} 
                   className="hover:shadow-md transition-shadow cursor-pointer border-border"
-                  onClick={() => navigate(`/project/${project.id}`)}
+                  onClick={() => navigate(`/projects/${project.id}`)}
                 >
                   <CardHeader className="pb-2">
                     <CardTitle>{project.name}</CardTitle>
