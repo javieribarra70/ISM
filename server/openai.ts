@@ -55,7 +55,7 @@ export async function mergeIdeasWithAI(idea1: Idea, idea2: Idea): Promise<Partia
       2. Una descripción detallada que integre ambos conceptos de manera fluida.
       3. Una aclaración opcional si es necesario explicar algún detalle adicional.
       
-      Devuelve el resultado en formato JSON con las propiedades: title, description, clarification
+      Devuelve el resultado en formato JSON con las propiedades: title, description, clarification. Respeta el idioma original, si las ideas originales vienen en ingles, responde en ingles, si las ideas originales vienen en español, responde en español. O segun el idioma original, si las ideas originales vienen en otro idioma, responde en ese.
     `;
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {

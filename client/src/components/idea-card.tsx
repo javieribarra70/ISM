@@ -370,9 +370,16 @@ export default function IdeaCard({
         );
         
         if (confirmMerge) {
+          // Preguntar al usuario si desea eliminar las ideas originales después de la fusión
+          const deleteOriginals = window.confirm(
+            `¿Deseas eliminar las ideas originales después de la fusión?\n\n` +
+            `"${idea.title}" y "${targetIdea.title}"\n\n` +
+            `Si seleccionas "Cancelar", las ideas originales se mantendrán junto con la nueva idea fusionada.`
+          );
+          
           toast({
             title: "Fusionando ideas con IA",
-            description: "Procesando la combinación usando OpenAI...",
+            description: `Procesando la combinación usando OpenAI... ${deleteOriginals ? 'Se eliminarán las ideas originales.' : 'Se conservarán las ideas originales.'}`,
           });
           
           // Usar el nuevo endpoint para fusionar ideas con IA
@@ -387,7 +394,7 @@ export default function IdeaCard({
             body: JSON.stringify({
               idea1Id: idea.id,
               idea2Id: targetIdea.id,
-              deleteOriginals: false // No eliminaremos las originales automáticamente
+              deleteOriginals: deleteOriginals // Ahora respetamos la elección del usuario
             })
           })
           .then(response => {
@@ -400,9 +407,13 @@ export default function IdeaCard({
             // Mostrar la nueva idea fusionada
             console.log("Ideas fusionadas con éxito:", data);
             
+            const deletedMessage = data.originalIdeasDeleted 
+              ? "Las ideas originales han sido eliminadas." 
+              : "Las ideas originales se han conservado.";
+            
             toast({
               title: "¡Fusión completada!",
-              description: "Las ideas se han combinado con IA. Refresca para ver los cambios."
+              description: `Las ideas se han combinado con IA. ${deletedMessage} Refresca para ver los cambios.`
             });
             
             // Opcional: recargar la página para mostrar la nueva idea fusionada
