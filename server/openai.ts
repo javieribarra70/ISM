@@ -142,6 +142,13 @@ export async function mergeIdeasWithAI(idea1: Idea, idea2: Idea): Promise<Partia
     }
   } catch (error) {
     console.error("Error al fusionar ideas con OpenAI:", error);
+    console.error("API Key disponible:", !!process.env.OPENAI_API_KEY);
+    console.error("Tipo de error:", typeof error);
+    console.error("Ideas que intentamos fusionar:", {
+      idea1: { id: idea1.id, title: idea1.title, projectId: idea1.projectId },
+      idea2: { id: idea2.id, title: idea2.title, projectId: idea2.projectId }
+    });
+    
     // Si hay cualquier error, caemos de nuevo a la fusión básica
     return createSimpleMerge(idea1, idea2);
   }

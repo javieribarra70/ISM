@@ -380,7 +380,10 @@ export default function IdeaCard({
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'Accept': 'application/json', // Asegurarnos de que queremos recibir JSON
+              'Cache-Control': 'no-cache' // Evitar problemas de caché
             },
+            credentials: 'include', // Importante: incluir cookies para autenticación
             body: JSON.stringify({
               idea1Id: idea.id,
               idea2Id: targetIdea.id,

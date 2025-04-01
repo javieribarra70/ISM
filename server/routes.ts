@@ -429,7 +429,53 @@ export function registerRoutes(app: Express): Server {
       });
     } catch (error) {
       console.error("Error al fusionar ideas:", error);
-      next(error);
+      console.error("API Key presente:", !!process.env.OPENAI_API_KEY);
+      console.error("Detalles de la solicitud:", {
+        projectId: req.params.projectId,
+        idea1Id: req.body.idea1Id,
+        idea2Id: req.body.idea2Id
+      });
+      
+      // En caso de error, intentamos hacer una fusión básica como respaldo
+      try {
+        const idea1 = await storage.getIdea(parseInt(req.body.idea1Id));
+        const idea2 = await storage.getIdea(parseInt(req.body.idea2Id));
+        
+        if (!idea1 || !idea2) {
+          return res.status(404).json({ message: "One or both ideas not found" });
+        }
+        
+        const projectId = parseInt(req.params.projectId);
+        
+        // Fusión simple
+        const simpleContent = {
+          title: `${idea1.title} + ${idea2.title}`,
+          description: `${idea1.description}\n\n${idea2.description}`,
+          clarification: [idea1.clarification || "", idea2.clarification || ""].filter(Boolean).join("\n\n"),
+          category: idea1.category
+        };
+        
+        // Crear la nueva idea combinada
+        const fallbackIdea = await storage.createIdea({
+          projectId,
+          title: simpleContent.title,
+          description: simpleContent.description,
+          clarification: simpleContent.clarification,
+          category: simpleContent.category,
+          createdBy: req.user.id,
+          positionX: idea1.positionX,
+          positionY: idea1.positionY
+        } as any);
+        
+        return res.status(201).json({
+          mergedIdea: fallbackIdea,
+          originalIdeasDeleted: false,
+          usedFallback: true
+        });
+      } catch (fallbackError) {
+        console.error("Error en el fallback de fusión:", fallbackError);
+        next(error);
+      }
     }
   });
   
