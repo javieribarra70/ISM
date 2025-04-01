@@ -152,16 +152,17 @@ export default function IdeaCard({
     
     // Calcular la nueva posición restando el offset inicial
     // Esto hace que el movimiento sea relativo al punto donde el usuario hizo clic inicialmente
-    const newX = e.clientX - dragStartRef.current.x;
-    const newY = e.clientY - dragStartRef.current.y;
+    const newX = Math.round(e.clientX - dragStartRef.current.x);
+    const newY = Math.round(e.clientY - dragStartRef.current.y);
     
-    // Actualizar el estado de posición
-    setPosition({ x: newX, y: newY });
-    
-    // Actualizar directamente el DOM para un movimiento más fluido
-    // Esto evita el retraso que puede ocurrir al esperar que React actualice el estado
+    // Actualizar directamente el DOM primero para un movimiento más fluido
+    // Esto es lo más importante para que el elemento siga exactamente al cursor
     cardRef.current.style.left = `${newX}px`;
     cardRef.current.style.top = `${newY}px`;
+    
+    // Luego actualizamos el estado React (pero el DOM ya está actualizado)
+    // Usamos los mismos valores exactos para evitar cualquier discrepancia
+    setPosition({ x: newX, y: newY });
     
     // Prevenir comportamientos por defecto como la selección de texto
     e.preventDefault();
@@ -169,24 +170,35 @@ export default function IdeaCard({
 
   const handleMouseUp = () => {
     if (isDragging && onPositionChange && cardRef.current) {
-      // Obtener la posición actual directamente del estado
-      // Asegurando que usamos los valores más actualizados
-      const newPosX = position.x.toString();
-      const newPosY = position.y.toString();
+      // Obtener la posición ACTUAL directamente del elemento DOM
+      // Esto garantiza que usamos la posición final exacta donde el usuario soltó el cursor
+      const finalPosition = {
+        x: parseInt(cardRef.current.style.left || '0px') || position.x,
+        y: parseInt(cardRef.current.style.top || '0px') || position.y
+      };
       
-      console.log(`Card dropped at position: X:${newPosX}, Y:${newPosY}`);
+      // Convertir a string para la API
+      const newPosX = finalPosition.x.toString();
+      const newPosY = finalPosition.y.toString();
+      
+      console.log(`Card dropped at final DOM position: X:${newPosX}, Y:${newPosY}`);
+      
+      // Actualizar el estado React para mantener sincronizado el componente
+      setPosition(finalPosition);
       
       // Actualizar los valores de la idea para mantener la coherencia
       idea.positionX = newPosX;
       idea.positionY = newPosY;
       
-      // Asegurar que el DOM refleja exactamente la posición final
-      // Esto elimina cualquier posible discrepancia entre el estado y la representación visual
-      cardRef.current.style.left = `${position.x}px`;
-      cardRef.current.style.top = `${position.y}px`;
+      // Asegurar que el DOM refleja exactamente esta posición final
+      cardRef.current.style.left = `${finalPosition.x}px`;
+      cardRef.current.style.top = `${finalPosition.y}px`;
       
       // Notificar al componente padre para guardar la posición en la base de datos
-      onPositionChange(newPosX, newPosY);
+      // con un pequeño retraso para asegurar que todo está actualizado
+      setTimeout(() => {
+        onPositionChange(newPosX, newPosY);
+      }, 0);
     }
     
     // Desactivar el estado de arrastre al finalizar
