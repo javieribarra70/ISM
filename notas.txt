@@ -1,3 +1,4 @@
-
+No se pudieron instalar los iconos, intentar mas tarde de una forma distinta. 
+Al editar una categoria y cambiarle de nombre, no se actualizan las ideas con el nombre de las categorias nuevas. 
 
 
