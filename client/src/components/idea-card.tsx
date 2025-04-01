@@ -23,6 +23,7 @@ interface IdeaCardProps {
   onEdit?: (idea: Idea) => void;
   onDelete?: (idea: Idea) => void;
   onContextMenu?: boolean;
+  anonymousMode?: boolean; // Modo anónimo para ocultar nombres de creadores
 }
 
 export default function IdeaCard({
@@ -37,6 +38,7 @@ export default function IdeaCard({
   onEdit,
   onDelete,
   onContextMenu = false,
+  anonymousMode = false,
 }: IdeaCardProps) {
   const { user } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
@@ -262,14 +264,16 @@ export default function IdeaCard({
             <span className="font-medium">Clarification:</span> {idea.clarification}
           </p>
         )}
-        <div className="mt-2 flex items-center">
-          <span className="inline-flex items-center text-xs text-gray-500">
-            <div className="h-4 w-4 rounded-full bg-primary-light text-primary text-[8px] flex items-center justify-center mr-1">
-              {creator?.username?.substring(0, 1).toUpperCase() || 'U'}
-            </div>
-            <span className="ml-1">{creator?.username || 'Unknown'}</span>
-          </span>
-        </div>
+        {!anonymousMode && (
+          <div className="mt-2 flex items-center">
+            <span className="inline-flex items-center text-xs text-gray-500">
+              <div className="h-4 w-4 rounded-full bg-primary-light text-primary text-[8px] flex items-center justify-center mr-1">
+                {creator?.username?.substring(0, 1).toUpperCase() || 'U'}
+              </div>
+              <span className="ml-1">{creator?.username || 'Unknown'}</span>
+            </span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

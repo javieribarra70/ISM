@@ -42,6 +42,7 @@ export interface IStorage {
   getProject(id: number): Promise<Project | undefined>;
   getProjectUsers(projectId: number): Promise<(ProjectUser & { user: User })[]>;
   createProject(project: InsertProject): Promise<Project>;
+  updateProject(id: number, project: Partial<InsertProject>): Promise<Project | undefined>;
   addUserToProject(projectUser: InsertProjectUser): Promise<ProjectUser>;
   getUserProjectRole(userId: number, projectId: number): Promise<string | undefined>;
 
@@ -226,6 +227,19 @@ export class MemStorage implements IStorage {
     });
     
     return project;
+  }
+  
+  async updateProject(id: number, projectUpdate: Partial<InsertProject>): Promise<Project | undefined> {
+    const project = this.projects.get(id);
+    if (!project) return undefined;
+    
+    const updatedProject: Project = { 
+      ...project, 
+      ...projectUpdate
+    };
+    
+    this.projects.set(id, updatedProject);
+    return updatedProject;
   }
 
   async addUserToProject(insertProjectUser: InsertProjectUser): Promise<ProjectUser> {
@@ -1275,6 +1289,21 @@ export class DatabaseStorage implements IStorage {
       };
     } catch (error) {
       console.error('Error marking invitation as used:', error);
+      throw error;
+    }
+  }
+  
+  // Implementación de updateProject para DatabaseStorage
+  async updateProject(id: number, projectUpdate: Partial<InsertProject>): Promise<Project | undefined> {
+    try {
+      const result = await db.update(projects)
+        .set(projectUpdate)
+        .where(eq(projects.id, id))
+        .returning();
+      
+      return result.length > 0 ? result[0] : undefined;
+    } catch (error) {
+      console.error('Error updating project settings:', error);
       throw error;
     }
   }

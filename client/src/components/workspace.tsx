@@ -16,6 +16,7 @@ interface WorkspaceProps {
   onUpdateIdeaPosition: (ideaId: number, x: string, y: string) => void;
   onEditIdea?: (idea: Idea) => void;
   onDeleteIdea?: (idea: Idea) => void;
+  anonymousMode?: boolean;
 }
 
 export default function Workspace({
@@ -28,6 +29,7 @@ export default function Workspace({
   onUpdateIdeaPosition,
   onEditIdea,
   onDeleteIdea,
+  anonymousMode = false,
 }: WorkspaceProps) {
   const { toast } = useToast();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -267,6 +269,7 @@ export default function Workspace({
                 onEdit={onEditIdea}
                 onDelete={onDeleteIdea}
                 onContextMenu={true}
+                anonymousMode={anonymousMode}
               />
             ))}
             

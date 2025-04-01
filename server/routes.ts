@@ -165,6 +165,34 @@ export function registerRoutes(app: Express): Server {
       next(error);
     }
   });
+  
+  // Ruta para actualizar la configuración del proyecto (incluyendo modo anónimo)
+  app.patch("/api/projects/:projectId/settings", isProjectAdmin, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const { anonymousMode } = req.body;
+      
+      if (anonymousMode === undefined) {
+        return res.status(400).json({ message: "anonymousMode is required" });
+      }
+      
+      // Validar que sea un booleano
+      if (typeof anonymousMode !== 'boolean') {
+        return res.status(400).json({ message: "anonymousMode must be a boolean" });
+      }
+      
+      const updatedProject = await storage.updateProject(projectId, { anonymousMode });
+      
+      if (!updatedProject) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      console.log(`Proyecto ${projectId} modo anónimo actualizado a: ${anonymousMode}`);
+      res.json(updatedProject);
+    } catch (error) {
+      next(error);
+    }
+  });
 
   // Project users routes
   app.get("/api/projects/:projectId/users", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {

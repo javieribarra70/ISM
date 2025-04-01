@@ -464,6 +464,7 @@ export default function ProjectPage() {
                   setIdeaToEdit(idea);
                   setIsEditIdeaModalOpen(true);
                 }}
+                anonymousMode={project.anonymousMode}
               />
             </TabsContent>
             

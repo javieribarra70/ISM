@@ -5,6 +5,7 @@ import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
 import ProjectPage from "@/pages/project-page";
 import AdminPage from "@/pages/admin-page";
+import SettingsPage from "@/pages/settings-page";
 import { ProjectsProvider } from "@/hooks/use-projects";
 import { UsersProvider } from "@/hooks/use-users";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -19,6 +20,7 @@ function App() {
             <Switch>
               <ProtectedRoute path="/" component={HomePage} />
               <ProtectedRoute path="/project/:projectId" component={ProjectPage} />
+              <ProtectedRoute path="/project/:projectId/settings" component={SettingsPage} />
               <ProtectedRoute path="/admin" component={AdminPage} />
               <Route path="/auth" component={AuthPage} />
               <Route component={NotFound} />

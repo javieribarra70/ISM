@@ -182,22 +182,40 @@ export default function Sidebar() {
           {/* Projects List */}
           <div className="space-y-1 mb-4">
             {projects?.map(project => (
-              <div
-                key={project.id}
-                onClick={() => {
-                  console.log(`Navegando al proyecto ${project.id}`);
-                  window.location.href = `/project/${project.id}`;
-                  isMobile && setOpen(false);
-                }}
-                className={cn(
-                  "flex items-center px-3 py-2 text-sm font-medium rounded-md truncate cursor-pointer",
-                  isCurrentProject(project.id) 
-                    ? "bg-primary-light text-primary" 
-                    : "text-gray-700 hover:bg-gray-50"
-                )}
-              >
-                <FolderKanban className="h-5 w-5 mr-2 flex-shrink-0" />
-                <span className="truncate">{project.name}</span>
+              <div key={project.id} className="space-y-1">
+                <div
+                  onClick={() => {
+                    console.log(`Navegando al proyecto ${project.id}`);
+                    window.location.href = `/project/${project.id}`;
+                    isMobile && setOpen(false);
+                  }}
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-md truncate cursor-pointer",
+                    location === `/project/${project.id}`
+                      ? "bg-primary-light text-primary" 
+                      : "text-gray-700 hover:bg-gray-50"
+                  )}
+                >
+                  <FolderKanban className="h-5 w-5 mr-2 flex-shrink-0" />
+                  <span className="truncate">{project.name}</span>
+                </div>
+                
+                <div
+                  onClick={() => {
+                    console.log(`Navegando a la configuración del proyecto ${project.id}`);
+                    window.location.href = `/project/${project.id}/settings`;
+                    isMobile && setOpen(false);
+                  }}
+                  className={cn(
+                    "flex items-center px-3 py-2 ml-4 text-sm font-medium rounded-md truncate cursor-pointer",
+                    location === `/project/${project.id}/settings`
+                      ? "bg-primary-light text-primary" 
+                      : "text-gray-700 hover:bg-gray-50"
+                  )}
+                >
+                  <Settings className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span className="truncate">Configuración</span>
+                </div>
               </div>
             ))}
             

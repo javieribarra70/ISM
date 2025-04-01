@@ -32,6 +32,7 @@ export const projects = pgTable("projects", {
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdBy: integer("created_by").notNull().references(() => users.id),
+  anonymousMode: boolean("anonymous_mode").default(false).notNull(),
 });
 
 // ProjectUser relation (many-to-many)
@@ -103,6 +104,7 @@ export const insertProjectSchema = createInsertSchema(projects).pick({
   name: true,
   description: true,
   createdBy: true,
+  anonymousMode: true,
 });
 
 export const insertProjectUserSchema = createInsertSchema(projectUsers).pick({
