@@ -108,71 +108,91 @@ export const ideaVotes = pgTable("idea_votes", {
 });
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  email: true,
-  role: true,
-  createdBy: true,
-});
+export const insertUserSchema = createInsertSchema(users)
+  .pick({
+    username: true,
+    password: true,
+    email: true,
+  })
+  .extend({
+    role: z.string().default("user"),
+    createdBy: z.number().optional(),
+  });
 
-export const insertProjectSchema = createInsertSchema(projects).pick({
-  name: true,
-  description: true,
-  context: true,
-  triggeringQuestion: true,
-  relation: true,
-  restriction: true,
-  createdBy: true,
-  anonymousMode: true,
-});
+export const insertProjectSchema = createInsertSchema(projects)
+  .pick({
+    name: true,
+    createdBy: true,
+  })
+  .extend({
+    description: z.string().optional(),
+    context: z.string().optional(),
+    triggeringQuestion: z.string().optional(),
+    relation: z.string().optional(),
+    restriction: z.string().optional(),
+    anonymousMode: z.boolean().default(false),
+  });
 
-export const insertProjectUserSchema = createInsertSchema(projectUsers).pick({
-  projectId: true,
-  userId: true,
-  role: true,
-});
+export const insertProjectUserSchema = createInsertSchema(projectUsers)
+  .pick({
+    projectId: true,
+    userId: true,
+  })
+  .extend({
+    role: z.string().default("user"),
+  });
 
-export const insertCategorySchema = createInsertSchema(categories).pick({
-  name: true,
-  description: true,
-  color: true,
-  projectId: true,
-  createdBy: true,
-});
+export const insertCategorySchema = createInsertSchema(categories)
+  .pick({
+    name: true,
+    projectId: true,
+    createdBy: true,
+  })
+  .extend({
+    description: z.string().optional(),
+    color: z.string().default("#E2E8F0"),
+  });
 
-export const insertIdeaSchema = createInsertSchema(ideas).pick({
-  title: true,
-  description: true,
-  clarification: true, // Agregando el campo de clarificación
-  categoryId: true,  // Usamos el ID de categoría en el futuro
-  category: true,    // Mantenemos para compatibilidad
-  projectId: true,
-  createdBy: true,
-  positionX: true,
-  positionY: true,
-});
+export const insertIdeaSchema = createInsertSchema(ideas)
+  .pick({
+    title: true,
+    projectId: true,
+    createdBy: true,
+  })
+  .extend({
+    description: z.string().optional(),
+    clarification: z.string().optional(),
+    categoryId: z.number().optional(), // Usamos el ID de categoría en el futuro
+    category: z.string().optional(),   // Mantenemos para compatibilidad
+    positionX: z.string().default("0"),
+    positionY: z.string().default("0"),
+  });
 
-export const insertRelationshipSchema = createInsertSchema(relationships).pick({
-  fromIdeaId: true,
-  toIdeaId: true,
-  projectId: true,
-  createdBy: true,
-});
+export const insertRelationshipSchema = createInsertSchema(relationships)
+  .pick({
+    fromIdeaId: true,
+    toIdeaId: true,
+    projectId: true,
+    createdBy: true,
+  });
 
-export const insertInvitationSchema = createInsertSchema(invitations).pick({
-  projectId: true,
-  token: true,
-  email: true,
-  role: true,
-  expiresAt: true,
-});
+export const insertInvitationSchema = createInsertSchema(invitations)
+  .pick({
+    projectId: true,
+    token: true,
+    email: true,
+  })
+  .extend({
+    role: z.string().default("user"),
+    expiresAt: z.date().optional(),
+  });
 
-export const insertIdeaVoteSchema = createInsertSchema(ideaVotes).pick({
-  userId: true,
-  ideaId: true,
-  projectId: true,
-});
+export const insertIdeaVoteSchema = createInsertSchema(ideaVotes)
+  .pick({
+    userId: true,
+    ideaId: true,
+    projectId: true,
+  });
 
 // Export types
 export type InsertUser = z.infer<typeof insertUserSchema>;

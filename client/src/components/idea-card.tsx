@@ -57,11 +57,11 @@ export default function IdeaCard({
   
   // Actualizar la posición cuando cambian las props de la idea
   useEffect(() => {
-    console.log(`IdeaCard ${idea.id} recibió actualización de posición: X:${idea.positionX}, Y:${idea.positionY}`);
+    console.log(`IdeaCard ${idea.id} recibió actualización de posición: X:${idea.positionX || '0'}, Y:${idea.positionY || '0'}`);
     
-    // Convertir a números y establecer la posición
-    const x = parseInt(idea.positionX) || 0;
-    const y = parseInt(idea.positionY) || 0;
+    // Convertir a números y establecer la posición, asegurando que siempre tenemos un valor válido
+    const x = parseInt(String(idea.positionX || '0')) || 0;
+    const y = parseInt(String(idea.positionY || '0')) || 0;
     
     // Actualizar el estado local con la posición recibida de la base de datos
     setPosition({ x, y });
@@ -141,9 +141,9 @@ export default function IdeaCard({
       // No detectar colisión con la misma idea
       if (otherIdea.id === idea.id) continue;
       
-      // Obtener posición de la otra idea
-      const otherX = parseInt(otherIdea.positionX) || 0;
-      const otherY = parseInt(otherIdea.positionY) || 0;
+      // Obtener posición de la otra idea con manejo seguro de valores nulos/undefined
+      const otherX = parseInt(String(otherIdea.positionX || '0')) || 0;
+      const otherY = parseInt(String(otherIdea.positionY || '0')) || 0;
       
       // Suponer que todas las tarjetas son del mismo tamaño
       const cardWidth = cardRef.current.offsetWidth;

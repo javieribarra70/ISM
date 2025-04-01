@@ -1,0 +1,33 @@
+The above error occurred in the <IdeaCard> component:
+
+    at IdeaCard (https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/src/components/idea-card.tsx?t=1743541845040:27:3)
+    at div
+    at div
+    at div
+    at main
+    at Workspace (https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/src/components/workspace.tsx?t=1743541801243:28:3)
+    at div
+    at https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-CPFL7ZFD.js?v=c79a12da:41:13
+    at Presence (https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AZCBCMZO.js?v=c79a12da:24:11)
+    at https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=c79a12da:173:13
+    at _c5 (https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/src/components/ui/tabs.tsx:72:12)
+    at div
+    at https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-CPFL7ZFD.js?v=c79a12da:41:13
+    at Provider (https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LSQNWB54.js?v=c79a12da:38:15)
+    at https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=c79a12da:51:7
+    at div
+    at div
+    at div
+    at ProjectPage (https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/src/pages/project-page.tsx:40:18)
+    at component
+    at Route (https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=c79a12da:323:16)
+    at ProtectedRoute (https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/src/lib/protected-route.tsx:23:34)
+    at Switch (https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=c79a12da:379:17)
+    at ProjectsProvider (https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/src/hooks/use-projects.tsx:21:36)
+    at UsersProvider (https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/src/hooks/use-users.tsx:26:33)
+    at AuthProvider (https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/src/hooks/use-auth.tsx:38:32)
+    at App
+    at QueryClientProvider (https://7d564d68-432f-4115-8b91-f6377156e137-00-31fovxwocfedw.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=c79a12da:2805:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.

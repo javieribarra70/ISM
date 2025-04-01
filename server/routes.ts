@@ -253,7 +253,7 @@ export function registerRoutes(app: Express): Server {
         token,
         role,
         expiresAt
-      });
+      } as any);
       
       res.status(201).json(invitation);
     } catch (error) {
@@ -288,7 +288,7 @@ export function registerRoutes(app: Express): Server {
         projectId: invitation.projectId,
         userId: req.user.id,
         role: invitation.role
-      });
+      } as any);
       
       // Mark invitation as used
       await storage.markInvitationAsUsed(invitation.id);
