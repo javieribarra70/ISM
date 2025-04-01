@@ -18,6 +18,7 @@ import { Avatars } from "@/components/avatars";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CustomTab } from "@/components/ui/custom-tab";
 
 export default function ProjectPage() {
   const params = useParams<{ projectId: string }>();
@@ -459,35 +460,29 @@ export default function ProjectPage() {
             className="w-full px-4 sm:px-6 lg:px-8"
           >
             <TabsList className={`grid w-full max-w-lg ${isUserProjectAdmin() ? 'grid-cols-6' : 'grid-cols-5'} mb-4`}>
-              <TabsTrigger value="categories" className="flex items-center">
-                <Layers className="h-4 w-4 mr-2" />
+              <CustomTab value="categories" icon={Layers}>
                 Categories
-              </TabsTrigger>
-              <TabsTrigger value="ideas" className="flex items-center">
-                <Lightbulb className="h-4 w-4 mr-2" />
+              </CustomTab>
+              <CustomTab value="ideas" icon={Lightbulb}>
                 Ideas
-              </TabsTrigger>
-              <TabsTrigger value="context" className="flex items-center">
-                <BookOpen className="h-4 w-4 mr-2" />
+              </CustomTab>
+              <CustomTab value="context" icon={BookOpen}>
                 Context
-              </TabsTrigger>
-              <TabsTrigger value="selector" className="flex items-center">
-                <CheckSquare className="h-4 w-4 mr-2" />
+              </CustomTab>
+              <CustomTab value="selector" icon={CheckSquare}>
                 Selector
-              </TabsTrigger>
-              <TabsTrigger value="connection" className="flex items-center">
-                <GitBranch className="h-4 w-4 mr-2" />
+              </CustomTab>
+              <CustomTab value="connection" icon={GitBranch}>
                 Connection
-              </TabsTrigger>
+              </CustomTab>
               {isUserProjectAdmin() && (
-                <TabsTrigger 
+                <CustomTab 
                   value="settings" 
-                  className="flex items-center"
+                  icon={Settings}
                   onClick={() => navigate(`/projects/${projectId}/settings`)}
                 >
-                  <Settings className="h-4 w-4 mr-2" />
                   Settings
-                </TabsTrigger>
+                </CustomTab>
               )}
             </TabsList>
             <TabsContent value="categories" className="mt-0 p-4">
