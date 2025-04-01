@@ -134,48 +134,62 @@ export default function IdeaCard({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!cardRef.current) return;
     
+    // Activar el estado de arrastre
     setIsDragging(true);
+    
+    // Calcular y guardar el offset entre la posición del clic y la esquina superior izquierda de la tarjeta
     dragStartRef.current = {
       x: e.clientX - position.x,
       y: e.clientY - position.y,
     };
     
+    // Evitar que el evento se propague a elementos padre
     e.stopPropagation();
   };
 
   const handleMouseMove = (e: MouseEvent) => {
     if (!isDragging || !cardRef.current) return;
     
+    // Calcular la nueva posición restando el offset inicial
+    // Esto hace que el movimiento sea relativo al punto donde el usuario hizo clic inicialmente
     const newX = e.clientX - dragStartRef.current.x;
     const newY = e.clientY - dragStartRef.current.y;
     
-    // Update the position
+    // Actualizar el estado de posición
     setPosition({ x: newX, y: newY });
     
+    // Actualizar directamente el DOM para un movimiento más fluido
+    // Esto evita el retraso que puede ocurrir al esperar que React actualice el estado
+    cardRef.current.style.left = `${newX}px`;
+    cardRef.current.style.top = `${newY}px`;
+    
+    // Prevenir comportamientos por defecto como la selección de texto
     e.preventDefault();
   };
 
   const handleMouseUp = () => {
-    if (isDragging && onPositionChange) {
-      // Convertir a string para asegurar que es un formato consistente
+    if (isDragging && onPositionChange && cardRef.current) {
+      // Obtener la posición actual directamente del estado
+      // Asegurando que usamos los valores más actualizados
       const newPosX = position.x.toString();
       const newPosY = position.y.toString();
       
       console.log(`Card dropped at position: X:${newPosX}, Y:${newPosY}`);
       
-      // Actualizar los valores iniciales inmediatamente para mantener la coherencia visual
+      // Actualizar los valores de la idea para mantener la coherencia
       idea.positionX = newPosX;
       idea.positionY = newPosY;
       
-      // También actualizar manualmente el DOM si está disponible
-      if (cardRef.current) {
-        cardRef.current.style.left = `${position.x}px`;
-        cardRef.current.style.top = `${position.y}px`;
-      }
+      // Asegurar que el DOM refleja exactamente la posición final
+      // Esto elimina cualquier posible discrepancia entre el estado y la representación visual
+      cardRef.current.style.left = `${position.x}px`;
+      cardRef.current.style.top = `${position.y}px`;
       
-      // Notificar al componente padre para guardar la posición
+      // Notificar al componente padre para guardar la posición en la base de datos
       onPositionChange(newPosX, newPosY);
     }
+    
+    // Desactivar el estado de arrastre al finalizar
     setIsDragging(false);
   };
 
@@ -199,9 +213,9 @@ export default function IdeaCard({
     <Card 
       ref={cardRef}
       className={cn(
-        "idea-card w-60 shadow-sm cursor-move transition-all",
+        "idea-card w-60 shadow-sm cursor-move",
         isSelected && "border-2 border-primary",
-        isDragging && "opacity-70 shadow-md"
+        isDragging ? "opacity-80 shadow-md transition-none" : "transition-all duration-200"
       )}
       style={{
         ...style,
