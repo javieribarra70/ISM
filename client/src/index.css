@@ -15,12 +15,16 @@
 /* Estilos personalizados para la fusión de ideas */
 .merge-highlight {
   box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.7) !important;
-  transform: scale(1.03) !important;
+  transform: scale(1.05) !important;
   transition: all 0.2s ease-in-out !important;
   z-index: 5 !important;
+  border: 2px solid rgb(34, 197, 94) !important;
+  background-color: rgba(34, 197, 94, 0.05) !important;
 }
 
 .merge-target {
-  outline: 2px dashed rgb(34, 197, 94) !important;
+  outline: 3px dashed rgb(34, 197, 94) !important;
   outline-offset: 3px !important;
+  background-color: rgba(34, 197, 94, 0.05) !important;
+  border-color: rgb(34, 197, 94) !important;
 }

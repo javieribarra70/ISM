@@ -174,12 +174,26 @@ export default function IdeaCard({
       console.log(`Comparando con tarjeta ${otherIdea.id}: (${otherRect.left}, ${otherRect.top}) - (${otherRect.right}, ${otherRect.bottom})`);
       
       // Verificar primero si hay alguna superposición en absoluto
-      const hasOverlap = !(
-        currentRect.right < otherRect.left || 
-        currentRect.left > otherRect.right || 
-        currentRect.bottom < otherRect.top || 
-        currentRect.top > otherRect.bottom
-      );
+      // Algoritmo simplificado: si el centro de una tarjeta está dentro de la otra, consideramos colisión
+      const currentCenterX = currentRect.left + (cardWidth / 2);
+      const currentCenterY = currentRect.top + (cardHeight / 2);
+      
+      const isPointInRect = (x: number, y: number, rect: any) => {
+        return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+      };
+      
+      // Verificamos si el centro de la tarjeta actual está dentro de la otra tarjeta
+      const currentCenterInOther = isPointInRect(currentCenterX, currentCenterY, otherRect);
+      
+      // O si el centro de la otra tarjeta está dentro de la tarjeta actual
+      const otherCenterX = otherRect.left + (cardWidth / 2);
+      const otherCenterY = otherRect.top + (cardHeight / 2);
+      const otherCenterInCurrent = isPointInRect(otherCenterX, otherCenterY, currentRect);
+      
+      // Si cualquiera de los centros está dentro de la otra tarjeta, consideramos que hay superposición
+      const hasOverlap = currentCenterInOther || otherCenterInCurrent;
+      
+      console.log(`Verificando centros - Actual(${currentCenterX},${currentCenterY}) en Otra: ${currentCenterInOther}, Otra(${otherCenterX},${otherCenterY}) en Actual: ${otherCenterInCurrent}`);
       
       if (!hasOverlap) {
         console.log(`No hay superposición con idea ${otherIdea.id}`);
@@ -316,6 +330,17 @@ export default function IdeaCard({
       return;
     }
     
+    // Obtenemos la posición actual para verificar colisiones en el momento de soltar el mouse
+    const currentX = parseInt(cardRef.current.style.left || '0px');
+    const currentY = parseInt(cardRef.current.style.top || '0px');
+    
+    // Verificar explícitamente si hay colisión en el momento de soltar
+    let finalOverlappingId = null;
+    if (clusteringMode) {
+      finalOverlappingId = checkForCollisions({ x: currentX, y: currentY });
+      console.log(`Verificación final de colisión al soltar: ${finalOverlappingId || 'ninguna'}`);
+    }
+    
     // Restaurar los estilos visuales aplicados durante el arrastre
     if (cardRef.current) {
       cardRef.current.style.boxShadow = "";
@@ -327,12 +352,15 @@ export default function IdeaCard({
       });
     }
     
-    console.log(`Mouse liberado en modo clustering: ${clusteringMode}, idea superpuesta: ${overlappingIdeaId}`)
+    console.log(`Mouse liberado en modo clustering: ${clusteringMode}, idea superpuesta: ${finalOverlappingId || overlappingIdeaId}`)
+    
+    // Usar el ID de colisión detectado en el momento de soltar o el que ya teníamos
+    const targetIdeaId = finalOverlappingId || overlappingIdeaId;
     
     // Comprobar si estamos en modo clustering y si hay una idea superpuesta
-    if (clusteringMode && overlappingIdeaId !== null) {
+    if (clusteringMode && targetIdeaId !== null) {
       // Encontrar la idea con la que se superpone
-      const targetIdea = allIdeas.find(i => i.id === overlappingIdeaId);
+      const targetIdea = allIdeas.find(i => i.id === targetIdeaId);
       
       if (targetIdea) {
         // Mostrar confirmación al usuario
