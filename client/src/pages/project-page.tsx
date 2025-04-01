@@ -5,8 +5,7 @@ import Sidebar from "@/components/sidebar";
 import Workspace from "@/components/workspace";
 import { Button } from "@/components/ui/button";
 import { Project, Idea, Relationship, ProjectUser, Category } from "@shared/schema";
-import { Loader2, Share2, Users, UserPlus, ListChecks, Network, FileText, Tags, Settings, 
-         Layers, Lightbulb, BookOpen, CheckSquare, GitBranch } from "lucide-react";
+import { Loader2, Share2, Users, UserPlus, Settings } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import NewIdeaModal from "@/components/modals/new-idea-modal";
 import EditIdeaModal from "@/components/modals/edit-idea-modal";
@@ -18,7 +17,6 @@ import { Avatars } from "@/components/avatars";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CustomTab } from "@/components/ui/custom-tab";
 
 export default function ProjectPage() {
   const params = useParams<{ projectId: string }>();
@@ -460,29 +458,28 @@ export default function ProjectPage() {
             className="w-full px-4 sm:px-6 lg:px-8"
           >
             <TabsList className={`grid w-full max-w-lg ${isUserProjectAdmin() ? 'grid-cols-6' : 'grid-cols-5'} mb-4`}>
-              <CustomTab value="categories" icon={Layers}>
+              <TabsTrigger value="categories">
                 Categories
-              </CustomTab>
-              <CustomTab value="ideas" icon={Lightbulb}>
+              </TabsTrigger>
+              <TabsTrigger value="ideas">
                 Ideas
-              </CustomTab>
-              <CustomTab value="context" icon={BookOpen}>
+              </TabsTrigger>
+              <TabsTrigger value="context">
                 Context
-              </CustomTab>
-              <CustomTab value="selector" icon={CheckSquare}>
+              </TabsTrigger>
+              <TabsTrigger value="selector">
                 Selector
-              </CustomTab>
-              <CustomTab value="connection" icon={GitBranch}>
+              </TabsTrigger>
+              <TabsTrigger value="connection">
                 Connection
-              </CustomTab>
+              </TabsTrigger>
               {isUserProjectAdmin() && (
-                <CustomTab 
-                  value="settings" 
-                  icon={Settings}
+                <TabsTrigger 
+                  value="settings"
                   onClick={() => navigate(`/projects/${projectId}/settings`)}
                 >
                   Settings
-                </CustomTab>
+                </TabsTrigger>
               )}
             </TabsList>
             <TabsContent value="categories" className="mt-0 p-4">
