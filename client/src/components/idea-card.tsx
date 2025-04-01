@@ -235,7 +235,7 @@ export default function IdeaCard({
             {idea.category || "Sin categoría"}
           </Badge>
           <div className="flex space-x-1">
-            {user && idea.createdBy === user.id && (
+            {user && (user.role === "admin" || idea.createdBy === user.id) && (
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -248,7 +248,7 @@ export default function IdeaCard({
                 <Edit className="h-4 w-4" />
               </Button>
             )}
-            {onContextMenu && user && idea.createdBy === user.id && (
+            {onContextMenu && user && (user.role === "admin" || idea.createdBy === user.id) && (
               <IdeaContextMenu 
                 idea={idea} 
                 onEdit={onEdit || (() => {})}
