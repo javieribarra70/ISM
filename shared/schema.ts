@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -91,6 +91,18 @@ export const invitations = pgTable("invitations", {
   used: boolean("used").notNull().default(false),
 });
 
+// Idea votes model (for selector tab)
+export const ideaVotes = pgTable("idea_votes", {
+  userId: integer("user_id").notNull().references(() => users.id),
+  ideaId: integer("idea_id").notNull().references(() => ideas.id),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    pk: primaryKey({ columns: [table.userId, table.ideaId] }),
+  };
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -148,6 +160,12 @@ export const insertInvitationSchema = createInsertSchema(invitations).pick({
   expiresAt: true,
 });
 
+export const insertIdeaVoteSchema = createInsertSchema(ideaVotes).pick({
+  userId: true,
+  ideaId: true,
+  projectId: true,
+});
+
 // Export types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -169,3 +187,6 @@ export type Relationship = typeof relationships.$inferSelect;
 
 export type InsertInvitation = z.infer<typeof insertInvitationSchema>;
 export type Invitation = typeof invitations.$inferSelect;
+
+export type InsertIdeaVote = z.infer<typeof insertIdeaVoteSchema>;
+export type IdeaVote = typeof ideaVotes.$inferSelect;

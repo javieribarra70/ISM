@@ -12,6 +12,7 @@ import EditIdeaModal from "@/components/modals/edit-idea-modal";
 import InviteUsersModal from "@/components/modals/invite-users-modal";
 import NewCategoryModal from "@/components/modals/new-category-modal";
 import CategoriesTab from "@/components/tabs/categories-tab";
+import SelectorTab from "@/components/tabs/selector-tab";
 import { Avatars } from "@/components/avatars";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -456,7 +457,7 @@ export default function ProjectPage() {
             onValueChange={handleTabChange}
             className="w-full px-4 sm:px-6 lg:px-8"
           >
-            <TabsList className={`grid w-full max-w-lg ${isUserProjectAdmin() ? 'grid-cols-5' : 'grid-cols-4'} mb-4`}>
+            <TabsList className={`grid w-full max-w-lg ${isUserProjectAdmin() ? 'grid-cols-6' : 'grid-cols-5'} mb-4`}>
               <TabsTrigger value="categories" className="flex items-center">
                 <Tags className="h-4 w-4 mr-2" />
                 Categories
@@ -472,6 +473,10 @@ export default function ProjectPage() {
               <TabsTrigger value="connection" className="flex items-center">
                 <Network className="h-4 w-4 mr-2" />
                 Connection
+              </TabsTrigger>
+              <TabsTrigger value="selector" className="flex items-center">
+                <Share2 className="h-4 w-4 mr-2" />
+                Selector
               </TabsTrigger>
               {isUserProjectAdmin() && (
                 <TabsTrigger 
@@ -537,6 +542,13 @@ export default function ProjectPage() {
                   creating more complex structures and hierarchies.
                 </p>
               </div>
+            </TabsContent>
+            
+            <TabsContent value="selector" className="mt-0 p-4">
+              <SelectorTab 
+                projectId={parsedProjectId}
+                setActiveTab={setActiveTab}
+              />
             </TabsContent>
           </Tabs>
         </div>

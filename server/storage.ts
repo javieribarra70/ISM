@@ -1,8 +1,8 @@
 import {
-  users, ideas, projects, projectUsers, relationships, invitations, categories,
-  type User, type Idea, type Project, type ProjectUser, type Relationship, type Invitation, type Category,
+  users, ideas, projects, projectUsers, relationships, invitations, categories, ideaVotes,
+  type User, type Idea, type Project, type ProjectUser, type Relationship, type Invitation, type Category, type IdeaVote,
   type InsertUser, type InsertIdea, type InsertProject, type InsertProjectUser, 
-  type InsertRelationship, type InsertInvitation, type InsertCategory
+  type InsertRelationship, type InsertInvitation, type InsertCategory, type InsertIdeaVote
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
@@ -70,6 +70,14 @@ export interface IStorage {
   createInvitation(invitation: InsertInvitation): Promise<Invitation>;
   getInvitationByToken(token: string): Promise<Invitation | undefined>;
   markInvitationAsUsed(id: number): Promise<Invitation | undefined>;
+  
+  // Idea vote operations
+  getProjectIdeaVotes(projectId: number): Promise<(IdeaVote & { user: User })[]>;
+  getIdeaVotes(ideaId: number): Promise<IdeaVote[]>;
+  getUserVotes(userId: number, projectId: number): Promise<IdeaVote[]>;
+  toggleIdeaVote(vote: InsertIdeaVote): Promise<IdeaVote | undefined>;
+  countIdeaVotes(ideaId: number): Promise<number>;
+  getVotingLimitForProject(projectId: number): Promise<number>;
 
   // Session store
   sessionStore: any; // Using any to avoid type issues with session.SessionStore
@@ -83,6 +91,7 @@ export class MemStorage implements IStorage {
   private ideas: Map<number, Idea>;
   private relationships: Map<number, Relationship>;
   private invitations: Map<number, Invitation>;
+  private ideaVotes: Map<string, IdeaVote>;
   
   sessionStore: any; // Using any type for session store
   
@@ -102,6 +111,7 @@ export class MemStorage implements IStorage {
     this.ideas = new Map();
     this.relationships = new Map();
     this.invitations = new Map();
+    this.ideaVotes = new Map();
     
     this.currentUserId = 1;
     this.currentProjectId = 1;
@@ -500,6 +510,80 @@ export class MemStorage implements IStorage {
     
     this.invitations.set(id, updatedInvitation);
     return updatedInvitation;
+  }
+  
+  // Idea vote operations
+  async getProjectIdeaVotes(projectId: number): Promise<(IdeaVote & { user: User })[]> {
+    // Obtener todas las ideas del proyecto
+    const projectIdeas = await this.getProjectIdeas(projectId);
+    const ideaIds = projectIdeas.map(idea => idea.id);
+
+    // Filtrar los votos que corresponden a ideas del proyecto
+    const projectVotes = Array.from(this.ideaVotes.values())
+      .filter(vote => ideaIds.includes(vote.ideaId));
+
+    // Añadir información del usuario a cada voto
+    return Promise.all(
+      projectVotes.map(async vote => {
+        const user = await this.getUser(vote.userId);
+        if (!user) throw new Error(`User not found for vote: ${vote.userId}`);
+        return { ...vote, user };
+      })
+    );
+  }
+
+  async getIdeaVotes(ideaId: number): Promise<IdeaVote[]> {
+    return Array.from(this.ideaVotes.values())
+      .filter(vote => vote.ideaId === ideaId);
+  }
+
+  async getUserVotes(userId: number, projectId: number): Promise<IdeaVote[]> {
+    // Obtener todas las ideas del proyecto
+    const projectIdeas = await this.getProjectIdeas(projectId);
+    const ideaIds = projectIdeas.map(idea => idea.id);
+
+    // Filtrar los votos del usuario para ideas de este proyecto
+    return Array.from(this.ideaVotes.values())
+      .filter(vote => vote.userId === userId && ideaIds.includes(vote.ideaId));
+  }
+
+  async toggleIdeaVote(voteData: InsertIdeaVote): Promise<IdeaVote | undefined> {
+    // Generar una clave única para el voto (combinación de userId + ideaId)
+    const voteKey = `${voteData.userId}-${voteData.ideaId}`;
+    
+    // Verificar si el voto ya existe
+    const existingVote = this.ideaVotes.get(voteKey);
+    
+    if (existingVote) {
+      // Si el voto ya existe, lo eliminamos
+      this.ideaVotes.delete(voteKey);
+      return undefined;
+    } else {
+      // Si el voto no existe, lo creamos
+      const newVote: IdeaVote = {
+        ...voteData,
+        createdAt: new Date()
+      };
+      
+      this.ideaVotes.set(voteKey, newVote);
+      return newVote;
+    }
+  }
+
+  async countIdeaVotes(ideaId: number): Promise<number> {
+    return Array.from(this.ideaVotes.values())
+      .filter(vote => vote.ideaId === ideaId)
+      .length;
+  }
+
+  async getVotingLimitForProject(projectId: number): Promise<number> {
+    // Contar la cantidad de ideas en el proyecto
+    const ideas = await this.getProjectIdeas(projectId);
+    const ideaCount = ideas.length;
+    
+    // La regla es "1/3 + 1" del total de ideas
+    const votingLimit = Math.floor(ideaCount / 3) + 1;
+    return votingLimit;
   }
 }
 
@@ -1362,6 +1446,135 @@ export class DatabaseStorage implements IStorage {
       return result.length > 0 ? result[0] : undefined;
     } catch (error) {
       console.error('Error updating project settings:', error);
+      throw error;
+    }
+  }
+  
+  // Idea vote operations
+  async getProjectIdeaVotes(projectId: number): Promise<(IdeaVote & { user: User })[]> {
+    try {
+      // Realizar consulta SQL para obtener votos junto con datos de usuario
+      const result = await sql`
+        SELECT iv.*, u.* FROM idea_votes iv
+        JOIN ideas i ON iv.idea_id = i.id
+        JOIN users u ON iv.user_id = u.id
+        WHERE i.project_id = ${projectId}
+      `;
+      
+      // Mapear los resultados a la estructura esperada
+      return result.map(row => ({
+        userId: row.user_id,
+        ideaId: row.idea_id,
+        createdAt: row.created_at,
+        user: {
+          id: row.id,
+          username: row.username,
+          email: row.email,
+          password: row.password,
+          role: row.role
+        }
+      }));
+    } catch (error) {
+      console.error('Error getting project idea votes:', error);
+      throw error;
+    }
+  }
+
+  async getIdeaVotes(ideaId: number): Promise<IdeaVote[]> {
+    try {
+      const result = await db.select()
+        .from(ideaVotes)
+        .where(eq(ideaVotes.ideaId, ideaId));
+      
+      return result;
+    } catch (error) {
+      console.error('Error getting idea votes:', error);
+      throw error;
+    }
+  }
+
+  async getUserVotes(userId: number, projectId: number): Promise<IdeaVote[]> {
+    try {
+      // Realizar consulta SQL para obtener los votos del usuario en ideas del proyecto
+      const result = await sql`
+        SELECT iv.* FROM idea_votes iv
+        JOIN ideas i ON iv.idea_id = i.id
+        WHERE iv.user_id = ${userId} AND i.project_id = ${projectId}
+      `;
+      
+      // Mapear los resultados a la estructura esperada
+      return result.map(row => ({
+        userId: row.user_id,
+        ideaId: row.idea_id,
+        createdAt: row.created_at
+      }));
+    } catch (error) {
+      console.error('Error getting user votes:', error);
+      throw error;
+    }
+  }
+
+  async toggleIdeaVote(voteData: InsertIdeaVote): Promise<IdeaVote | undefined> {
+    try {
+      // Verificar si el voto ya existe
+      const existingVote = await db.select()
+        .from(ideaVotes)
+        .where(and(
+          eq(ideaVotes.userId, voteData.userId),
+          eq(ideaVotes.ideaId, voteData.ideaId)
+        ))
+        .limit(1);
+      
+      if (existingVote.length > 0) {
+        // Si el voto ya existe, eliminarlo
+        await db.delete(ideaVotes)
+          .where(and(
+            eq(ideaVotes.userId, voteData.userId),
+            eq(ideaVotes.ideaId, voteData.ideaId)
+          ));
+        
+        return undefined;
+      } else {
+        // Si el voto no existe, crearlo
+        const result = await db.insert(ideaVotes)
+          .values(voteData)
+          .returning();
+        
+        return result[0];
+      }
+    } catch (error) {
+      console.error('Error toggling idea vote:', error);
+      throw error;
+    }
+  }
+
+  async countIdeaVotes(ideaId: number): Promise<number> {
+    try {
+      const countResult = await db.select({ count: sql`COUNT(*)` })
+        .from(ideaVotes)
+        .where(eq(ideaVotes.ideaId, ideaId));
+      
+      return Number(countResult[0].count);
+    } catch (error) {
+      console.error('Error counting idea votes:', error);
+      throw error;
+    }
+  }
+
+  async getVotingLimitForProject(projectId: number): Promise<number> {
+    try {
+      // Contar la cantidad de ideas en el proyecto
+      const countResult = await db.select({ count: sql`COUNT(*)` })
+        .from(ideas)
+        .where(eq(ideas.projectId, projectId));
+      
+      const ideaCount = Number(countResult[0].count);
+      
+      // La regla es "1/3 + 1" del total de ideas
+      const votingLimit = Math.floor(ideaCount / 3) + 1;
+      return votingLimit;
+    } catch (error) {
+      console.error('Error getting voting limit for project:', error);
       throw error;
     }
   }

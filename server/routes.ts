@@ -10,6 +10,7 @@ import {
   insertIdeaSchema, 
   insertRelationshipSchema,
   insertCategorySchema,
+  insertIdeaVoteSchema,
   User,
   users,
   AVAILABLE_CATEGORIES
@@ -727,6 +728,118 @@ export function registerRoutes(app: Express): Server {
       res.status(204).send();
     } catch (error) {
       console.error(`Error al eliminar categoría: ${error}`);
+      next(error);
+    }
+  });
+
+  // Rutas para la funcionalidad de votación
+  
+  // Obtener votos de ideas para un proyecto
+  app.get("/api/projects/:projectId/votes", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const votes = await storage.getProjectIdeaVotes(projectId);
+      res.json(votes);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Obtener votos de un usuario en un proyecto
+  app.get("/api/projects/:projectId/user-votes", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const userId = req.user?.id as number;
+      const votes = await storage.getUserVotes(userId, projectId);
+      res.json(votes);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Obtener límite de votación para un proyecto
+  app.get("/api/projects/:projectId/voting-limit", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const limit = await storage.getVotingLimitForProject(projectId);
+      res.json({ limit });
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Votar por una idea (toggle)
+  app.post("/api/ideas/:ideaId/vote", isAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ideaId = parseInt(req.params.ideaId);
+      const userId = req.user?.id as number;
+      
+      // Obtener la idea para verificar que existe
+      const idea = await storage.getIdea(ideaId);
+      if (!idea) {
+        return res.status(404).json({ message: "Idea not found" });
+      }
+      
+      // Verificar que el usuario tiene acceso al proyecto
+      const projectId = idea.projectId;
+      const userRole = await storage.getUserProjectRole(userId, projectId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this project" });
+      }
+      
+      // Obtener los votos actuales del usuario en el proyecto
+      const userVotes = await storage.getUserVotes(userId, projectId);
+      
+      // Verificar si ya se votó por esta idea
+      const existingVote = userVotes.find(vote => vote.ideaId === ideaId);
+      
+      // Si no hay voto existente, verificar si no excede el límite
+      if (!existingVote) {
+        // Obtener el límite de votos para el proyecto
+        const votingLimit = await storage.getVotingLimitForProject(projectId);
+        
+        // Si ya alcanzó el límite, no permitir más votos
+        if (userVotes.length >= votingLimit) {
+          return res.status(400).json({ 
+            message: `You've reached the voting limit (${votingLimit}) for this project`,
+            currentVotes: userVotes.length,
+            limit: votingLimit
+          });
+        }
+      }
+      
+      // Crear/eliminar el voto
+      const voteResult = await storage.toggleIdeaVote({
+        userId,
+        ideaId,
+        createdAt: new Date()
+      });
+      
+      // Responder con el resultado
+      if (voteResult) {
+        // El voto fue creado
+        res.status(201).json({
+          message: "Vote added successfully",
+          vote: voteResult
+        });
+      } else {
+        // El voto fue eliminado
+        res.status(200).json({
+          message: "Vote removed successfully"
+        });
+      }
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Obtener conteo de votos para una idea
+  app.get("/api/ideas/:ideaId/votes/count", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ideaId = parseInt(req.params.ideaId);
+      const count = await storage.countIdeaVotes(ideaId);
+      res.json({ count });
+    } catch (error) {
       next(error);
     }
   });
