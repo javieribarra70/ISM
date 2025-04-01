@@ -470,13 +470,13 @@ export default function ProjectPage() {
                 <FileText className="h-4 w-4 mr-2" />
                 Context
               </TabsTrigger>
-              <TabsTrigger value="connection" className="flex items-center">
-                <Network className="h-4 w-4 mr-2" />
-                Connection
-              </TabsTrigger>
               <TabsTrigger value="selector" className="flex items-center">
                 <Share2 className="h-4 w-4 mr-2" />
                 Selector
+              </TabsTrigger>
+              <TabsTrigger value="connection" className="flex items-center">
+                <Network className="h-4 w-4 mr-2" />
+                Connection
               </TabsTrigger>
               {isUserProjectAdmin() && (
                 <TabsTrigger 
@@ -534,6 +534,13 @@ export default function ProjectPage() {
               </div>
             </TabsContent>
             
+            <TabsContent value="selector" className="mt-0 p-4">
+              <SelectorTab 
+                projectId={parsedProjectId}
+                setActiveTab={setActiveTab}
+              />
+            </TabsContent>
+            
             <TabsContent value="connection" className="mt-0 p-4">
               <div className="bg-white rounded-lg shadow p-6 min-h-[600px]">
                 <h2 className="text-xl font-semibold mb-4">Connection Management</h2>
@@ -542,13 +549,6 @@ export default function ProjectPage() {
                   creating more complex structures and hierarchies.
                 </p>
               </div>
-            </TabsContent>
-            
-            <TabsContent value="selector" className="mt-0 p-4">
-              <SelectorTab 
-                projectId={parsedProjectId}
-                setActiveTab={setActiveTab}
-              />
             </TabsContent>
           </Tabs>
         </div>
