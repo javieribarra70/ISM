@@ -17,10 +17,10 @@ interface ContextTabProps {
 }
 
 const formSchema = z.object({
-  context: z.string().min(1, "El contexto es obligatorio"),
-  triggeringQuestion: z.string().min(1, "La pregunta desencadenante es obligatoria"),
-  relation: z.string().min(1, "La relación es obligatoria"),
-  restriction: z.string().min(1, "La restricción es obligatoria"),
+  context: z.string().min(1, "Context is required"),
+  triggeringQuestion: z.string().min(1, "Triggering question is required"),
+  relation: z.string().min(1, "Relation is required"),
+  restriction: z.string().min(1, "Restriction is required"),
 });
 
 type ContextFormValues = z.infer<typeof formSchema>;
@@ -71,17 +71,17 @@ export default function ContextTab({ projectId }: ContextTabProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
       toast({
-        title: "Contexto actualizado",
-        description: "La información de contexto ha sido actualizada con éxito.",
+        title: "Context updated",
+        description: "Context information has been successfully updated.",
       });
       setIsEditing(false);
       refetch();
     },
     onError: (error) => {
-      console.error("Error actualizando contexto:", error);
+      console.error("Error updating context:", error);
       toast({
         title: "Error",
-        description: "No se pudo actualizar la información de contexto. Intente nuevamente.",
+        description: "Could not update context information. Please try again.",
         variant: "destructive",
       });
     },
@@ -96,20 +96,20 @@ export default function ContextTab({ projectId }: ContextTabProps) {
   };
   
   if (isLoading || !project) {
-    return <p>Cargando información del proyecto...</p>;
+    return <p>Loading project information...</p>;
   }
   
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Información de Contexto del Proyecto</h1>
+        <h1 className="text-2xl font-bold">Project Context Information</h1>
         <Button 
           variant="outline" 
           onClick={handleEditToggle}
           className="flex items-center gap-2"
         >
           {isEditing ? <Save size={16} /> : <Edit size={16} />}
-          {isEditing ? "Guardar" : "Editar Información"}
+          {isEditing ? "Save" : "Edit Information"}
         </Button>
       </div>
       
@@ -122,16 +122,16 @@ export default function ContextTab({ projectId }: ContextTabProps) {
                 name="context"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Contexto</FormLabel>
+                    <FormLabel>Context</FormLabel>
                     <FormControl>
                       <Textarea 
                         {...field} 
                         rows={6} 
-                        placeholder="Describe el contexto de este proyecto (mínimo 400 caracteres recomendados)"
+                        placeholder="Describe the context of this project (minimum 400 characters recommended)"
                       />
                     </FormControl>
                     <FormDescription>
-                      {field.value.length} caracteres (mínimo 400 recomendados)
+                      {field.value.length} characters (minimum 400 recommended)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -143,16 +143,16 @@ export default function ContextTab({ projectId }: ContextTabProps) {
                 name="triggeringQuestion"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Pregunta Desencadenante</FormLabel>
+                    <FormLabel>Triggering Question</FormLabel>
                     <FormControl>
                       <Textarea 
                         {...field} 
                         rows={6} 
-                        placeholder="¿Cuál es la pregunta desencadenante para este proyecto? (mínimo 400 caracteres recomendados)"
+                        placeholder="What is the triggering question for this project? (minimum 400 characters recommended)"
                       />
                     </FormControl>
                     <FormDescription>
-                      {field.value.length} caracteres (mínimo 400 recomendados)
+                      {field.value.length} characters (minimum 400 recommended)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -164,16 +164,16 @@ export default function ContextTab({ projectId }: ContextTabProps) {
                 name="relation"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Relación</FormLabel>
+                    <FormLabel>Relation</FormLabel>
                     <FormControl>
                       <Textarea 
                         {...field} 
                         rows={6} 
-                        placeholder="Describe la relación para este proyecto (mínimo 400 caracteres recomendados)"
+                        placeholder="Describe the relation for this project (minimum 400 characters recommended)"
                       />
                     </FormControl>
                     <FormDescription>
-                      {field.value.length} caracteres (mínimo 400 recomendados)
+                      {field.value.length} characters (minimum 400 recommended)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -185,16 +185,16 @@ export default function ContextTab({ projectId }: ContextTabProps) {
                 name="restriction"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Restricción</FormLabel>
+                    <FormLabel>Restriction</FormLabel>
                     <FormControl>
                       <Textarea 
                         {...field} 
                         rows={6} 
-                        placeholder="Describe las restricciones para este proyecto (mínimo 400 caracteres recomendados)"
+                        placeholder="Describe the restrictions for this project (minimum 400 characters recommended)"
                       />
                     </FormControl>
                     <FormDescription>
-                      {field.value.length} caracteres (mínimo 400 recomendados)
+                      {field.value.length} characters (minimum 400 recommended)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -202,7 +202,7 @@ export default function ContextTab({ projectId }: ContextTabProps) {
               />
               
               <Button type="submit" disabled={updateContextMutation.isPending}>
-                Guardar Información
+                Save Information
               </Button>
             </form>
           </Form>
@@ -210,41 +210,41 @@ export default function ContextTab({ projectId }: ContextTabProps) {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Contexto</CardTitle>
-                <CardDescription>Información de contexto del proyecto</CardDescription>
+                <CardTitle>Context</CardTitle>
+                <CardDescription>Project context information</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="whitespace-pre-wrap text-justify">{project.context || "No se ha proporcionado información de contexto."}</p>
+                <p className="whitespace-pre-wrap text-justify">{project.context || "No context information has been provided."}</p>
               </CardContent>
             </Card>
             
             <Card>
               <CardHeader>
-                <CardTitle>Pregunta Desencadenante</CardTitle>
-                <CardDescription>La pregunta central que motiva este proyecto</CardDescription>
+                <CardTitle>Triggering Question</CardTitle>
+                <CardDescription>The central question that motivates this project</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="whitespace-pre-wrap text-justify">{project.triggeringQuestion || "No se ha proporcionado una pregunta desencadenante."}</p>
+                <p className="whitespace-pre-wrap text-justify">{project.triggeringQuestion || "No triggering question has been provided."}</p>
               </CardContent>
             </Card>
             
             <Card>
               <CardHeader>
-                <CardTitle>Relación</CardTitle>
-                <CardDescription>Relación entre los elementos del proyecto</CardDescription>
+                <CardTitle>Relation</CardTitle>
+                <CardDescription>Relationship between project elements</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="whitespace-pre-wrap text-justify">{project.relation || "No se ha proporcionado información sobre relaciones."}</p>
+                <p className="whitespace-pre-wrap text-justify">{project.relation || "No relation information has been provided."}</p>
               </CardContent>
             </Card>
             
             <Card>
               <CardHeader>
-                <CardTitle>Restricción</CardTitle>
-                <CardDescription>Limitaciones y restricciones del proyecto</CardDescription>
+                <CardTitle>Restriction</CardTitle>
+                <CardDescription>Project limitations and restrictions</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="whitespace-pre-wrap text-justify">{project.restriction || "No se han proporcionado restricciones."}</p>
+                <p className="whitespace-pre-wrap text-justify">{project.restriction || "No restrictions have been provided."}</p>
               </CardContent>
             </Card>
           </div>
