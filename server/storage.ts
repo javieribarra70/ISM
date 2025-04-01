@@ -59,6 +59,7 @@ export interface IStorage {
   createIdea(idea: InsertIdea): Promise<Idea>;
   updateIdea(id: number, idea: Partial<InsertIdea>): Promise<Idea | undefined>;
   updateIdeaPosition(id: number, positionX: string, positionY: string): Promise<Idea | undefined>;
+  deleteIdea(id: number): Promise<boolean>;
 
   // Relationship operations
   getProjectRelationships(projectId: number): Promise<Relationship[]>;
@@ -427,6 +428,29 @@ export class MemStorage implements IStorage {
     
     this.ideas.set(id, updatedIdea);
     return updatedIdea;
+  }
+  
+  async deleteIdea(id: number): Promise<boolean> {
+    // Verificar que la idea existe
+    const idea = this.ideas.get(id);
+    if (!idea) return false;
+    
+    // Eliminar primero las relaciones que involucran a esta idea
+    // Esto es para mantener la integridad referencial
+    const relationships = Array.from(this.relationships.values());
+    
+    // Identificar relaciones a eliminar
+    const relationsToDelete = relationships.filter(
+      rel => rel.fromIdeaId === id || rel.toIdeaId === id
+    );
+    
+    // Eliminar cada relación
+    for (const rel of relationsToDelete) {
+      this.relationships.delete(rel.id);
+    }
+    
+    // Finalmente eliminar la idea
+    return this.ideas.delete(id);
   }
 
   // Relationship operations
@@ -1136,6 +1160,40 @@ export class DatabaseStorage implements IStorage {
       };
     } catch (error) {
       console.error('Error updating idea position:', error);
+      throw error;
+    }
+  }
+  
+  async deleteIdea(id: number): Promise<boolean> {
+    try {
+      // Verificar primero que la idea existe
+      const idea = await this.getIdea(id);
+      if (!idea) {
+        console.log(`Idea con ID ${id} no encontrada para eliminar`);
+        return false;
+      }
+      
+      console.log(`Eliminando idea con ID ${id}`);
+      
+      // Primero eliminar cualquier relación asociada a esta idea
+      // Esto es para mantener la integridad referencial
+      await sql`
+        DELETE FROM relationships
+        WHERE from_idea_id = ${id} OR to_idea_id = ${id}
+      `;
+      
+      // Luego eliminar la idea
+      const result = await sql`
+        DELETE FROM ideas
+        WHERE id = ${id}
+        RETURNING id
+      `;
+      
+      const success = result.length > 0;
+      console.log(`Resultado de eliminar idea: ${success ? 'Exitoso' : 'Fallido'}`);
+      return success;
+    } catch (error) {
+      console.error('Error eliminando idea:', error);
       throw error;
     }
   }

@@ -344,6 +344,44 @@ export function registerRoutes(app: Express): Server {
       next(error);
     }
   });
+  
+  app.delete("/api/ideas/:ideaId", isAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      
+      const ideaId = parseInt(req.params.ideaId);
+      const idea = await storage.getIdea(ideaId);
+      
+      if (!idea) {
+        return res.status(404).json({ message: "Idea not found" });
+      }
+      
+      // Only allow deletion if user is global admin or created the idea
+      const isAdmin = req.user.role === "admin";
+      
+      console.log(`Verificando permisos para eliminar idea: isAdmin=${isAdmin}, userID=${req.user.id}, creadorIdea=${idea.createdBy}`);
+      
+      if (!isAdmin && idea.createdBy !== req.user.id) {
+        return res.status(403).json({ message: "You can only delete your own ideas unless you're an admin" });
+      }
+      
+      // Eliminar la idea
+      const success = await storage.deleteIdea(ideaId);
+      
+      if (success) {
+        console.log(`Idea ${ideaId} eliminada por usuario ${req.user.id}`);
+        res.status(200).json({ success: true });
+      } else {
+        console.error(`Error al eliminar idea ${ideaId}`);
+        res.status(500).json({ message: "Error al eliminar la idea" });
+      }
+    } catch (error) {
+      console.error('Error en DELETE /api/ideas/:ideaId:', error);
+      next(error);
+    }
+  });
 
   app.patch("/api/projects/:projectId/ideas/:ideaId/position", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
     try {

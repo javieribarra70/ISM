@@ -357,6 +357,29 @@ export default function ProjectPage() {
       });
     }
   });
+  
+  // Delete idea mutation
+  const deleteIdeaMutation = useMutation({
+    mutationFn: async (ideaId: number) => {
+      const response = await apiRequest("DELETE", `/api/ideas/${ideaId}`, {});
+      return response.ok;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${parsedProjectId}/ideas`] });
+      toast({
+        title: "Idea eliminada",
+        description: "La idea ha sido eliminada con éxito.",
+      });
+    },
+    onError: (error: Error) => {
+      console.error("Error al eliminar idea:", error);
+      toast({
+        title: "Error al eliminar idea",
+        description: "Ha ocurrido un error al eliminar la idea.",
+        variant: "destructive",
+      });
+    }
+  });
 
   // Handle loading state for project only
   if (isProjectLoading) {
@@ -485,6 +508,12 @@ export default function ProjectPage() {
                 onEditIdea={(idea) => {
                   setIdeaToEdit(idea);
                   setIsEditIdeaModalOpen(true);
+                }}
+                onDeleteIdea={(idea) => {
+                  // Aquí añadimos la lógica para eliminar una idea
+                  if (window.confirm(`¿Estás seguro de que deseas eliminar la idea "${idea.title}"?`)) {
+                    deleteIdeaMutation.mutate(idea.id);
+                  }
                 }}
                 anonymousMode={project.anonymousMode}
               />
