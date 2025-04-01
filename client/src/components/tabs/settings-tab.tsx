@@ -23,10 +23,6 @@ interface SettingsTabProps {
 const formSchema = z.object({
   name: z.string().min(1, "El nombre es obligatorio"),
   description: z.string().optional(),
-  context: z.string().min(1, "El contexto es obligatorio"),
-  triggeringQuestion: z.string().min(1, "La pregunta desencadenante es obligatoria"),
-  relation: z.string().min(1, "La relación es obligatoria"),
-  restriction: z.string().min(1, "La restricción es obligatoria"),
 });
 
 type ProjectFormValues = z.infer<typeof formSchema>;
@@ -48,10 +44,6 @@ export default function SettingsTab({ projectId }: SettingsTabProps) {
     defaultValues: {
       name: "",
       description: "",
-      context: "",
-      triggeringQuestion: "",
-      relation: "",
-      restriction: "",
     },
     mode: "onChange",
   });
@@ -65,10 +57,6 @@ export default function SettingsTab({ projectId }: SettingsTabProps) {
       form.reset({
         name: project.name || "",
         description: project.description || "",
-        context: project.context || "",
-        triggeringQuestion: project.triggeringQuestion || "",
-        relation: project.relation || "",
-        restriction: project.restriction || "",
       });
     }
   }, [project, form]);
@@ -164,9 +152,9 @@ export default function SettingsTab({ projectId }: SettingsTabProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Project Information</CardTitle>
+            <CardTitle>Basic Project Information</CardTitle>
             <CardDescription>
-              Details and configuration of the current project
+              Basic details of the current project
             </CardDescription>
           </div>
           <Button 
@@ -210,90 +198,6 @@ export default function SettingsTab({ projectId }: SettingsTabProps) {
                   )}
                 />
                 
-                <FormField
-                  control={form.control}
-                  name="context"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Context</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          {...field} 
-                          rows={4} 
-                          placeholder="Describe the context of this project (min. 400 characters)"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {field.value.length} characters (minimum 400 recommended)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="triggeringQuestion"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Triggering Question</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          {...field} 
-                          rows={4} 
-                          placeholder="What is the triggering question for this project? (min. 400 characters)"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {field.value.length} characters (minimum 400 recommended)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="relation"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Relation</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          {...field} 
-                          rows={4} 
-                          placeholder="Describe the relation for this project (min. 400 characters)"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {field.value.length} characters (minimum 400 recommended)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="restriction"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Restriction</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          {...field} 
-                          rows={4} 
-                          placeholder="Describe the restrictions for this project (min. 400 characters)"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {field.value.length} characters (minimum 400 recommended)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
                 <Button type="submit" disabled={updateSettingsMutation.isPending}>
                   Save Information
                 </Button>
@@ -312,31 +216,23 @@ export default function SettingsTab({ projectId }: SettingsTabProps) {
               </div>
               
               <div>
-                <h3 className="font-medium">Context</h3>
-                <p className="whitespace-pre-wrap">{project.context || "No context provided"}</p>
-              </div>
-              
-              <div>
-                <h3 className="font-medium">Triggering Question</h3>
-                <p className="whitespace-pre-wrap">{project.triggeringQuestion || "No triggering question provided"}</p>
-              </div>
-              
-              <div>
-                <h3 className="font-medium">Relation</h3>
-                <p className="whitespace-pre-wrap">{project.relation || "No relation provided"}</p>
-              </div>
-              
-              <div>
-                <h3 className="font-medium">Restriction</h3>
-                <p className="whitespace-pre-wrap">{project.restriction || "No restriction provided"}</p>
-              </div>
-              
-              <div>
                 <h3 className="font-medium">Creation Date</h3>
                 <p>{new Date(project.createdAt).toLocaleDateString()}</p>
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Project Context Information</CardTitle>
+          <CardDescription>
+            The detailed context information for this project is now available in the "Context" tab.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p>For detailed information about project context, triggering questions, relations, and restrictions, please visit the <strong>Context</strong> tab.</p>
         </CardContent>
       </Card>
     </div>

@@ -14,6 +14,7 @@ import NewCategoryModal from "@/components/modals/new-category-modal";
 import CategoriesTab from "@/components/tabs/categories-tab";
 import SelectorTab from "@/components/tabs/selector-tab";
 import SettingsTab from "@/components/tabs/settings-tab";
+import ContextTab from "@/components/tabs/context-tab";
 import { Avatars } from "@/components/avatars";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -516,13 +517,7 @@ export default function ProjectPage() {
             </TabsContent>
             
             <TabsContent value="context" className="mt-0 p-4">
-              <div className="bg-white rounded-lg shadow p-6 min-h-[600px]">
-                <h2 className="text-xl font-semibold mb-4">Project Context</h2>
-                <p className="text-muted-foreground">
-                  This section will allow adding and editing contextual information about the project,
-                  such as reference documents, objectives, and scope.
-                </p>
-              </div>
+              <ContextTab projectId={parsedProjectId} />
             </TabsContent>
             
             <TabsContent value="selector" className="mt-0 p-4">
