@@ -6,7 +6,7 @@ import Workspace from "@/components/workspace";
 import { Button } from "@/components/ui/button";
 import { Project, Idea, Relationship, ProjectUser, Category } from "@shared/schema";
 import { Loader2, Share2, Users, UserPlus, ListChecks, Network, FileText, Tags, Settings, 
-         Layers, Lightbulb, Book, CheckSquare2, Git } from "lucide-react";
+         Layers, Lightbulb, BookOpen, CheckSquare, GitBranch } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import NewIdeaModal from "@/components/modals/new-idea-modal";
 import EditIdeaModal from "@/components/modals/edit-idea-modal";
@@ -472,7 +472,7 @@ export default function ProjectPage() {
                 Context
               </TabsTrigger>
               <TabsTrigger value="selector" className="flex items-center">
-                <SquareCheck className="h-4 w-4 mr-2" />
+                <CheckSquare className="h-4 w-4 mr-2" />
                 Selector
               </TabsTrigger>
               <TabsTrigger value="connection" className="flex items-center">
