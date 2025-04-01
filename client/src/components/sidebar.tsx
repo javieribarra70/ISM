@@ -23,6 +23,7 @@ export default function Sidebar() {
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("projects");
+  const [projectRoles, setProjectRoles] = useState<Record<number, string>>({});
   
   // Uso del contexto global de proyectos
   const { projects, refreshProjects } = useProjects();
@@ -77,8 +78,36 @@ export default function Sidebar() {
     if (user) {
       // Solo refrescar si es necesario, useProjects ya maneja la lógica de throttling
       refreshProjects();
+      
+      // Obtener los roles del usuario en los proyectos
+      const fetchProjectRoles = async () => {
+        const roles: Record<number, string> = {};
+        
+        if (projects && projects.length > 0) {
+          for (const project of projects) {
+            try {
+              const response = await fetch(`/api/projects/${project.id}/users`, {
+                credentials: 'include',
+              });
+              
+              if (response.ok) {
+                const projectUsers = await response.json();
+                const currentUserInProject = projectUsers.find((pu: any) => pu.userId === user.id);
+                if (currentUserInProject) {
+                  roles[project.id] = currentUserInProject.role;
+                }
+              }
+            } catch (error) {
+              console.error(`Error fetching role for project ${project.id}:`, error);
+            }
+          }
+          setProjectRoles(roles);
+        }
+      };
+      
+      fetchProjectRoles();
     }
-  }, [user, refreshProjects]); // Eliminado 'location' para evitar refrescos excesivos
+  }, [user, refreshProjects, projects]); // Agregado 'projects' para actualizar roles cuando cambian los proyectos
 
   const isCurrentPath = (path: string) => {
     return location === path;
@@ -200,22 +229,25 @@ export default function Sidebar() {
                   <span className="truncate">{project.name}</span>
                 </div>
                 
-                <div
-                  onClick={() => {
-                    console.log(`Navegando a la configuración del proyecto ${project.id}`);
-                    window.location.href = `/projects/${project.id}/settings`;
-                    isMobile && setOpen(false);
-                  }}
-                  className={cn(
-                    "flex items-center px-3 py-2 ml-4 text-sm font-medium rounded-md truncate cursor-pointer",
-                    location === `/projects/${project.id}/settings`
-                      ? "bg-primary-light text-primary" 
-                      : "text-gray-700 hover:bg-gray-50"
-                  )}
-                >
-                  <Settings className="h-4 w-4 mr-2 flex-shrink-0" />
-                  <span className="truncate">Configuración</span>
-                </div>
+                {/* Solo mostrar enlace de configuración para administradores del proyecto */}
+                {(projectRoles[project.id] === "admin" || user?.role === "admin") && (
+                  <div
+                    onClick={() => {
+                      console.log(`Navegando a la configuración del proyecto ${project.id}`);
+                      window.location.href = `/projects/${project.id}/settings`;
+                      isMobile && setOpen(false);
+                    }}
+                    className={cn(
+                      "flex items-center px-3 py-2 ml-4 text-sm font-medium rounded-md truncate cursor-pointer",
+                      location === `/projects/${project.id}/settings`
+                        ? "bg-primary-light text-primary" 
+                        : "text-gray-700 hover:bg-gray-50"
+                    )}
+                  >
+                    <Settings className="h-4 w-4 mr-2 flex-shrink-0" />
+                    <span className="truncate">Configuración</span>
+                  </div>
+                )}
               </div>
             ))}
             
