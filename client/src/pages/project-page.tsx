@@ -41,12 +41,22 @@ export default function ProjectPage() {
   
   // Cuando cambia la pestaña, guardarla en sessionStorage
   const handleTabChange = (tab: string) => {
-    console.log(`Guardando pestaña activa: ${tab}`);
+    console.log(`Cambiando a pestaña: ${tab}`);
     setActiveTab(tab);
+    
     try {
+      // Guardar la pestaña activa en sessionStorage
       sessionStorage.setItem(`project_${projectId}_active_tab`, tab);
+      
+      // Si estamos cambiando a la pestaña de ideas, forzar una recarga de las ideas
+      // para asegurar que tengamos las posiciones actualizadas
+      if (tab === "ideas") {
+        console.log("Recargando ideas para asegurar posiciones correctas");
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${parsedProjectId}/ideas`] });
+        refetchIdeas();
+      }
     } catch (e) {
-      console.error("Error guardando la pestaña activa:", e);
+      console.error("Error al procesar cambio de pestaña:", e);
     }
   };
   
@@ -435,6 +445,7 @@ export default function ProjectPage() {
         onCreateIdea={(ideaData) => createIdeaMutation.mutate({
           ...ideaData,
           projectId: parsedProjectId,
+          categoryId: ideaData.categoryId || 0, // Proporcionar un valor por defecto para categoryId
         })}
         isCreating={createIdeaMutation.isPending}
         projectCategories={projectCategories}

@@ -41,10 +41,19 @@ export default function IdeaCard({
   // Actualizar la posición cuando cambian las props de la idea
   useEffect(() => {
     console.log(`IdeaCard ${idea.id} recibió actualización de posición: X:${idea.positionX}, Y:${idea.positionY}`);
-    setPosition({
-      x: parseInt(idea.positionX) || 0,
-      y: parseInt(idea.positionY) || 0,
-    });
+    
+    // Convertir a números y establecer la posición
+    const x = parseInt(idea.positionX) || 0;
+    const y = parseInt(idea.positionY) || 0;
+    
+    // Actualizar el estado local con la posición recibida de la base de datos
+    setPosition({ x, y });
+    
+    // Actualizar también los valores iniciales para mantener la coherencia
+    if (cardRef.current) {
+      cardRef.current.style.left = `${x}px`;
+      cardRef.current.style.top = `${y}px`;
+    }
   }, [idea.id, idea.positionX, idea.positionY]);
   const cardRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -154,12 +163,18 @@ export default function IdeaCard({
       
       console.log(`Card dropped at position: X:${newPosX}, Y:${newPosY}`);
       
-      // Notificar al componente padre para guardar la posición
-      onPositionChange(newPosX, newPosY);
-      
-      // Actualizar los valores iniciales para mantener la coherencia
+      // Actualizar los valores iniciales inmediatamente para mantener la coherencia visual
       idea.positionX = newPosX;
       idea.positionY = newPosY;
+      
+      // También actualizar manualmente el DOM si está disponible
+      if (cardRef.current) {
+        cardRef.current.style.left = `${position.x}px`;
+        cardRef.current.style.top = `${position.y}px`;
+      }
+      
+      // Notificar al componente padre para guardar la posición
+      onPositionChange(newPosX, newPosY);
     }
     setIsDragging(false);
   };
