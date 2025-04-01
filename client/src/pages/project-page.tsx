@@ -266,11 +266,23 @@ export default function ProjectPage() {
     mutationFn: async (ideaData: Partial<Idea> & { id: number }) => {
       const { id, ...updateData } = ideaData;
       
-      const response = await apiRequest(
-        "PATCH",
-        `/api/ideas/${id}`,
-        updateData
-      );
+      console.log(`Actualizando idea ${id} con datos:`, updateData);
+      
+      // Usar un fetch completo para poder ver los errores en detalle
+      const response = await fetch(`/api/ideas/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updateData),
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Error al actualizar idea: ${response.status} - ${errorText}`);
+        throw new Error(`Error al actualizar idea: ${response.status} - ${errorText}`);
+      }
       
       return response.json();
     },

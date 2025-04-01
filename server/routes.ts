@@ -278,7 +278,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.patch("/api/ideas/:ideaId", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
+  app.patch("/api/ideas/:ideaId", isAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.user) {
         return res.status(401).json({ message: "User not authenticated" });
@@ -291,10 +291,15 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ message: "Idea not found" });
       }
       
-      // Only allow update if user is admin or created the idea
-      const isProjectAdmin = req.projectRole === "admin";
-      if (!isProjectAdmin && idea.createdBy !== req.user.id) {
-        return res.status(403).json({ message: "You can only edit your own ideas unless you're a project admin" });
+      // Only allow update if user is global admin or created the idea
+      // Como cambiamos a isAuthenticated en lugar de hasProjectAccess, req.projectRole no está disponible
+      // Así que hacemos la verificación directa desde el rol global del usuario o si creó la idea
+      const isAdmin = req.user.role === "admin";
+      
+      console.log(`Verificando permisos para editar idea: isAdmin=${isAdmin}, userID=${req.user.id}, creadorIdea=${idea.createdBy}`);
+      
+      if (!isAdmin && idea.createdBy !== req.user.id) {
+        return res.status(403).json({ message: "You can only edit your own ideas unless you're an admin" });
       }
       
       const { title, description, clarification, category } = req.body;
