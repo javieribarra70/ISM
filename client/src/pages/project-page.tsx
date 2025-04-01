@@ -8,6 +8,7 @@ import { Project, Idea, Relationship, ProjectUser, Category } from "@shared/sche
 import { Loader2, Share2, Users, UserPlus, ListChecks, Network, FileText, Tags } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import NewIdeaModal from "@/components/modals/new-idea-modal";
+import EditIdeaModal from "@/components/modals/edit-idea-modal";
 import InviteUsersModal from "@/components/modals/invite-users-modal";
 import NewCategoryModal from "@/components/modals/new-category-modal";
 import CategoriesTab from "@/components/tabs/categories-tab";
@@ -26,6 +27,8 @@ export default function ProjectPage() {
   const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [lastPolled, setLastPolled] = useState<Date>(new Date());
+  const [ideaToEdit, setIdeaToEdit] = useState<Idea | null>(null);
+  const [isEditIdeaModalOpen, setIsEditIdeaModalOpen] = useState(false);
   // Estado para controlar la pestaña activa - debe estar aquí con los otros estados
   // Intentar recordar la última pestaña activa usando sessionStorage
   const getInitialTab = () => {
@@ -258,6 +261,39 @@ export default function ProjectPage() {
     }
   });
 
+  // Update idea
+  const updateIdeaMutation = useMutation({
+    mutationFn: async (ideaData: Partial<Idea> & { id: number }) => {
+      const { id, ...updateData } = ideaData;
+      
+      const response = await apiRequest(
+        "PATCH",
+        `/api/ideas/${id}`,
+        updateData
+      );
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${parsedProjectId}/ideas`] });
+      setIsEditIdeaModalOpen(false);
+      setIdeaToEdit(null);
+      
+      toast({
+        title: "Idea actualizada",
+        description: "La idea ha sido actualizada exitosamente.",
+      });
+    },
+    onError: (error: Error) => {
+      console.error("Error al actualizar idea:", error);
+      toast({
+        title: "Error al actualizar idea",
+        description: "Ha ocurrido un error al actualizar la idea. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Update idea position
   const updateIdeaPositionMutation = useMutation({
     mutationFn: async ({ ideaId, positionX, positionY }: { ideaId: number; positionX: string; positionY: string }) => {
@@ -412,6 +448,10 @@ export default function ProjectPage() {
                 onUpdateIdeaPosition={(ideaId, x, y) => 
                   updateIdeaPositionMutation.mutate({ ideaId, positionX: x, positionY: y })
                 }
+                onEditIdea={(idea) => {
+                  setIdeaToEdit(idea);
+                  setIsEditIdeaModalOpen(true);
+                }}
               />
             </TabsContent>
             
@@ -469,6 +509,25 @@ export default function ProjectPage() {
           createCategoryMutation.mutate(categoryData);
         }}
         isSubmitting={createCategoryMutation.isPending}
+      />
+      
+      <EditIdeaModal
+        isOpen={isEditIdeaModalOpen}
+        onClose={() => {
+          setIsEditIdeaModalOpen(false);
+          setIdeaToEdit(null);
+        }}
+        idea={ideaToEdit}
+        onUpdateIdea={(ideaData) => {
+          if (ideaToEdit) {
+            updateIdeaMutation.mutate({
+              id: ideaToEdit.id,
+              ...ideaData
+            });
+          }
+        }}
+        isUpdating={updateIdeaMutation.isPending}
+        projectCategories={projectCategories}
       />
     </div>
   );

@@ -10,10 +10,12 @@ interface WorkspaceProps {
   project: Project;
   ideas: Idea[];
   relationships: Relationship[];
-  categories: Category[]; // Añadimos las categorías
+  categories: Category[];
   onCreateIdea: () => void;
   onCreateRelationship: (fromIdeaId: number, toIdeaId: number) => void;
   onUpdateIdeaPosition: (ideaId: number, x: string, y: string) => void;
+  onEditIdea?: (idea: Idea) => void;
+  onDeleteIdea?: (idea: Idea) => void;
 }
 
 export default function Workspace({
@@ -24,6 +26,8 @@ export default function Workspace({
   onCreateIdea,
   onCreateRelationship,
   onUpdateIdeaPosition,
+  onEditIdea,
+  onDeleteIdea,
 }: WorkspaceProps) {
   const { toast } = useToast();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -260,6 +264,9 @@ export default function Workspace({
                 onStartConnection={() => handleStartConnection(idea.id)}
                 onPositionChange={(x, y) => onUpdateIdeaPosition(idea.id, x, y)}
                 categories={categories}
+                onEdit={onEditIdea}
+                onDelete={onDeleteIdea}
+                onContextMenu={true}
               />
             ))}
             

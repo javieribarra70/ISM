@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Idea, User, Category } from "@shared/schema";
-import { Edit, MoreHorizontal } from "lucide-react";
+import { Edit } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import IdeaContextMenu from "./idea-context-menu";
 
 interface IdeaCardProps {
   idea: Idea;
@@ -19,6 +20,9 @@ interface IdeaCardProps {
   onPositionChange?: (x: string, y: string) => void;
   style?: React.CSSProperties;
   categories?: Category[]; // Añadimos las categorías para poder obtener el color
+  onEdit?: (idea: Idea) => void;
+  onDelete?: (idea: Idea) => void;
+  onContextMenu?: boolean;
 }
 
 export default function IdeaCard({
@@ -30,6 +34,9 @@ export default function IdeaCard({
   onPositionChange,
   style,
   categories = [],
+  onEdit,
+  onDelete,
+  onContextMenu = false,
 }: IdeaCardProps) {
   const { user } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
@@ -226,12 +233,24 @@ export default function IdeaCard({
             {idea.category || "Sin categoría"}
           </Badge>
           <div className="flex space-x-1">
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-500">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6 text-gray-400 hover:text-gray-500"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onEdit) onEdit(idea);
+              }}
+            >
               <Edit className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-500">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
+            {onContextMenu && (
+              <IdeaContextMenu 
+                idea={idea} 
+                onEdit={onEdit || (() => {})}
+                onDelete={onDelete}
+              />
+            )}
           </div>
         </div>
       </CardHeader>
