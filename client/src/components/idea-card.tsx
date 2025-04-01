@@ -371,42 +371,77 @@ export default function IdeaCard({
         
         if (confirmMerge) {
           toast({
-            title: "Fusionando ideas",
-            description: "Se combinarán ambas ideas en una nueva",
+            title: "Fusionando ideas con IA",
+            description: "Procesando la combinación usando OpenAI...",
           });
           
-          // Implementar la fusión de las dos ideas
-          // Crear una nueva idea combinada con los datos de ambas ideas
-          const combinedTitle = `${idea.title} + ${targetIdea.title}`;
-          const combinedDescription = `${idea.description}\n\n${targetIdea.description}`;
-          
-          // Si hay aclaración en ambas ideas, las combinamos también
-          let combinedClarification = "";
-          if (idea.clarification || targetIdea.clarification) {
-            combinedClarification = [
-              idea.clarification || "",
-              targetIdea.clarification || ""
-            ].filter(Boolean).join("\n\n");
-          }
-          
-          // Crear una copia de la idea actual con los datos combinados
-          const mergedIdea = {
-            ...idea,
-            title: combinedTitle,
-            description: combinedDescription,
-            clarification: combinedClarification || idea.clarification
-          };
-          
-          console.log("Idea combinada:", mergedIdea);
-          
-          // Abrir el modal de edición con la idea combinada
-          // El usuario podrá revisar y ajustar la combinación antes de guardar
-          if (onEdit) {
-            onEdit(mergedIdea);
-          }
-          
-          // En una implementación completa, después de guardar la idea fusionada
-          // se debería eliminar la otra idea usando onDelete(targetIdea)
+          // Usar el nuevo endpoint para fusionar ideas con IA
+          fetch(`/api/projects/${idea.projectId}/merge-ideas`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              idea1Id: idea.id,
+              idea2Id: targetIdea.id,
+              deleteOriginals: false // No eliminaremos las originales automáticamente
+            })
+          })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`Error en la fusión: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then(data => {
+            // Mostrar la nueva idea fusionada
+            console.log("Ideas fusionadas con éxito:", data);
+            
+            toast({
+              title: "¡Fusión completada!",
+              description: "Las ideas se han combinado con IA. Refresca para ver los cambios."
+            });
+            
+            // Opcional: recargar la página para mostrar la nueva idea fusionada
+            setTimeout(() => {
+              window.location.reload();
+            }, 2000);
+          })
+          .catch(error => {
+            console.error("Error al fusionar ideas:", error);
+            
+            toast({
+              title: "Error al fusionar ideas",
+              description: "Ocurrió un problema al combinar las ideas. Utilizando fusión simple.",
+              variant: "destructive"
+            });
+            
+            // Fallback: utilizar la fusión simple anterior si falla el API
+            const combinedTitle = `${idea.title} + ${targetIdea.title}`;
+            const combinedDescription = `${idea.description}\n\n${targetIdea.description}`;
+            
+            // Si hay aclaración en ambas ideas, las combinamos también
+            let combinedClarification = "";
+            if (idea.clarification || targetIdea.clarification) {
+              combinedClarification = [
+                idea.clarification || "",
+                targetIdea.clarification || ""
+              ].filter(Boolean).join("\n\n");
+            }
+            
+            // Crear una copia de la idea actual con los datos combinados
+            const mergedIdea = {
+              ...idea,
+              title: combinedTitle,
+              description: combinedDescription,
+              clarification: combinedClarification || idea.clarification
+            };
+            
+            // Abrir el modal de edición con la idea combinada como fallback
+            if (onEdit) {
+              onEdit(mergedIdea);
+            }
+          });
           
           // Resetear el estado de superposición
           setOverlappingIdeaId(null);

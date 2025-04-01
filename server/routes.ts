@@ -5,6 +5,7 @@ import { setupAuth } from "./auth";
 import { randomBytes } from "crypto";
 import { db } from "./db";
 import { eq, or, isNull, and } from "drizzle-orm";
+import { mergeIdeasWithAI } from "./openai";
 import { 
   insertProjectSchema, 
   insertIdeaSchema, 
@@ -366,6 +367,68 @@ export function registerRoutes(app: Express): Server {
       const updatedIdea = await storage.updateIdea(ideaId, updateData);
       res.json(updatedIdea);
     } catch (error) {
+      next(error);
+    }
+  });
+
+  // Ruta para fusionar ideas con IA
+  app.post("/api/projects/:projectId/merge-ideas", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      
+      const { idea1Id, idea2Id } = req.body;
+      
+      if (!idea1Id || !idea2Id) {
+        return res.status(400).json({ message: "Both idea IDs are required" });
+      }
+      
+      const idea1 = await storage.getIdea(parseInt(idea1Id));
+      const idea2 = await storage.getIdea(parseInt(idea2Id));
+      
+      if (!idea1 || !idea2) {
+        return res.status(404).json({ message: "One or both ideas not found" });
+      }
+      
+      const projectId = parseInt(req.params.projectId);
+      
+      // Verify both ideas belong to the same project
+      if (idea1.projectId !== projectId || idea2.projectId !== projectId) {
+        return res.status(403).json({ message: "Ideas must belong to the specified project" });
+      }
+      
+      console.log(`Fusionando ideas ${idea1Id} y ${idea2Id} con IA`);
+      
+      // Usar OpenAI para fusionar las ideas
+      const mergedContent = await mergeIdeasWithAI(idea1, idea2);
+      
+      // Crear la nueva idea combinada
+      const newIdea = await storage.createIdea({
+        projectId,
+        title: mergedContent.title || `${idea1.title} + ${idea2.title}`,
+        description: mergedContent.description || `${idea1.description}\n\n${idea2.description}`,
+        clarification: mergedContent.clarification || "",
+        category: mergedContent.category || idea1.category,
+        createdBy: req.user.id,
+        positionX: idea1.positionX,
+        positionY: idea1.positionY
+      } as any);
+      
+      // Opcionalmente, eliminar las ideas originales
+      // Esto se puede hacer si se pasa un parámetro deleteOriginals=true
+      if (req.body.deleteOriginals) {
+        await storage.deleteIdea(parseInt(idea1Id));
+        await storage.deleteIdea(parseInt(idea2Id));
+        console.log(`Ideas originales ${idea1Id} y ${idea2Id} eliminadas después de la fusión`);
+      }
+      
+      res.status(201).json({
+        mergedIdea: newIdea,
+        originalIdeasDeleted: !!req.body.deleteOriginals
+      });
+    } catch (error) {
+      console.error("Error al fusionar ideas:", error);
       next(error);
     }
   });
