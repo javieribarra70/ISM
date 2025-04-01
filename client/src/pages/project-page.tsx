@@ -6,7 +6,7 @@ import Workspace from "@/components/workspace";
 import { Button } from "@/components/ui/button";
 import { Project, Idea, Relationship, ProjectUser, Category } from "@shared/schema";
 import { Loader2, Share2, Users, UserPlus, ListChecks, Network, FileText, Tags, Settings, 
-         Layers, Lightbulb, BookOpen, SquareCheck, GitBranch } from "lucide-react";
+         Layers, Lightbulb, Book, CheckSquare2, Git } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import NewIdeaModal from "@/components/modals/new-idea-modal";
 import EditIdeaModal from "@/components/modals/edit-idea-modal";
