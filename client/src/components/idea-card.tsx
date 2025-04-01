@@ -106,29 +106,7 @@ export default function IdeaCard({
     };
   };
 
-  // Get time ago string
-  const getTimeAgo = (timestamp: Date) => {
-    const seconds = Math.floor((new Date().getTime() - new Date(timestamp).getTime()) / 1000);
-    
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + "y ago";
-    
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + "mo ago";
-    
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + "d ago";
-    
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + "h ago";
-    
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + "m ago";
-    
-    if (seconds < 10) return "just now";
-    
-    return Math.floor(seconds) + "s ago";
-  };
+  // Función getTimeAgo eliminada ya que no la necesitamos más
 
   // Mouse/Touch handlers for dragging
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -265,14 +243,13 @@ export default function IdeaCard({
             <span className="font-medium">Clarification:</span> {idea.clarification}
           </p>
         )}
-        <div className="mt-2 flex justify-between items-center">
+        <div className="mt-2 flex items-center">
           <span className="inline-flex items-center text-xs text-gray-500">
             <div className="h-4 w-4 rounded-full bg-primary-light text-primary text-[8px] flex items-center justify-center mr-1">
               {creator?.username?.substring(0, 1).toUpperCase() || 'U'}
             </div>
             <span className="ml-1">{creator?.username || 'Unknown'}</span>
           </span>
-          <span className="text-xs text-gray-400">{getTimeAgo(idea.updatedAt)}</span>
         </div>
       </CardContent>
     </Card>
