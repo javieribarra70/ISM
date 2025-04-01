@@ -54,6 +54,7 @@ export default function IdeaCard({
   });
   const [overlappingIdeaId, setOverlappingIdeaId] = useState<number | null>(null);
   const originalPosition = useRef({ x: 0, y: 0 });
+  const lastCollisionCheck = useRef<number | null>(null);
   
   // Actualizar la posición cuando cambian las props de la idea
   useEffect(() => {
@@ -129,14 +130,23 @@ export default function IdeaCard({
   const checkForCollisions = (currentPosition: { x: number, y: number }) => {
     if (!clusteringMode || !cardRef.current) return null;
     
+    console.log(`Verificando colisiones para idea ${idea.id} en posición (${currentPosition.x}, ${currentPosition.y})`);
+    
+    // Dimensiones de la tarjeta actual
+    const cardWidth = cardRef.current.offsetWidth;
+    const cardHeight = cardRef.current.offsetHeight;
+    
     const currentRect = {
       left: currentPosition.x,
       top: currentPosition.y,
-      right: currentPosition.x + cardRef.current.offsetWidth,
-      bottom: currentPosition.y + cardRef.current.offsetHeight
+      right: currentPosition.x + cardWidth,
+      bottom: currentPosition.y + cardHeight
     };
     
-    // Buscar tarjetas que se superpongan
+    // Mostrar rectángulo de la tarjeta actual para depuración
+    console.log(`Tarjeta actual ${idea.id}: (${currentRect.left}, ${currentRect.top}) - (${currentRect.right}, ${currentRect.bottom})`);
+    
+    // Buscar tarjetas que se superpongan con un umbral de superposición mínimo (30% del área)
     for (const otherIdea of allIdeas) {
       // No detectar colisión con la misma idea
       if (otherIdea.id === idea.id) continue;
@@ -145,10 +155,6 @@ export default function IdeaCard({
       const otherX = parseInt(String(otherIdea.positionX || '0')) || 0;
       const otherY = parseInt(String(otherIdea.positionY || '0')) || 0;
       
-      // Suponer que todas las tarjetas son del mismo tamaño
-      const cardWidth = cardRef.current.offsetWidth;
-      const cardHeight = cardRef.current.offsetHeight;
-      
       const otherRect = {
         left: otherX,
         top: otherY,
@@ -156,15 +162,25 @@ export default function IdeaCard({
         bottom: otherY + cardHeight
       };
       
-      // Comprobar si hay colisión (algoritmo simple de detección de colisión de cajas)
-      const hasCollision = !(
-        currentRect.right < otherRect.left || 
-        currentRect.left > otherRect.right || 
-        currentRect.bottom < otherRect.top || 
-        currentRect.top > otherRect.bottom
-      );
+      // Mostrar rectángulo de la otra tarjeta para depuración
+      console.log(`Tarjeta ${otherIdea.id}: (${otherRect.left}, ${otherRect.top}) - (${otherRect.right}, ${otherRect.bottom})`);
       
-      if (hasCollision) {
+      // Calcular el área de superposición
+      const overlapX = Math.max(0, Math.min(currentRect.right, otherRect.right) - Math.max(currentRect.left, otherRect.left));
+      const overlapY = Math.max(0, Math.min(currentRect.bottom, otherRect.bottom) - Math.max(currentRect.top, otherRect.top));
+      const overlapArea = overlapX * overlapY;
+      
+      // Área de la tarjeta actual
+      const currentArea = cardWidth * cardHeight;
+      
+      // Porcentaje de superposición
+      const overlapPercentage = overlapArea / currentArea;
+      
+      console.log(`Superposición con idea ${otherIdea.id}: ${Math.round(overlapPercentage * 100)}%`);
+      
+      // Consideramos colisión si hay al menos un 30% de superposición
+      if (overlapPercentage >= 0.3) {
+        console.log(`¡COLISIÓN DETECTADA con idea ${otherIdea.id}!`);
         return otherIdea.id;
       }
     }
@@ -227,21 +243,40 @@ export default function IdeaCard({
     
     // Verificar colisiones cuando está en modo clustering
     if (clusteringMode) {
-      const collidingIdeaId = checkForCollisions({ x: newX, y: newY });
-      
-      // Si hay una colisión con otra idea, cambiamos el estilo del borde para indicar
-      // que se puede fusionar si se suelta
-      if (collidingIdeaId !== overlappingIdeaId) {
-        setOverlappingIdeaId(collidingIdeaId);
+      // Solo verificamos colisiones cada 100ms para mejorar rendimiento
+      const now = Date.now();
+      if (!lastCollisionCheck.current || now - lastCollisionCheck.current > 100) {
+        lastCollisionCheck.current = now;
         
-        // Si hay una idea con la que se puede fusionar, mostramos un estilo visual
-        if (collidingIdeaId !== null && cardRef.current) {
-          cardRef.current.style.boxShadow = "0 0 0 3px rgba(34, 197, 94, 0.7)"; // Verde para indicar fusión
-          cardRef.current.style.transform = "scale(1.02)";
-        } else if (cardRef.current) {
-          // Si no hay colisión, volvemos al estilo normal
-          cardRef.current.style.boxShadow = "";
-          cardRef.current.style.transform = "";
+        const collidingIdeaId = checkForCollisions({ x: newX, y: newY });
+        
+        // Si hay una colisión con otra idea, cambiamos el estilo del borde para indicar
+        // que se puede fusionar si se suelta
+        if (collidingIdeaId !== overlappingIdeaId) {
+          console.log(`Estado de superposición cambió: idea ${idea.id} ahora superpuesta con idea ${collidingIdeaId || 'ninguna'}`);
+          setOverlappingIdeaId(collidingIdeaId);
+          
+          // Si hay una idea con la que se puede fusionar, mostramos un estilo visual
+          if (collidingIdeaId !== null && cardRef.current) {
+            console.log(`Aplicando estilo de colisión para fusión potencial entre ideas ${idea.id} y ${collidingIdeaId}`);
+            cardRef.current.style.boxShadow = "0 0 0 5px rgba(34, 197, 94, 0.7)"; // Verde para indicar fusión
+            cardRef.current.style.transform = "scale(1.05)";
+            
+            // También aplicamos un estilo a la otra tarjeta para mejor feedback visual
+            const otherCardElement = document.querySelector(`[data-idea-id="${collidingIdeaId}"]`);
+            if (otherCardElement) {
+              otherCardElement.classList.add('merge-highlight');
+            }
+          } else if (cardRef.current) {
+            // Si no hay colisión, volvemos al estilo normal
+            cardRef.current.style.boxShadow = "";
+            cardRef.current.style.transform = "";
+            
+            // Quitar todos los estilos de resaltado de fusión
+            document.querySelectorAll('.merge-highlight').forEach(el => {
+              el.classList.remove('merge-highlight');
+            });
+          }
         }
       }
     }
@@ -263,7 +298,14 @@ export default function IdeaCard({
     if (cardRef.current) {
       cardRef.current.style.boxShadow = "";
       cardRef.current.style.transform = "";
+      
+      // Eliminar cualquier clase de resaltado
+      document.querySelectorAll('.merge-highlight').forEach(el => {
+        el.classList.remove('merge-highlight');
+      });
     }
+    
+    console.log(`Mouse liberado en modo clustering: ${clusteringMode}, idea superpuesta: ${overlappingIdeaId}`)
     
     // Comprobar si estamos en modo clustering y si hay una idea superpuesta
     if (clusteringMode && overlappingIdeaId !== null) {
@@ -381,10 +423,12 @@ export default function IdeaCard({
   return (
     <Card 
       ref={cardRef}
+      data-idea-id={idea.id}
       className={cn(
         "idea-card w-60 shadow-sm cursor-move",
         isSelected && "border-2 border-primary",
-        isDragging ? "opacity-80 shadow-md transition-none" : "transition-all duration-200"
+        isDragging ? "opacity-80 shadow-md transition-none" : "transition-all duration-200",
+        overlappingIdeaId ? "merge-target" : ""
       )}
       style={{
         ...style,
