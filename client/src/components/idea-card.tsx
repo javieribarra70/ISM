@@ -128,9 +128,17 @@ export default function IdeaCard({
 
   // Función para detectar colisiones entre ideas
   const checkForCollisions = (currentPosition: { x: number, y: number }) => {
-    if (!clusteringMode || !cardRef.current) return null;
+    if (!clusteringMode) {
+      console.log(`Modo clustering desactivado, no se verifican colisiones para idea ${idea.id}`);
+      return null;
+    }
     
-    console.log(`Verificando colisiones para idea ${idea.id} en posición (${currentPosition.x}, ${currentPosition.y})`);
+    if (!cardRef.current) {
+      console.log(`No hay referencia DOM para idea ${idea.id}, no se pueden verificar colisiones`);
+      return null;
+    }
+    
+    console.log(`VERIFICANDO COLISIONES para idea ${idea.id} en posición (${currentPosition.x}, ${currentPosition.y})`);
     
     // Dimensiones de la tarjeta actual
     const cardWidth = cardRef.current.offsetWidth;
@@ -146,7 +154,7 @@ export default function IdeaCard({
     // Mostrar rectángulo de la tarjeta actual para depuración
     console.log(`Tarjeta actual ${idea.id}: (${currentRect.left}, ${currentRect.top}) - (${currentRect.right}, ${currentRect.bottom})`);
     
-    // Buscar tarjetas que se superpongan con un umbral de superposición mínimo (30% del área)
+    // Buscar tarjetas que se superpongan con un umbral de superposición mínimo (ahora 20% en lugar de 30% para facilitar)
     for (const otherIdea of allIdeas) {
       // No detectar colisión con la misma idea
       if (otherIdea.id === idea.id) continue;
@@ -163,7 +171,20 @@ export default function IdeaCard({
       };
       
       // Mostrar rectángulo de la otra tarjeta para depuración
-      console.log(`Tarjeta ${otherIdea.id}: (${otherRect.left}, ${otherRect.top}) - (${otherRect.right}, ${otherRect.bottom})`);
+      console.log(`Comparando con tarjeta ${otherIdea.id}: (${otherRect.left}, ${otherRect.top}) - (${otherRect.right}, ${otherRect.bottom})`);
+      
+      // Verificar primero si hay alguna superposición en absoluto
+      const hasOverlap = !(
+        currentRect.right < otherRect.left || 
+        currentRect.left > otherRect.right || 
+        currentRect.bottom < otherRect.top || 
+        currentRect.top > otherRect.bottom
+      );
+      
+      if (!hasOverlap) {
+        console.log(`No hay superposición con idea ${otherIdea.id}`);
+        continue;
+      }
       
       // Calcular el área de superposición
       const overlapX = Math.max(0, Math.min(currentRect.right, otherRect.right) - Math.max(currentRect.left, otherRect.left));
@@ -178,13 +199,14 @@ export default function IdeaCard({
       
       console.log(`Superposición con idea ${otherIdea.id}: ${Math.round(overlapPercentage * 100)}%`);
       
-      // Consideramos colisión si hay al menos un 30% de superposición
-      if (overlapPercentage >= 0.3) {
+      // Consideramos colisión ahora si hay al menos un 20% de superposición (era 30%)
+      if (overlapPercentage >= 0.2) {
         console.log(`¡COLISIÓN DETECTADA con idea ${otherIdea.id}!`);
         return otherIdea.id;
       }
     }
     
+    console.log(`No se detectaron colisiones para idea ${idea.id}`);
     return null;
   };
 
@@ -325,16 +347,38 @@ export default function IdeaCard({
             description: "Se combinarán ambas ideas en una nueva",
           });
           
-          // Simulamos la fusión para la demo
-          // En una implementación real, aquí se llamaría a la API de OpenAI
-          // para fusionar el contenido de las ideas
+          // Implementar la fusión de las dos ideas
+          // Crear una nueva idea combinada con los datos de ambas ideas
+          const combinedTitle = `${idea.title} + ${targetIdea.title}`;
+          const combinedDescription = `${idea.description}\n\n${targetIdea.description}`;
           
-          // Por ahora, abrimos el modal de edición con la idea actual
-          // En la implementación completa, esto debería abrir un nuevo modal
-          // con una fusión generada por IA 
-          if (onEdit) {
-            onEdit(idea);
+          // Si hay aclaración en ambas ideas, las combinamos también
+          let combinedClarification = "";
+          if (idea.clarification || targetIdea.clarification) {
+            combinedClarification = [
+              idea.clarification || "",
+              targetIdea.clarification || ""
+            ].filter(Boolean).join("\n\n");
           }
+          
+          // Crear una copia de la idea actual con los datos combinados
+          const mergedIdea = {
+            ...idea,
+            title: combinedTitle,
+            description: combinedDescription,
+            clarification: combinedClarification || idea.clarification
+          };
+          
+          console.log("Idea combinada:", mergedIdea);
+          
+          // Abrir el modal de edición con la idea combinada
+          // El usuario podrá revisar y ajustar la combinación antes de guardar
+          if (onEdit) {
+            onEdit(mergedIdea);
+          }
+          
+          // En una implementación completa, después de guardar la idea fusionada
+          // se debería eliminar la otra idea usando onDelete(targetIdea)
           
           // Resetear el estado de superposición
           setOverlappingIdeaId(null);
@@ -419,6 +463,16 @@ export default function IdeaCard({
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isDragging]);
+  
+  // Efecto para detectar cambios en el modo clustering
+  useEffect(() => {
+    console.log(`Modo clustering: ${clusteringMode ? 'activado' : 'desactivado'} para idea ${idea.id}`);
+    
+    // Si tenemos referencia al elemento DOM, actualizamos su atributo
+    if (cardRef.current) {
+      cardRef.current.setAttribute('data-clustering-enabled', clusteringMode ? 'true' : 'false');
+    }
+  }, [clusteringMode, idea.id]);
 
   return (
     <Card 
