@@ -10,6 +10,8 @@ import { Check, Trash } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 interface SelectorTabProps {
   projectId: number;
@@ -21,6 +23,8 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
   const { toast } = useToast();
   const [selectedIdeas, setSelectedIdeas] = useState<number[]>([]);
   const [votingLimit, setVotingLimit] = useState<number>(0);
+  // Estado para las ideas seleccionadas por el administrador para el proceso de conexión
+  const [connectionIdeas, setConnectionIdeas] = useState<number[]>([]);
 
   // Determine if user is admin of this project
   const isUserProjectAdmin = () => {
@@ -155,6 +159,48 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
     if (voters.length === 0) return "No votes yet";
     return voters.join(", ");
   };
+  
+  // Función para manejar la selección/deselección de ideas para el proceso de conexión
+  const handleConnectionToggle = (ideaId: number) => {
+    setConnectionIdeas(prevSelected => {
+      // Si ya está seleccionada, la quitamos
+      if (prevSelected.includes(ideaId)) {
+        return prevSelected.filter(id => id !== ideaId);
+      } 
+      // Si no está seleccionada, la añadimos
+      else {
+        return [...prevSelected, ideaId];
+      }
+    });
+  };
+  
+  // Efecto para guardar en localStorage cuando cambian las ideas seleccionadas
+  useEffect(() => {
+    if (connectionIdeas.length > 0) {
+      localStorage.setItem(`project_${projectId}_connection_ideas`, JSON.stringify(connectionIdeas));
+      
+      toast({
+        title: "Selección guardada",
+        description: `${connectionIdeas.length} ideas seleccionadas para el proceso de conexión.`,
+        duration: 2000,
+      });
+    }
+  }, [connectionIdeas]);
+  
+  // Cargar las ideas previamente seleccionadas para conexión, si existen
+  useEffect(() => {
+    const savedIdeas = localStorage.getItem(`project_${projectId}_connection_ideas`);
+    if (savedIdeas) {
+      try {
+        const parsedIdeas = JSON.parse(savedIdeas);
+        if (Array.isArray(parsedIdeas)) {
+          setConnectionIdeas(parsedIdeas);
+        }
+      } catch (e) {
+        console.error("Error al cargar ideas guardadas para conexión:", e);
+      }
+    }
+  }, [projectId]);
 
   // Loading state
   if (isIdeasLoading || isUserVotesLoading || isLimitLoading) {
@@ -199,22 +245,88 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
       {isUserProjectAdmin() && (
         <div className="mb-6">
           <h3 className="text-xl font-semibold mb-2">Vote Summary (Admin View)</h3>
+          <div className="flex justify-between items-center">
+            <p className="text-muted-foreground mb-4">
+              Selecciona las ideas que se utilizarán en el proceso de conexión, independientemente del número de votos.
+            </p>
+            <Badge variant="outline" className="mb-4">
+              {connectionIdeas.length} ideas seleccionadas para conexión
+            </Badge>
+          </div>
           <Separator className="mb-4" />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {ideas.sort((a, b) => getVoteCount(b.id) - getVoteCount(a.id)).map(idea => (
-              <Card key={idea.id} className={`border-l-4 ${getVoteCount(idea.id) > 0 ? 'border-l-primary' : 'border-l-muted'}`}>
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg">{idea.title}</CardTitle>
-                    <Badge variant="outline">{getVoteCount(idea.id)} votes</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground font-medium">Voters:</p>
-                  <p className="text-sm">{formatVoters(getVotersForIdea(idea.id))}</p>
-                </CardContent>
-              </Card>
-            ))}
+            {ideas.sort((a, b) => getVoteCount(b.id) - getVoteCount(a.id)).map(idea => {
+              const isSelectedForConnection = connectionIdeas.includes(idea.id);
+              return (
+                <Card 
+                  key={idea.id} 
+                  className={`border-l-4 ${
+                    isSelectedForConnection 
+                      ? 'border-l-green-500 bg-green-50' 
+                      : getVoteCount(idea.id) > 0 
+                        ? 'border-l-primary' 
+                        : 'border-l-muted'
+                  }`}
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg">{idea.title}</CardTitle>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <Badge variant="outline">{getVoteCount(idea.id)} votes</Badge>
+                          {isSelectedForConnection && (
+                            <Badge variant="secondary">Seleccionada para conexión</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground font-medium">Voters:</p>
+                    <p className="text-sm">{formatVoters(getVotersForIdea(idea.id))}</p>
+                    
+                    <div className="flex items-center space-x-2 mt-4">
+                      <Checkbox 
+                        id={`connection-checkbox-${idea.id}`}
+                        checked={isSelectedForConnection}
+                        onCheckedChange={() => handleConnectionToggle(idea.id)}
+                      />
+                      <Label 
+                        htmlFor={`connection-checkbox-${idea.id}`}
+                        className="text-sm font-medium cursor-pointer"
+                      >
+                        Seleccionar para el proceso de conexión
+                      </Label>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+          
+          <div className="mt-4 flex justify-between">
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={() => setConnectionIdeas([])}
+              disabled={connectionIdeas.length === 0}
+            >
+              Limpiar selección
+            </Button>
+            <Button 
+              variant="default"
+              size="sm"
+              onClick={() => {
+                toast({
+                  title: "Ideas guardadas para conexión",
+                  description: `${connectionIdeas.length} ideas están listas para el proceso de conexión.`,
+                });
+                // Aquí se puede añadir lógica adicional para la pestaña de conexión
+              }}
+              disabled={connectionIdeas.length === 0}
+            >
+              Confirmar selección
+            </Button>
           </div>
         </div>
       )}
