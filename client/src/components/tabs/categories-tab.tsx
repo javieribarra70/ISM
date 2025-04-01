@@ -184,7 +184,7 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
   return (
     <div className="bg-white rounded-lg shadow p-6 min-h-[600px]">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold">Categorías de Ideas</h2>
+        <h2 className="text-xl font-semibold">Idea Categories</h2>
         <Button 
           size="sm" 
           className="bg-primary text-white"
@@ -195,7 +195,7 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
           }}
         >
           <Tags className="h-4 w-4 mr-2" />
-          Agregar Categoría
+          Add Category
         </Button>
       </div>
 
@@ -260,7 +260,7 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
           >
             <div className="text-center">
               <Tags className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm font-medium">Agregar Nueva Categoría</p>
+              <p className="text-sm font-medium">Add New Category</p>
             </div>
           </div>
         </div>
@@ -280,26 +280,26 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
         isEditMode={isEditMode}
       />
 
-      {/* Diálogo de confirmación para eliminar categoría */}
+      {/* Delete category confirmation dialog */}
       <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center">
               <AlertCircle className="text-destructive mr-2 h-5 w-5" />
-              Eliminar Categoría
+              Delete Category
             </AlertDialogTitle>
             <AlertDialogDescription>
-              ¿Estás seguro de que deseas eliminar la categoría "{categoryToDelete?.name}"? 
-              Esta acción no se puede deshacer.
+              Are you sure you want to delete the category "{categoryToDelete?.name}"? 
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={confirmDeleteCategory}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteCategoryMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+              {deleteCategoryMutation.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

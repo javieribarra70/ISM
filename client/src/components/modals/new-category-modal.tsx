@@ -19,18 +19,18 @@ interface NewCategoryModalProps {
   isEditMode?: boolean;
 }
 
-// Schema para validar el formulario
+// Schema to validate the form
 const formSchema = z.object({
   name: z.string().min(3, {
-    message: "El nombre debe tener al menos 3 caracteres.",
+    message: "Name must be at least 3 characters.",
   }).max(50, {
-    message: "El nombre no puede exceder los 50 caracteres."
+    message: "Name cannot exceed 50 characters."
   }),
   description: z.string().max(200, {
-    message: "La descripción no puede exceder los 200 caracteres."
+    message: "Description cannot exceed 200 characters."
   }).optional(),
   color: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, {
-    message: "El color debe ser un código hexadecimal válido (ej: #FF5733)"
+    message: "Color must be a valid hexadecimal code (e.g. #FF5733)"
   }).default("#E2E8F0"),
 });
 
@@ -42,7 +42,7 @@ export default function NewCategoryModal({
   category,
   isEditMode = false
 }: NewCategoryModalProps) {
-  // Configuración del formulario con react-hook-form y zod
+  // Form configuration with react-hook-form and zod
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -52,7 +52,7 @@ export default function NewCategoryModal({
     },
   });
 
-  // Actualizar el formulario cuando cambia la categoría seleccionada
+  // Update form when selected category changes
   useEffect(() => {
     if (category) {
       form.reset({
@@ -87,10 +87,10 @@ export default function NewCategoryModal({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
-            {isEditMode ? 'Editar Categoría' : 'Crear Nueva Categoría'}
+            {isEditMode ? 'Edit Category' : 'Create New Category'}
           </DialogTitle>
           <DialogDescription>
-            Las categorías ayudan a organizar las ideas en grupos temáticos.
+            Categories help organize ideas into thematic groups.
           </DialogDescription>
         </DialogHeader>
         
@@ -101,12 +101,12 @@ export default function NewCategoryModal({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nombre de la Categoría</FormLabel>
+                  <FormLabel>Category Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej: Problemas Técnicos" {...field} />
+                    <Input placeholder="e.g. Technical Issues" {...field} />
                   </FormControl>
                   <FormDescription>
-                    Elige un nombre descriptivo para la categoría.
+                    Choose a descriptive name for the category.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -118,16 +118,16 @@ export default function NewCategoryModal({
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Descripción (Opcional)</FormLabel>
+                  <FormLabel>Description (Optional)</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Describe el propósito de esta categoría" 
+                      placeholder="Describe the purpose of this category" 
                       className="resize-none h-24"
                       {...field} 
                     />
                   </FormControl>
                   <FormDescription>
-                    Proporciona más contexto sobre el tipo de ideas que pertenecen a esta categoría.
+                    Provide more context about the type of ideas that belong to this category.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -157,11 +157,11 @@ export default function NewCategoryModal({
                       size="sm"
                       onClick={generateRandomColor}
                     >
-                      Aleatorio
+                      Random
                     </Button>
                   </div>
                   <FormDescription>
-                    Selecciona un color para identificar visualmente esta categoría.
+                    Select a color to visually identify this category.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -175,7 +175,7 @@ export default function NewCategoryModal({
                 onClick={onClose}
                 disabled={isSubmitting}
               >
-                Cancelar
+                Cancel
               </Button>
               <Button 
                 type="submit" 
@@ -185,10 +185,10 @@ export default function NewCategoryModal({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isEditMode ? 'Guardando...' : 'Creando...'}
+                    {isEditMode ? 'Saving...' : 'Creating...'}
                   </>
                 ) : (
-                  isEditMode ? 'Guardar Cambios' : 'Crear Categoría'
+                  isEditMode ? 'Save Changes' : 'Create Category'
                 )}
               </Button>
             </DialogFooter>
