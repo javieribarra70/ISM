@@ -176,16 +176,16 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
   
   // Efecto para guardar en localStorage cuando cambian las ideas seleccionadas
   useEffect(() => {
+    localStorage.setItem(`project_${projectId}_connection_ideas`, JSON.stringify(connectionIdeas));
+    
     if (connectionIdeas.length > 0) {
-      localStorage.setItem(`project_${projectId}_connection_ideas`, JSON.stringify(connectionIdeas));
-      
       toast({
-        title: "Selección guardada",
-        description: `${connectionIdeas.length} ideas seleccionadas para el proceso de conexión.`,
+        title: "Selection saved",
+        description: `${connectionIdeas.length} ideas selected for the connection process.`,
         duration: 2000,
       });
     }
-  }, [connectionIdeas]);
+  }, [connectionIdeas, projectId]);
   
   // Cargar las ideas previamente seleccionadas para conexión, si existen
   useEffect(() => {
@@ -197,7 +197,7 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
           setConnectionIdeas(parsedIdeas);
         }
       } catch (e) {
-        console.error("Error al cargar ideas guardadas para conexión:", e);
+        console.error("Error loading saved ideas for connection:", e);
       }
     }
   }, [projectId]);
@@ -321,7 +321,7 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
                   title: "Ideas saved for connection",
                   description: `${connectionIdeas.length} ideas are ready for the connection process.`,
                 });
-                // Aquí se puede añadir lógica adicional para la pestaña de conexión
+                // Additional logic for connection tab can be added here
               }}
               disabled={connectionIdeas.length === 0}
             >
