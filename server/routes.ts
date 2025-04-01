@@ -167,28 +167,52 @@ export function registerRoutes(app: Express): Server {
     }
   });
   
-  // Ruta para actualizar la configuración del proyecto (incluyendo modo anónimo)
+  // Ruta para actualizar la configuración del proyecto (incluyendo modo anónimo y campos descriptivos)
   app.patch("/api/projects/:projectId/settings", isProjectAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = parseInt(req.params.projectId);
-      const { anonymousMode } = req.body;
+      const { 
+        anonymousMode, 
+        context, 
+        triggeringQuestion, 
+        relation, 
+        restriction,
+        name,
+        description
+      } = req.body;
       
-      if (anonymousMode === undefined) {
-        return res.status(400).json({ message: "anonymousMode is required" });
+      // Preparar objeto de actualización
+      const updateData: Partial<any> = {};
+      
+      // Procesar modo anónimo si está presente
+      if (anonymousMode !== undefined) {
+        // Validar que sea un booleano
+        if (typeof anonymousMode !== 'boolean') {
+          return res.status(400).json({ message: "anonymousMode must be a boolean" });
+        }
+        updateData.anonymousMode = anonymousMode;
       }
       
-      // Validar que sea un booleano
-      if (typeof anonymousMode !== 'boolean') {
-        return res.status(400).json({ message: "anonymousMode must be a boolean" });
+      // Procesar campos de texto
+      if (context !== undefined) updateData.context = context;
+      if (triggeringQuestion !== undefined) updateData.triggeringQuestion = triggeringQuestion;
+      if (relation !== undefined) updateData.relation = relation;
+      if (restriction !== undefined) updateData.restriction = restriction;
+      if (name !== undefined) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
+      
+      // Verificar si hay algo que actualizar
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No fields to update" });
       }
       
-      const updatedProject = await storage.updateProject(projectId, { anonymousMode });
+      const updatedProject = await storage.updateProject(projectId, updateData);
       
       if (!updatedProject) {
         return res.status(404).json({ message: "Project not found" });
       }
       
-      console.log(`Proyecto ${projectId} modo anónimo actualizado a: ${anonymousMode}`);
+      console.log(`Proyecto ${projectId} actualizado:`, updateData);
       res.json(updatedProject);
     } catch (error) {
       next(error);

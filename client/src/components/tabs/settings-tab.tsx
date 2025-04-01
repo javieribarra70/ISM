@@ -8,15 +8,33 @@ import { toast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Save, Edit } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 interface SettingsTabProps {
   projectId: number;
 }
 
+const formSchema = z.object({
+  name: z.string().min(1, "El nombre es obligatorio"),
+  description: z.string().optional(),
+  context: z.string().min(1, "El contexto es obligatorio"),
+  triggeringQuestion: z.string().min(1, "La pregunta desencadenante es obligatoria"),
+  relation: z.string().min(1, "La relación es obligatoria"),
+  restriction: z.string().min(1, "La restricción es obligatoria"),
+});
+
+type ProjectFormValues = z.infer<typeof formSchema>;
+
 export default function SettingsTab({ projectId }: SettingsTabProps) {
   // Local state for anonymous mode
   const [anonymousMode, setAnonymousMode] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   
   // Get project data
   const { data: project, isLoading } = useQuery<Project>({
@@ -24,16 +42,40 @@ export default function SettingsTab({ projectId }: SettingsTabProps) {
     enabled: !!projectId,
   });
   
+  // Form for project information
+  const form = useForm<ProjectFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      context: "",
+      triggeringQuestion: "",
+      relation: "",
+      restriction: "",
+    },
+    mode: "onChange",
+  });
+  
   // Set initial state when project data loads
   useEffect(() => {
-    if (project?.anonymousMode !== undefined) {
-      setAnonymousMode(project.anonymousMode);
+    if (project) {
+      setAnonymousMode(project.anonymousMode || false);
+      
+      // Populate form with project data
+      form.reset({
+        name: project.name || "",
+        description: project.description || "",
+        context: project.context || "",
+        triggeringQuestion: project.triggeringQuestion || "",
+        relation: project.relation || "",
+        restriction: project.restriction || "",
+      });
     }
-  }, [project]);
+  }, [project, form]);
   
   // Mutation to update settings
   const updateSettingsMutation = useMutation({
-    mutationFn: async (data: { anonymousMode: boolean }) => {
+    mutationFn: async (data: Partial<Project>) => {
       const response = await apiRequest(
         "PATCH",
         `/api/projects/${projectId}/settings`,
@@ -47,6 +89,7 @@ export default function SettingsTab({ projectId }: SettingsTabProps) {
         title: "Settings updated",
         description: "Project settings have been updated successfully.",
       });
+      setIsEditing(false);
     },
     onError: (error) => {
       console.error("Error updating settings:", error);
@@ -72,6 +115,14 @@ export default function SettingsTab({ projectId }: SettingsTabProps) {
         ? "Idea creator names are now hidden." 
         : "Idea creator names are now visible.",
     });
+  };
+  
+  const onSubmitProjectInfo = (data: ProjectFormValues) => {
+    updateSettingsMutation.mutate(data);
+  };
+  
+  const handleEditToggle = () => {
+    setIsEditing(!isEditing);
   };
   
   if (isLoading || !project) {
@@ -111,33 +162,182 @@ export default function SettingsTab({ projectId }: SettingsTabProps) {
       <Separator className="my-6" />
       
       <Card>
-        <CardHeader>
-          <CardTitle>Project Information</CardTitle>
-          <CardDescription>
-            Details of the current project
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Project Information</CardTitle>
+            <CardDescription>
+              Details and configuration of the current project
+            </CardDescription>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={handleEditToggle}
+            className="flex items-center gap-2"
+          >
+            {isEditing ? <Save size={16} /> : <Edit size={16} />}
+            {isEditing ? "Save" : "Edit Information"}
+          </Button>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-medium">Name</h3>
-              <p>{project.name}</p>
+          {isEditing ? (
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmitProjectInfo)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Project Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="context"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Context</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          rows={4} 
+                          placeholder="Describe the context of this project (min. 400 characters)"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {field.value.length} characters (minimum 400 recommended)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="triggeringQuestion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Triggering Question</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          rows={4} 
+                          placeholder="What is the triggering question for this project? (min. 400 characters)"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {field.value.length} characters (minimum 400 recommended)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="relation"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Relation</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          rows={4} 
+                          placeholder="Describe the relation for this project (min. 400 characters)"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {field.value.length} characters (minimum 400 recommended)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="restriction"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Restriction</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          rows={4} 
+                          placeholder="Describe the restrictions for this project (min. 400 characters)"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {field.value.length} characters (minimum 400 recommended)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <Button type="submit" disabled={updateSettingsMutation.isPending}>
+                  Save Information
+                </Button>
+              </form>
+            </Form>
+          ) : (
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-medium">Name</h3>
+                <p>{project.name}</p>
+              </div>
+              
+              <div>
+                <h3 className="font-medium">Description</h3>
+                <p>{project.description || "No description"}</p>
+              </div>
+              
+              <div>
+                <h3 className="font-medium">Context</h3>
+                <p className="whitespace-pre-wrap">{project.context || "No context provided"}</p>
+              </div>
+              
+              <div>
+                <h3 className="font-medium">Triggering Question</h3>
+                <p className="whitespace-pre-wrap">{project.triggeringQuestion || "No triggering question provided"}</p>
+              </div>
+              
+              <div>
+                <h3 className="font-medium">Relation</h3>
+                <p className="whitespace-pre-wrap">{project.relation || "No relation provided"}</p>
+              </div>
+              
+              <div>
+                <h3 className="font-medium">Restriction</h3>
+                <p className="whitespace-pre-wrap">{project.restriction || "No restriction provided"}</p>
+              </div>
+              
+              <div>
+                <h3 className="font-medium">Creation Date</h3>
+                <p>{new Date(project.createdAt).toLocaleDateString()}</p>
+              </div>
             </div>
-            
-            <div>
-              <h3 className="font-medium">Description</h3>
-              <p>{project.description || "No description"}</p>
-            </div>
-            
-            <div>
-              <h3 className="font-medium">Creation Date</h3>
-              <p>{new Date(project.createdAt).toLocaleDateString()}</p>
-            </div>
-          </div>
+          )}
         </CardContent>
-        <CardFooter>
-          <Button variant="outline">Edit Information</Button>
-        </CardFooter>
       </Card>
     </div>
   );

@@ -30,6 +30,10 @@ export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
+  context: text("context"), // Contexto del proyecto, permite hasta 400+ caracteres
+  triggeringQuestion: text("triggering_question"), // Pregunta desencadenante, permite hasta 400+ caracteres
+  relation: text("relation"), // Relación, permite hasta 400+ caracteres
+  restriction: text("restriction"), // Restricción, permite hasta 400+ caracteres
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdBy: integer("created_by").notNull().references(() => users.id),
   anonymousMode: boolean("anonymous_mode").default(false).notNull(),
@@ -115,6 +119,10 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export const insertProjectSchema = createInsertSchema(projects).pick({
   name: true,
   description: true,
+  context: true,
+  triggeringQuestion: true,
+  relation: true,
+  restriction: true,
   createdBy: true,
   anonymousMode: true,
 });
