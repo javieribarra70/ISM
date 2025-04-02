@@ -1683,9 +1683,12 @@ export class DatabaseStorage implements IStorage {
         return undefined;
       } else {
         // Si la idea no está seleccionada, la agregamos
+        console.log('Inserting selected idea:', selectedIdeaData);
         const result = await db.insert(selectedIdeas)
           .values({
-            ...selectedIdeaData
+            ideaId: selectedIdeaData.ideaId,
+            projectId: selectedIdeaData.projectId,
+            selectedBy: selectedIdeaData.selectedBy
             // createdAt will be automatically set by defaultNow()
           })
           .returning();

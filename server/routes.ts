@@ -1042,6 +1042,8 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Idea not found in the specified project" });
       }
       
+      console.log(`Attempting to toggle idea selection: ideaId=${ideaId}, projectId=${projectId}, selectedBy=${userId}`);
+      
       // Toggle the idea selection
       const selectionResult = await storage.toggleSelectedIdea({
         ideaId,
