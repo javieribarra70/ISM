@@ -136,7 +136,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
             disabled={isStarting || selectedIdeas.length < 2}
           >
             <PlayCircle className="h-5 w-5" />
-            {isStarting ? "Iniciando..." : "Iniciar Proceso"}
+            {isStarting ? "Starting..." : "Start Process"}
           </Button>
         </div>
         
