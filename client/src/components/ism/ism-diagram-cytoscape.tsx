@@ -193,7 +193,6 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
           style: {
             'background-color': 'white',
             'border-width': '2px',
-            'border-color': 'data(levelColor)',
             'width': '200px',
             'height': '80px',
             'shape': 'rectangle',
@@ -209,17 +208,20 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
             'text-outline-opacity': 1
           }
         },
-        // Estilo para texto adicional (nivel de influencia)
+        // Estilo para nodos con levelColor
+        {
+          selector: 'node[levelColor]',
+          style: {
+            'border-color': 'data(levelColor)'
+          }
+        },
+        // Estilo para texto adicional (solo el título)
         {
           selector: 'node',
           style: {
             'overlay-padding': 8,
             'overlay-opacity': 0,
-            'z-index': 10,
-            'label': (ele) => {
-              return ele.data('label') + 
-                '\n\nNivel de influencia: ' + ele.data('influenceLevel');
-            }
+            'z-index': 10
           }
         },
         // Estilos para bordes (flechas)
