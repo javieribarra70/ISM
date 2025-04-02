@@ -7,12 +7,13 @@ import { Idea, Category } from '@shared/schema';
 import { computeTransitiveReduction } from './matrix-reduction';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '../ui/button';
-import { Download, GripHorizontal, RefreshCw } from 'lucide-react';
+import { Download, RefreshCw } from 'lucide-react';
 
 // Register the dagre layout and svg extension with Cytoscape
 cytoscape.use(dagre);
 cytoscape.use(cytoscapeSvg);
 
+// Interface for ISM Diagram props
 interface ISMDiagramProps {
   ideas: Idea[];
   levels: number[][];
@@ -20,66 +21,39 @@ interface ISMDiagramProps {
   projectId?: number; // We add projectId to obtain the categories
 }
 
-// Componente para la paleta de categorías
-interface CategoryLegendProps {
-  categories: Category[];
-  position: { x: number, y: number };
-  onDragStart: (e: ReactMouseEvent) => void;
-  usedCategories: Set<string>;
-}
-
-const CategoryLegend = ({ categories, position, onDragStart, usedCategories }: CategoryLegendProps) => {
-  // Filtrar solo las categorías que se usan en el diagrama
-  const visibleCategories = categories.filter(cat => usedCategories.has(cat.name));
-  
-  if (visibleCategories.length === 0) return null;
-  
-  return (
-    <div 
-      className="absolute bg-white border rounded-md shadow-md p-2 z-10"
-      style={{ 
-        left: `${position.x}px`, 
-        top: `${position.y}px`,
-        maxWidth: '220px'
-      }}
-    >
-      <div className="flex justify-between items-center mb-2 cursor-move" onMouseDown={onDragStart}>
-        <span className="text-xs font-semibold text-gray-700">Categories</span>
-        <GripHorizontal size={14} className="text-gray-500" />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        {visibleCategories.map(category => (
-          <div key={category.id} className="flex items-center gap-2">
-            <div 
-              className="w-4 h-4 rounded-sm" 
-              style={{ backgroundColor: category.color || '#cbd5e1' }}
-            />
-            <span className="text-xs text-gray-700 truncate" title={category.name}>
-              {category.name}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
 const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDiagramProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
-  
-  // Estado para la paleta de categorías
-  const [legendPosition, setLegendPosition] = useState({ x: 20, y: 20 });
-  const [isDraggingLegend, setIsDraggingLegend] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const legendNodeRef = useRef<string | null>(null);
   
   // Get the project categories
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: projectId ? [`/api/projects/${projectId}/categories`] : ['no-categories'],
     enabled: !!projectId,
   });
+  
+  // Set up Cytoscape event handlers once the graph is loaded
+  useEffect(() => {
+    if (!cyRef.current) return;
+    
+    // Add the legend node to the graph once Cytoscape is initialized
+    addLegendNode();
+    
+    // Make legend draggable if it exists
+    cyRef.current.on('dragfree', 'node[legend]', function() {
+      // This handler runs when a node with the 'legend' attribute is dragged and released
+      // The node position is automatically updated by Cytoscape
+    });
+    
+    // Return cleanup function
+    return () => {
+      if (cyRef.current) {
+        cyRef.current.off('dragfree');
+      }
+    };
+  }, [categories, ideas]);
   
   // Function to get the color of a category
   const getCategoryColor = (categoryName: string | null | undefined) => {
@@ -89,8 +63,8 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
     return category?.color || null;
   };
   
-  // Function to create a legend node in Cytoscape for the PDF export
-  const addLegendNodeForExport = () => {
+  // Function to create a legend node in Cytoscape
+  const addLegendNode = () => {
     if (!cyRef.current) return;
     
     // Remove any existing legend node
@@ -113,7 +87,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
     if (visibleCategories.length === 0) return;
     
     // Create HTML content for the legend
-    let legendHTML = '<div style="background-color: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; width: 180px; text-align: left;">';
+    let legendHTML = '<div style="background-color: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; width: 180px; text-align: left; cursor: move;">';
     legendHTML += '<div style="font-weight: 600; font-size: 12px; margin-bottom: 6px; color: #4b5563;">Categories</div>';
     legendHTML += '<div style="display: flex; flex-direction: column; gap: 6px;">';
     
@@ -156,9 +130,15 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
       'border-width': '1px',
       'text-opacity': 0,
       'content': '',
+      // @ts-ignore - La propiedad background-html es soportada por Cytoscape pero no está en los tipos TS
       'background-html': legendHTML,
-      'z-index': 999
+      'z-index': 999,
+      'grabbing-cursor': 'move',
+      'cursor': 'move'
     }).update();
+    
+    // Save the node ID for reference
+    legendNodeRef.current = 'legend-node';
   };
   
   // Function to download the diagram as PDF
@@ -169,7 +149,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
     
     try {
       // Add the legend node to the graph before export
-      addLegendNodeForExport();
+      addLegendNode();
       
       // Generate SVG string from Cytoscape graph
       // Use type assertion to access the svg method added by the cytoscapeSvg extension
@@ -179,6 +159,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
       const legendNode = cyRef.current.getElementById('legend-node');
       if (legendNode.length > 0) {
         cyRef.current.remove(legendNode);
+        legendNodeRef.current = null;
       }
       
       // Create a new jsPDF instance
@@ -625,54 +606,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
     
   }, [ideas, levels, finalReachabilityMatrix, categories]);
   
-  // Manejadores para el arrastre de la paleta de categorías
-  const handleLegendDragStart = (e: ReactMouseEvent) => {
-    if (containerRef.current) {
-      // Iniciar el arrastre y guardar el desplazamiento
-      setIsDraggingLegend(true);
-      const containerRect = containerRef.current.getBoundingClientRect();
-      setDragOffset({
-        x: e.clientX - legendPosition.x,
-        y: e.clientY - legendPosition.y
-      });
-    }
-  };
-  
-  // Evento de movimiento del mouse para actualizar la posición de la paleta
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDraggingLegend && containerRef.current) {
-        // Calcular la nueva posición dentro de los límites del contenedor
-        const containerRect = containerRef.current.getBoundingClientRect();
-        const newX = Math.max(0, Math.min(e.clientX - dragOffset.x, containerRect.width - 150));
-        const newY = Math.max(0, Math.min(e.clientY - dragOffset.y, containerRect.height - 100));
-        
-        setLegendPosition({ x: newX, y: newY });
-      }
-    };
-    
-    const handleMouseUp = () => {
-      setIsDraggingLegend(false);
-    };
-    
-    if (isDraggingLegend) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-    
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDraggingLegend, dragOffset]);
-  
-  // Recopilar las categorías utilizadas en las ideas
-  const usedCategories = new Set<string>();
-  ideas.forEach(idea => {
-    if (idea.category) {
-      usedCategories.add(idea.category);
-    }
-  });
+  // Ya no necesitamos código para manejar la paleta, ya que está directamente incorporada en Cytoscape
   
   if (!ideas.length || !levels.length || !finalReachabilityMatrix.length) {
     return (
@@ -708,16 +642,8 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
         </Button>
       </div>
       
-      {/* Diagram container with relative positioning */}
+      {/* Diagram container */}
       <div className="relative">
-        {/* Paleta de categorías arrastrable */}
-        <CategoryLegend 
-          categories={categories} 
-          position={legendPosition} 
-          onDragStart={handleLegendDragStart}
-          usedCategories={usedCategories}
-        />
-        
         {/* Cytoscape container */}
         <div ref={containerRef} className="w-full h-[570px]" />
       </div>
