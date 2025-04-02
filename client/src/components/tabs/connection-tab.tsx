@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Idea, SelectedIdea } from "@shared/schema";
+import { Idea, SelectedIdea, Project } from "@shared/schema";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { PlayCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import ISMProcess from "@/components/ism/ism-process";
 
 interface ConnectionTabProps {
   projectId: number;
@@ -16,6 +17,16 @@ interface ConnectionTabProps {
 export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   const { toast } = useToast();
   const [isStarting, setIsStarting] = useState(false);
+  const [isISMDialogOpen, setIsISMDialogOpen] = useState(false);
+
+  // Fetch project details to get context information
+  const {
+    data: project,
+    isLoading: isProjectLoading
+  } = useQuery<Project>({
+    queryKey: [`/api/projects/${projectId}`],
+    enabled: !!projectId
+  });
 
   // Fetch all project ideas
   const { 
@@ -48,20 +59,30 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     // Set starting state to show loading UI
     setIsStarting(true);
     
-    // Create a temporary toast notification
-    toast({
-      title: "Iniciando proceso de conexión",
-      description: "El proceso de conexión se iniciaría aquí (funcionalidad en desarrollo).",
-    });
+    // Open the ISM dialog
+    setIsISMDialogOpen(true);
     
     // Reset the starting state after a short delay
     setTimeout(() => {
       setIsStarting(false);
-    }, 1500);
+    }, 500);
   };
 
+  // Handle ISM dialog close
+  const handleISMDialogClose = () => {
+    setIsISMDialogOpen(false);
+  };
+
+  // Prepare project context information for ISM process
+  const projectContext = project ? {
+    context: project.context || "No se ha definido un contexto para este proyecto.",
+    triggeringQuestion: project.triggeringQuestion || "No se ha definido una pregunta desencadenante.",
+    relation: project.relation || "No se ha definido una relación específica.",
+    restriction: project.restriction || "No se han definido restricciones."
+  } : null;
+
   // Loading state
-  if (isIdeasLoading || isSelectedIdeasLoading) {
+  if (isIdeasLoading || isSelectedIdeasLoading || isProjectLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <div className="animate-spin h-8 w-8 border-4 border-primary border-opacity-50 border-t-primary rounded-full"></div>
@@ -100,49 +121,59 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-2xl font-semibold mb-2">Proceso de Conexión</h2>
-          <p className="text-muted-foreground">
-            Conecta las ideas seleccionadas para crear una estructura de relaciones.
+    <>
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-2xl font-semibold mb-2">Proceso de Conexión</h2>
+            <p className="text-muted-foreground">
+              Conecta las ideas seleccionadas para crear una estructura de relaciones.
+            </p>
+          </div>
+          <Button 
+            onClick={handleStartProcess}
+            className="gap-2"
+            disabled={isStarting || selectedIdeas.length < 2}
+          >
+            <PlayCircle className="h-5 w-5" />
+            {isStarting ? "Iniciando..." : "Iniciar Proceso"}
+          </Button>
+        </div>
+        
+        <Separator className="mb-4" />
+        
+        <div className="mb-4">
+          <Badge variant="outline" className="mb-2">
+            {selectedIdeas.length} ideas seleccionadas
+          </Badge>
+          <p className="text-sm text-muted-foreground">
+            Las siguientes ideas han sido seleccionadas para el proceso de conexión:
           </p>
         </div>
-        <Button 
-          onClick={handleStartProcess}
-          className="gap-2"
-          disabled={isStarting || selectedIdeas.length < 2}
-        >
-          <PlayCircle className="h-5 w-5" />
-          {isStarting ? "Iniciando..." : "Iniciar Proceso"}
-        </Button>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {selectedIdeas.map(idea => (
+            <Card key={idea.id} className="border-l-4 border-l-primary">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">{idea.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {idea.description && (
+                  <p className="text-sm line-clamp-3">{idea.description}</p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
       
-      <Separator className="mb-4" />
-      
-      <div className="mb-4">
-        <Badge variant="outline" className="mb-2">
-          {selectedIdeas.length} ideas seleccionadas
-        </Badge>
-        <p className="text-sm text-muted-foreground">
-          Las siguientes ideas han sido seleccionadas para el proceso de conexión:
-        </p>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {selectedIdeas.map(idea => (
-          <Card key={idea.id} className="border-l-4 border-l-primary">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">{idea.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {idea.description && (
-                <p className="text-sm line-clamp-3">{idea.description}</p>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
+      {/* ISM Process Dialog */}
+      <ISMProcess 
+        isOpen={isISMDialogOpen}
+        onClose={handleISMDialogClose}
+        selectedIdeas={selectedIdeas}
+        projectContext={projectContext}
+      />
+    </>
   );
 }
