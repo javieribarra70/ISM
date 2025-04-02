@@ -137,7 +137,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
           if (projectInfo) {
             const projectLegendX = margin;
             const projectLegendY = margin;
-            const projectLegendWidth = 70;
+            const projectLegendWidth = 150; // Increased width to accommodate longer text
             
             // Calculate project legend height
             let projectItemsCount = 2; // Name and Created always shown
@@ -177,7 +177,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
               pdf.setFont('helvetica', 'normal');
               // Use full description with text wrapping for long descriptions
               const desc = projectInfo.description;
-              const splitDesc = pdf.splitTextToSize(desc, projectLegendWidth - 16);
+              const splitDesc = pdf.splitTextToSize(desc, projectLegendWidth - 20); // Increased margin for text
               pdf.text(splitDesc, projectLegendX + 8, currentY);
               
               // Adjust currentY based on number of lines in the description
@@ -196,7 +196,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
           }
           
           // 2. Categories Legend (Right Side)
-          const categoriesLegendWidth = 60;
+          const categoriesLegendWidth = 80; // Increased width for category names
           const categoriesLegendX = pdfWidth - categoriesLegendWidth - margin;
           const categoriesLegendY = margin;
           
