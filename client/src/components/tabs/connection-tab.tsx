@@ -75,10 +75,10 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
 
   // Prepare project context information for ISM process
   const projectContext = project ? {
-    context: project.context || "No se ha definido un contexto para este proyecto.",
-    triggeringQuestion: project.triggeringQuestion || "No se ha definido una pregunta desencadenante.",
-    relation: project.relation || "No se ha definido una relación específica.",
-    restriction: project.restriction || "No se han definido restricciones."
+    context: project.context || "No context has been defined for this project.",
+    triggeringQuestion: project.triggeringQuestion || "No triggering question has been defined.",
+    relation: project.relation || "No specific relationship has been defined.",
+    restriction: project.restriction || "No restrictions have been defined."
   } : null;
 
   // Loading state
@@ -95,7 +95,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     return (
       <Alert variant="destructive" className="mb-4">
         <AlertTitle>Error</AlertTitle>
-        <AlertDescription>No se pudieron cargar las ideas seleccionadas. Por favor, intenta de nuevo más tarde.</AlertDescription>
+        <AlertDescription>Could not load selected ideas. Please try again later.</AlertDescription>
       </Alert>
     );
   }
@@ -104,16 +104,16 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   if (selectedIdeas.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-2xl font-semibold mb-2">Proceso de Conexión</h2>
+        <h2 className="text-2xl font-semibold mb-2">Connection Process</h2>
         <p className="text-muted-foreground mb-6">
-          Gestiona las conexiones entre ideas seleccionadas.
+          Manage connections between selected ideas.
         </p>
         
         <Alert className="mb-4">
-          <AlertTitle>No hay ideas seleccionadas</AlertTitle>
+          <AlertTitle>No ideas selected</AlertTitle>
           <AlertDescription>
-            No hay ideas seleccionadas para el proceso de conexión. Por favor, ve a la pestaña 
-            &quot;Selector&quot; y selecciona las ideas que deseas conectar.
+            There are no ideas selected for the connection process. Please go to the 
+            &quot;Selector&quot; tab and select the ideas you want to connect.
           </AlertDescription>
         </Alert>
       </div>
@@ -125,9 +125,9 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h2 className="text-2xl font-semibold mb-2">Proceso de Conexión</h2>
+            <h2 className="text-2xl font-semibold mb-2">Connection Process</h2>
             <p className="text-muted-foreground">
-              Conecta las ideas seleccionadas para crear una estructura de relaciones.
+              Connect selected ideas to create a relationship structure.
             </p>
           </div>
           <Button 
@@ -144,10 +144,10 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
         
         <div className="mb-4">
           <Badge variant="outline" className="mb-2">
-            {selectedIdeas.length} ideas seleccionadas
+            {selectedIdeas.length} selected ideas
           </Badge>
           <p className="text-sm text-muted-foreground">
-            Las siguientes ideas han sido seleccionadas para el proceso de conexión:
+            The following ideas have been selected for the connection process:
           </p>
         </div>
         
