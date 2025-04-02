@@ -621,7 +621,7 @@ export class MemStorage implements IStorage {
       const newSelectedIdea: SelectedIdea = {
         id: Date.now(), // Usamos timestamp como ID único
         ...selectedIdeaData,
-        createdAt: new Date()
+        createdAt: new Date() // In memory storage we need to set the date manually
       };
       
       this.selectedIdeas.set(selectedKey, newSelectedIdea);
@@ -1685,8 +1685,8 @@ export class DatabaseStorage implements IStorage {
         // Si la idea no está seleccionada, la agregamos
         const result = await db.insert(selectedIdeas)
           .values({
-            ...selectedIdeaData,
-            createdAt: new Date()
+            ...selectedIdeaData
+            // createdAt will be automatically set by defaultNow()
           })
           .returning();
         return result[0];

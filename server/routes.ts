@@ -1046,7 +1046,7 @@ export function registerRoutes(app: Express): Server {
       const selectionResult = await storage.toggleSelectedIdea({
         ideaId,
         projectId,
-        selectedAt: new Date()
+        selectedBy: userId
       });
       
       if (selectionResult) {
