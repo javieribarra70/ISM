@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
-import { Idea } from '@shared/schema';
+import { Idea, Category } from '@shared/schema';
 import { computeTransitiveReduction } from './matrix-reduction';
+import { useQuery } from '@tanstack/react-query';
 
 // Registrar el layout de dagre con Cytoscape
 cytoscape.use(dagre);
@@ -11,11 +12,26 @@ interface ISMDiagramProps {
   ideas: Idea[];
   levels: number[][];
   finalReachabilityMatrix: boolean[][];
+  projectId?: number; // Agregamos el projectId para obtener las categorías
 }
 
-const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps) => {
+const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDiagramProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
+  
+  // Obtener las categorías del proyecto
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: projectId ? [`/api/projects/${projectId}/categories`] : ['no-categories'],
+    enabled: !!projectId,
+  });
+  
+  // Función para obtener el color de una categoría
+  const getCategoryColor = (categoryName: string | null | undefined) => {
+    if (!categoryName) return null;
+    
+    const category = categories.find(cat => cat.name === categoryName);
+    return category?.color || null;
+  };
   
   useEffect(() => {
     // Limpiar cuando el componente se desmonta
@@ -54,13 +70,17 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
       levelIdxs.forEach((ideaIdx, indexInLevel) => {
         const idea = ideas[ideaIdx];
         const influenceLevel = levels.length - levelNum;
+        const categoryColor = getCategoryColor(idea.category);
         
+        // Si la idea tiene una categoría con color, usamos ese color; de lo contrario, usamos el color basado en nivel
         elements.push({
           data: {
             id: `node-${idea.id}`,
             label: idea.title,
             influenceLevel: influenceLevel,
-            levelColor: getLevelColor(levelNum)
+            levelColor: getLevelColor(levelNum),
+            categoryColor: categoryColor,
+            category: idea.category
           },
           position: {
             // Las posiciones se asignarán automáticamente por el layout
@@ -208,9 +228,35 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
             'text-outline-opacity': 1
           }
         },
-        // Estilo para nodos con levelColor
+        // Estilo para nodos con categoryColor (prioridad sobre levelColor)
         {
-          selector: 'node[levelColor]',
+          selector: 'node[categoryColor]',
+          style: {
+            'border-color': 'data(categoryColor)',
+            'background-color': function(ele) {
+              // Aplicar color de categoría con 50% de opacidad al fondo
+              const color = ele.data('categoryColor');
+              if (!color) return 'white';
+              
+              // Convertir color hex a rgba con 50% de opacidad
+              if (color.startsWith('#')) {
+                const r = parseInt(color.slice(1, 3), 16);
+                const g = parseInt(color.slice(3, 5), 16);
+                const b = parseInt(color.slice(5, 7), 16);
+                return `rgba(${r}, ${g}, ${b}, 0.5)`;
+              }
+              // Si ya es rgba, ajustar opacidad a 0.5
+              else if (color.startsWith('rgba')) {
+                return color.replace(/[\d\.]+\)$/, '0.5)');
+              }
+              // Si es otro formato, devolver color con opacidad
+              return color;
+            }
+          }
+        },
+        // Estilo para nodos con levelColor (solo si no tienen categoryColor)
+        {
+          selector: 'node[levelColor]:not([categoryColor])',
           style: {
             'border-color': 'data(levelColor)'
           }
@@ -277,7 +323,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
       padding: 40
     } as any).run();
     
-  }, [ideas, levels, finalReachabilityMatrix]);
+  }, [ideas, levels, finalReachabilityMatrix, categories]);
   
   if (!ideas.length || !levels.length || !finalReachabilityMatrix.length) {
     return (

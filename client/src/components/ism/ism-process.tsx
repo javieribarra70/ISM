@@ -823,6 +823,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 ideas={selectedIdeas}
                 levels={levels}
                 finalReachabilityMatrix={finalReachabilityMatrix}
+                projectId={selectedIdeas[0]?.projectId}
               />
             </div>
           </div>
