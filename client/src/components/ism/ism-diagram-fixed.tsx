@@ -137,7 +137,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
           if (projectInfo) {
             const projectLegendX = margin;
             const projectLegendY = margin;
-            const projectLegendWidth = 150; // Increased width to accommodate longer text
+            const projectLegendWidth = 100; // Adjusted width to fit text without excesive space
             
             // Calculate project legend height
             let projectItemsCount = 2; // Name and Created always shown
@@ -196,7 +196,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
           }
           
           // 2. Categories Legend (Right Side)
-          const categoriesLegendWidth = 80; // Increased width for category names
+          const categoriesLegendWidth = 60; // Optimal width for category names
           const categoriesLegendX = pdfWidth - categoriesLegendWidth - margin;
           const categoriesLegendY = margin;
           
