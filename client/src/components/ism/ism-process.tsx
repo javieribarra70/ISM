@@ -522,50 +522,60 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 </div>
               </div>
               
-              {/* Botones VAXO con descripción */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Botones de relación ubicados entre ambas ideas */}
+              <div className="flex justify-center gap-4 mt-8">
+                {/* Botón V: Flecha izquierda a derecha */}
                 <Button
                   variant="outline"
-                  className="p-4 border-2"
+                  className="p-3 border-2 w-16 h-16 flex items-center justify-center"
                   onClick={() => answerQuestion(RelationType.V)}
+                  title="Yes (i influences j)"
                 >
-                  <div className="text-center">
-                    <span className="text-lg font-bold block">V</span>
-                    <span className="text-sm">Yes ({question.ideaI.title} influences {question.ideaJ.title})</span>
+                  <div className="w-10 h-10 relative">
+                    <div className="w-full h-2 bg-blue-600 absolute top-1/2 -translate-y-1/2"></div>
+                    <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[12px] border-l-blue-600 absolute right-0 top-1/2 -translate-y-1/2"></div>
                   </div>
                 </Button>
                 
+                {/* Botón A: Flecha derecha a izquierda */}
                 <Button
                   variant="outline"
-                  className="p-4 border-2"
+                  className="p-3 border-2 w-16 h-16 flex items-center justify-center"
                   onClick={() => answerQuestion(RelationType.A)}
+                  title="No (j influences i)"
                 >
-                  <div className="text-center">
-                    <span className="text-lg font-bold block">A</span>
-                    <span className="text-sm">No ({question.ideaJ.title} influences {question.ideaI.title})</span>
+                  <div className="w-10 h-10 relative">
+                    <div className="w-full h-2 bg-blue-600 absolute top-1/2 -translate-y-1/2"></div>
+                    <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-r-[12px] border-r-blue-600 absolute left-0 top-1/2 -translate-y-1/2"></div>
                   </div>
                 </Button>
                 
+                {/* Botón X: Flechas en ambos sentidos */}
                 <Button
                   variant="outline"
-                  className="p-4 border-2"
+                  className="p-3 border-2 w-16 h-16 flex items-center justify-center"
                   onClick={() => answerQuestion(RelationType.X)}
+                  title="Both (mutual influence)"
                 >
-                  <div className="text-center">
-                    <span className="text-lg font-bold block">X</span>
-                    <span className="text-sm">Both (mutual influence)</span>
+                  <div className="w-10 h-10 relative">
+                    {/* Flecha izquierda a derecha */}
+                    <div className="w-full h-1.5 bg-blue-600 absolute top-[40%] -translate-y-1/2"></div>
+                    <div className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-l-[10px] border-l-blue-600 absolute right-0 top-[40%] -translate-y-1/2"></div>
+                    
+                    {/* Flecha derecha a izquierda */}
+                    <div className="w-full h-1.5 bg-blue-600 absolute top-[60%] -translate-y-1/2"></div>
+                    <div className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[10px] border-r-blue-600 absolute left-0 top-[60%] -translate-y-1/2"></div>
                   </div>
                 </Button>
                 
+                {/* Botón O: Círculo */}
                 <Button
                   variant="outline"
-                  className="p-4 border-2"
+                  className="p-3 border-2 w-16 h-16 flex items-center justify-center"
                   onClick={() => answerQuestion(RelationType.O)}
+                  title="No (0) (no relationship)"
                 >
-                  <div className="text-center">
-                    <span className="text-lg font-bold block">O</span>
-                    <span className="text-sm">No (0) (no relationship)</span>
-                  </div>
+                  <div className="w-8 h-8 rounded-full border-2 border-blue-600"></div>
                 </Button>
               </div>
             </div>
