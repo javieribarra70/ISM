@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info, ArrowRight, ArrowLeft, ArrowLeftRight, Circle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import ISMDiagram from "./ism-diagram";
 
 interface ISMProcessProps {
   isOpen: boolean;
@@ -154,10 +155,9 @@ function determineLevel(
 // Función auxiliar para comparar conjuntos
 function areSetEqual(a: Set<number>, b: Set<number>): boolean {
   if (a.size !== b.size) return false;
-  for (const item of a) {
-    if (!b.has(item)) return false;
-  }
-  return true;
+  
+  // Usar Array.from para convertir el Set a un array y luego iterar
+  return Array.from(a).every(item => b.has(item));
 }
 
 export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectContext }: ISMProcessProps) {
@@ -830,11 +830,13 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
               understand the underlying structure and dynamics of the system.
             </p>
             
-            <div className="p-6 bg-slate-50 rounded-md text-center">
-              <p className="text-sm">
-                The diagram will be implemented to show a graphical representation
-                of the relationships between elements in a future update.
-              </p>
+            {/* Diagrama ISM usando el componente ISMDiagram */}
+            <div className="mt-6">
+              <ISMDiagram 
+                ideas={selectedIdeas}
+                levels={levels}
+                finalReachabilityMatrix={finalReachabilityMatrix}
+              />
             </div>
             
             <div className="mt-6">
