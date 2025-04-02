@@ -12,6 +12,9 @@ import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { eq, and } from "drizzle-orm";
 import connectPgSimple from "connect-pg-simple";
 import postgres from 'postgres';
+// Import pg with dynamic import to handle ES module compatibility issues
+import pkg from 'pg';
+const { Pool } = pkg;
 
 // Database setup - using postgres package for better compatibility
 const connectionString = process.env.DATABASE_URL;
@@ -21,6 +24,14 @@ const sql = postgres(connectionString as string, {
   idle_timeout: 30
 });
 const db = drizzle(sql);
+
+// Create a pool for native pg queries
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
 
 // PostgreSQL session store
 const PostgresSessionStore = connectPgSimple(session);
@@ -1641,27 +1652,30 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log('[STORAGE] Getting all selected ideas for project:', projectId);
       
-      const results = await db.execute(sql`
+      // Use direct pool query instead of Drizzle
+      const query = `
         SELECT * FROM selected_ideas
-        WHERE project_id = ${projectId}
-      `);
+        WHERE project_id = $1
+        ORDER BY created_at DESC
+      `;
       
-      console.log('[STORAGE] Project selected ideas results:', results);
+      const result = await pool.query(query, [projectId]);
+      console.log('[STORAGE] Project selected ideas results:', result.rows);
       
-      if (results && Array.isArray(results)) {
-        // Convert rows to our expected type
-        return results.map(row => ({
-          id: row.id,
-          ideaId: row.idea_id,
-          projectId: row.project_id,
-          selectedBy: row.selected_by,
+      if (result.rows && result.rows.length > 0) {
+        // Convert rows to our expected type with explicit type conversions
+        return result.rows.map(row => ({
+          id: Number(row.id),
+          ideaId: Number(row.idea_id),
+          projectId: Number(row.project_id),
+          selectedBy: Number(row.selected_by),
           createdAt: new Date(row.created_at)
         }));
       }
       
       return [];
     } catch (error) {
-      console.error('Error getting project selected ideas:', error);
+      console.error('[STORAGE] Error getting project selected ideas:', error);
       throw error;
     }
   }
@@ -1670,23 +1684,25 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log('[STORAGE] Getting selected idea for ideaId:', ideaId, 'projectId:', projectId);
       
-      const results = await db.execute(sql`
+      // Use direct pool query instead of Drizzle
+      const query = `
         SELECT * FROM selected_ideas
-        WHERE idea_id = ${ideaId}
-        AND project_id = ${projectId}
-      `);
+        WHERE idea_id = $1
+        AND project_id = $2
+      `;
       
-      console.log('[STORAGE] Get selected idea results:', results);
+      const result = await pool.query(query, [ideaId, projectId]);
+      console.log('[STORAGE] Get selected idea results:', result.rows);
       
-      if (results && results.length > 0) {
-        const row = results[0];
+      if (result.rows && result.rows.length > 0) {
+        const row = result.rows[0];
         
-        // Convert the row to our expected type
+        // Convert the row to our expected type with explicit type conversions
         const selectedIdea: SelectedIdea = {
-          id: row.id,
-          ideaId: row.idea_id,
-          projectId: row.project_id,
-          selectedBy: row.selected_by,
+          id: Number(row.id),
+          ideaId: Number(row.idea_id),
+          projectId: Number(row.project_id),
+          selectedBy: Number(row.selected_by),
           createdAt: new Date(row.created_at)
         };
         
@@ -1695,7 +1711,7 @@ export class DatabaseStorage implements IStorage {
       
       return undefined;
     } catch (error){
-      console.error('Error getting selected idea:', error);
+      console.error('[STORAGE] Error getting selected idea:', error);
       throw error;
     }
   }
@@ -1714,61 +1730,81 @@ export class DatabaseStorage implements IStorage {
         throw new Error('Invalid data: Missing required fields for toggling idea selection');
       }
       
-      // Check if the idea already exists using raw SQL query
-      console.log('[STORAGE] Checking if idea is already selected using raw SQL');
-      
-      const checkResult = await db.execute(sql`
-        SELECT * FROM selected_ideas 
-        WHERE idea_id = ${selectedIdeaData.ideaId} 
-        AND project_id = ${selectedIdeaData.projectId}
-      `);
-      
-      console.log('[STORAGE] Check result:', checkResult);
-      
-      const exists = checkResult && checkResult.length > 0;
-      console.log('[STORAGE] Idea already selected:', exists);
-      
-      if (exists) {
-        // If idea is already selected, delete it
-        console.log('[STORAGE] Deleting existing selected idea');
+      // Use a single query with ON CONFLICT to handle both insert and delete
+      // This is more robust and eliminates race conditions
+      try {
+        // First check if the idea is already selected
+        const checkQuery = `
+          SELECT * FROM selected_ideas 
+          WHERE idea_id = $1 AND project_id = $2
+        `;
         
-        await db.execute(sql`
-          DELETE FROM selected_ideas 
-          WHERE idea_id = ${selectedIdeaData.ideaId} 
-          AND project_id = ${selectedIdeaData.projectId}
-        `);
+        console.log('[STORAGE] Executing check query with params:', 
+                   selectedIdeaData.ideaId, selectedIdeaData.projectId);
         
-        return undefined;
-      } else {
-        // If idea is not selected, add it
-        console.log('[STORAGE] Inserting new selected idea');
+        const checkResult = await pool.query(checkQuery, [
+          selectedIdeaData.ideaId, 
+          selectedIdeaData.projectId
+        ]);
         
-        const insertResult = await db.execute(sql`
-          INSERT INTO selected_ideas (idea_id, project_id, selected_by, created_at)
-          VALUES (${selectedIdeaData.ideaId}, ${selectedIdeaData.projectId}, ${selectedIdeaData.selectedBy}, NOW())
-          RETURNING *
-        `);
+        console.log('[STORAGE] Check query results:', checkResult.rows);
         
-        console.log('[STORAGE] Insert result:', insertResult);
-        
-        if (insertResult && insertResult.length > 0) {
-          const row = insertResult[0];
+        // If the idea is already selected, delete it
+        if (checkResult.rows.length > 0) {
+          console.log('[STORAGE] Idea already selected, deleting it');
           
-          // Convert the row to our expected type
-          const selectedIdea: SelectedIdea = {
-            id: row.id,
-            ideaId: row.idea_id,
-            projectId: row.project_id,
-            selectedBy: row.selected_by,
-            createdAt: new Date(row.created_at)
-          };
+          const deleteQuery = `
+            DELETE FROM selected_ideas 
+            WHERE idea_id = $1 AND project_id = $2
+          `;
           
-          console.log('[STORAGE] Returning new selected idea:', selectedIdea);
-          return selectedIdea;
+          await pool.query(deleteQuery, [
+            selectedIdeaData.ideaId, 
+            selectedIdeaData.projectId
+          ]);
+          
+          console.log('[STORAGE] Successfully deleted selected idea');
+          return undefined;
+        } 
+        // Otherwise, insert it
+        else {
+          console.log('[STORAGE] Idea not selected, inserting it');
+          
+          const insertQuery = `
+            INSERT INTO selected_ideas (idea_id, project_id, selected_by, created_at)
+            VALUES ($1, $2, $3, NOW())
+            RETURNING *
+          `;
+          
+          const insertResult = await pool.query(insertQuery, [
+            selectedIdeaData.ideaId,
+            selectedIdeaData.projectId,
+            selectedIdeaData.selectedBy
+          ]);
+          
+          console.log('[STORAGE] Insert results:', insertResult.rows);
+          
+          if (insertResult.rows.length > 0) {
+            const row = insertResult.rows[0];
+            
+            // Convert the row to our expected type with explicit type conversions
+            const selectedIdea: SelectedIdea = {
+              id: Number(row.id),
+              ideaId: Number(row.idea_id),
+              projectId: Number(row.project_id),
+              selectedBy: Number(row.selected_by),
+              createdAt: new Date(row.created_at)
+            };
+            
+            console.log('[STORAGE] Returning new selected idea:', selectedIdea);
+            return selectedIdea;
+          }
         }
         
-        console.log('[STORAGE] Insert did not return expected data');
         return undefined;
+      } catch (dbError) {
+        console.error('[STORAGE] Database error in toggle operation:', dbError);
+        throw dbError;
       }
     } catch (error) {
       console.error('[STORAGE] Error toggling selected idea:', error);
@@ -1780,10 +1816,13 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log('[STORAGE] Clearing all selected ideas for project:', projectId);
       
-      await db.execute(sql`
+      // Use direct pool query instead of Drizzle
+      const deleteQuery = `
         DELETE FROM selected_ideas
-        WHERE project_id = ${projectId}
-      `);
+        WHERE project_id = $1
+      `;
+      
+      await pool.query(deleteQuery, [projectId]);
       
       console.log('[STORAGE] Successfully cleared selected ideas for project:', projectId);
       return true;
