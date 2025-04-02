@@ -89,6 +89,78 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
     return category?.color || null;
   };
   
+  // Function to create a legend node in Cytoscape for the PDF export
+  const addLegendNodeForExport = () => {
+    if (!cyRef.current) return;
+    
+    // Remove any existing legend node
+    const existingLegend = cyRef.current.getElementById('legend-node');
+    if (existingLegend.length > 0) {
+      cyRef.current.remove(existingLegend);
+    }
+    
+    // Recopilar las categorías utilizadas en las ideas
+    const usedCategoryNames = new Set<string>();
+    ideas.forEach(idea => {
+      if (idea.category) {
+        usedCategoryNames.add(idea.category);
+      }
+    });
+    
+    // Filtrar solo las categorías que se usan en el diagrama
+    const visibleCategories = categories.filter(cat => usedCategoryNames.has(cat.name));
+    
+    if (visibleCategories.length === 0) return;
+    
+    // Create HTML content for the legend
+    let legendHTML = '<div style="background-color: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; width: 180px; text-align: left;">';
+    legendHTML += '<div style="font-weight: 600; font-size: 12px; margin-bottom: 6px; color: #4b5563;">Categories</div>';
+    legendHTML += '<div style="display: flex; flex-direction: column; gap: 6px;">';
+    
+    visibleCategories.forEach(category => {
+      legendHTML += `
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 12px; height: 12px; border-radius: 3px; background-color: ${category.color || '#cbd5e1'};"></div>
+          <span style="font-size: 11px; color: #4b5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px;">
+            ${category.name}
+          </span>
+        </div>
+      `;
+    });
+    
+    legendHTML += '</div></div>';
+    
+    // Find a good position for the legend - top right corner
+    const boundingBox = cyRef.current.elements().boundingBox();
+    const legendX = boundingBox.x2 - 100; // Offset from right edge
+    const legendY = boundingBox.y1 + 30; // Near top edge
+    
+    // Add the legend node to the graph
+    cyRef.current.add({
+      group: 'nodes',
+      data: { 
+        id: 'legend-node', 
+        legend: true
+      },
+      position: { x: legendX, y: legendY },
+      renderedPosition: { x: legendX, y: legendY }
+    });
+    
+    // Style the legend node specifically
+    cyRef.current.style().selector('node[legend]').style({
+      'shape': 'rectangle',
+      'width': '180px',
+      'height': visibleCategories.length * 22 + 30, // Dynamic height based on categories
+      'background-color': 'white',
+      'border-color': '#e2e8f0',
+      'border-width': '1px',
+      'text-opacity': 0,
+      'content': '',
+      'background-html': legendHTML,
+      'z-index': 999
+    }).update();
+  };
+  
   // Function to download the diagram as PDF
   const handleDownloadPDF = () => {
     if (!cyRef.current) return;
@@ -96,9 +168,18 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
     setIsDownloading(true);
     
     try {
+      // Add the legend node to the graph before export
+      addLegendNodeForExport();
+      
       // Generate SVG string from Cytoscape graph
       // Use type assertion to access the svg method added by the cytoscapeSvg extension
       const svg = (cyRef.current as any).svg({ scale: 2, full: true, bg: 'white' });
+      
+      // Remove the legend node after export
+      const legendNode = cyRef.current.getElementById('legend-node');
+      if (legendNode.length > 0) {
+        cyRef.current.remove(legendNode);
+      }
       
       // Create a new jsPDF instance
       const pdf = new jsPDF({
