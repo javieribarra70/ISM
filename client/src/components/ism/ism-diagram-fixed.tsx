@@ -175,11 +175,13 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
               currentY += itemHeight;
               
               pdf.setFont('helvetica', 'normal');
-              // Truncate description if too long
-              const desc = projectInfo.description.length > 30 
-                ? projectInfo.description.substring(0, 30) + '...' 
-                : projectInfo.description;
-              pdf.text(desc, projectLegendX + 8, currentY);
+              // Use full description with text wrapping for long descriptions
+              const desc = projectInfo.description;
+              const splitDesc = pdf.splitTextToSize(desc, projectLegendWidth - 16);
+              pdf.text(splitDesc, projectLegendX + 8, currentY);
+              
+              // Adjust currentY based on number of lines in the description
+              currentY += (splitDesc.length - 1) * 4;
               currentY += itemHeight + 1;
             }
             
@@ -212,7 +214,19 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
           // Set background for categories legend
           pdf.setFillColor(255, 255, 255); // white
           pdf.setDrawColor(226, 232, 240); // light gray border
-          const categoriesHeight = titleHeight + (pdfVisibleCategories.length > 0 ? pdfVisibleCategories.length * itemHeight : itemHeight) + 2;
+          
+          // Calculate dynamic height to account for potentially multi-line category names
+          let categoryItemsHeight = 0;
+          if (pdfVisibleCategories.length > 0) {
+            pdfVisibleCategories.forEach(category => {
+              const splitName = pdf.splitTextToSize(category.name, categoriesLegendWidth - 16);
+              categoryItemsHeight += Math.max(itemHeight, (splitName.length * 4));
+            });
+          } else {
+            categoryItemsHeight = itemHeight;
+          }
+          
+          const categoriesHeight = titleHeight + categoryItemsHeight + 2;
           pdf.roundedRect(categoriesLegendX, categoriesLegendY, categoriesLegendWidth, categoriesHeight, 1, 1, 'FD');
           
           // Add categories title
@@ -223,22 +237,28 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
           
           // Add category items
           if (pdfVisibleCategories.length > 0) {
-            pdfVisibleCategories.forEach((category, index) => {
-              const itemY = categoriesLegendY + titleHeight + (index * itemHeight) + 2;
-              
+            // Track the current vertical position
+            let currentItemY = categoriesLegendY + titleHeight + 2;
+            
+            pdfVisibleCategories.forEach((category) => {
               // Draw colored square
               const color = category.color || '#cbd5e1';
               const r = parseInt(color.slice(1, 3), 16);
               const g = parseInt(color.slice(3, 5), 16);
               const b = parseInt(color.slice(5, 7), 16);
               pdf.setFillColor(r, g, b);
-              pdf.rect(categoriesLegendX + 4, itemY + 1, 3, 3, 'F');
+              pdf.rect(categoriesLegendX + 4, currentItemY + 1, 3, 3, 'F');
               
-              // Draw category name
+              // Draw category name with text wrapping for long names
               pdf.setFont('helvetica', 'normal');
               pdf.setFontSize(7);
               pdf.setTextColor(75, 85, 99); // #4b5563
-              pdf.text(category.name, categoriesLegendX + 10, itemY + 3);
+              const splitName = pdf.splitTextToSize(category.name, categoriesLegendWidth - 16);
+              pdf.text(splitName, categoriesLegendX + 10, currentItemY + 3);
+              
+              // Calculate height for this category and update position for next one
+              const categoryHeight = Math.max(itemHeight, (splitName.length * 4));
+              currentItemY += categoryHeight;
             });
           } else {
             // If no categories, show a message
@@ -680,7 +700,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
                     className="w-3 h-3 rounded"
                     style={{ backgroundColor: category.color || '#cbd5e1' }}
                   />
-                  <span className="text-xs text-gray-600 truncate max-w-[140px]">
+                  <span className="text-xs text-gray-600 break-words w-auto">
                     {category.name}
                   </span>
                 </div>
