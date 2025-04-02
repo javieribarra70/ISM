@@ -5,27 +5,27 @@ import { Idea, Category } from '@shared/schema';
 import { computeTransitiveReduction } from './matrix-reduction';
 import { useQuery } from '@tanstack/react-query';
 
-// Registrar el layout de dagre con Cytoscape
+// Register the dagre layout with Cytoscape
 cytoscape.use(dagre);
 
 interface ISMDiagramProps {
   ideas: Idea[];
   levels: number[][];
   finalReachabilityMatrix: boolean[][];
-  projectId?: number; // Agregamos el projectId para obtener las categorías
+  projectId?: number; // We add projectId to obtain the categories
 }
 
 const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDiagramProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
   
-  // Obtener las categorías del proyecto
+  // Get the project categories
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: projectId ? [`/api/projects/${projectId}/categories`] : ['no-categories'],
     enabled: !!projectId,
   });
   
-  // Función para obtener el color de una categoría
+  // Function to get the color of a category
   const getCategoryColor = (categoryName: string | null | undefined) => {
     if (!categoryName) return null;
     
@@ -34,7 +34,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
   };
   
   useEffect(() => {
-    // Limpiar cuando el componente se desmonta
+    // Clean up when component unmounts
     return () => {
       if (cyRef.current) {
         cyRef.current.destroy();
@@ -48,24 +48,24 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
       return;
     }
     
-    // Aplicar la reducción transitiva para eliminar relaciones redundantes
+    // Apply transitive reduction to eliminate redundant relationships
     const reducedMatrix = computeTransitiveReduction(finalReachabilityMatrix);
     console.log('Original Matrix:', finalReachabilityMatrix);
     console.log('Reduced Matrix:', reducedMatrix);
     
-    // Crear elementos para el gráfico
+    // Create elements for the graph
     const elements: cytoscape.ElementDefinition[] = [];
     const idToNodeMap = new Map<number, { idea: Idea, level: number, index: number }>();
     
-    // Color del nodo basado en el nivel de influencia
+    // Node color based on influence level
     const getLevelColor = (level: number) => {
-      // Escala de colores: del más influyente (azul más intenso) al menos influyente
+      // Color scale: from most influential (intense blue) to least influential
       const maxLevel = levels.length;
       const intensity = Math.max(0, 100 - Math.floor((level / maxLevel) * 80));
       return `rgba(59, 130, 246, ${intensity}%)`;
     };
     
-    // Crear nodos
+    // Create nodes
     levels.forEach((levelIdxs, levelNum) => {
       levelIdxs.forEach((ideaIdx, indexInLevel) => {
         const idea = ideas[ideaIdx];
@@ -234,22 +234,22 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
           style: {
             'border-color': 'data(categoryColor)',
             'background-color': function(ele) {
-              // Aplicar color de categoría con 50% de opacidad al fondo
+              // Apply category color with 30% opacity to the background
               const color = ele.data('categoryColor');
               if (!color) return 'white';
               
-              // Convertir color hex a rgba con 50% de opacidad
+              // Convert hex color to rgba with 30% opacity
               if (color.startsWith('#')) {
                 const r = parseInt(color.slice(1, 3), 16);
                 const g = parseInt(color.slice(3, 5), 16);
                 const b = parseInt(color.slice(5, 7), 16);
-                return `rgba(${r}, ${g}, ${b}, 0.5)`;
+                return `rgba(${r}, ${g}, ${b}, 0.3)`;
               }
-              // Si ya es rgba, ajustar opacidad a 0.5
+              // If it's already rgba, adjust opacity to 0.3
               else if (color.startsWith('rgba')) {
-                return color.replace(/[\d\.]+\)$/, '0.5)');
+                return color.replace(/[\d\.]+\)$/, '0.3)');
               }
-              // Si es otro formato, devolver color con opacidad
+              // If it's another format, return the color
               return color;
             }
           }
@@ -329,7 +329,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
     return (
       <div className="w-full h-64 flex items-center justify-center bg-slate-50 rounded-md">
         <p className="text-sm text-muted-foreground">
-          No hay datos suficientes para generar el diagrama.
+          Not enough data to generate the diagram.
         </p>
       </div>
     );
