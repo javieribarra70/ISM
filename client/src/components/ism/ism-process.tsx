@@ -215,40 +215,40 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       const inferredQuestions = applyLogicalInference(updatedQuestions, currentQuestionIndex);
       setQuestions(inferredQuestions);
       
-      // Contar cuántas preguntas faltan por responder
+      // Count how many questions are left to answer
       const pendingQuestions = inferredQuestions.filter(q => q.response === null);
       
       if (pendingQuestions.length > 0) {
-        // Seleccionar la siguiente pregunta más informativa
+        // Select the next most informative question
         selectNextMostInformativeQuestion(inferredQuestions);
       } else {
-        // Todas las preguntas han sido respondidas, construir la matriz SSIM
+        // All questions have been answered, build the SSIM matrix
         buildSSIMMatrix(inferredQuestions);
       }
     }
   };
   
-  // Función para seleccionar la siguiente pregunta más informativa
+  // Function to select the next most informative question
   const selectNextMostInformativeQuestion = (currentQuestions: ISMQuestion[]) => {
-    // Encontrar todas las preguntas que aún no se han respondido
+    // Find all questions that have not yet been answered
     const unansweredIndices = currentQuestions
       .map((q, index) => q.response === null ? index : -1)
       .filter(index => index !== -1);
     
     if (unansweredIndices.length === 0) {
-      // No hay más preguntas por responder
+      // No more questions to answer
       buildSSIMMatrix(currentQuestions);
       return;
     }
     
-    // Por ahora, usamos una estrategia simple: seleccionar la primera pregunta no respondida
-    // Esto se puede mejorar con algoritmos más avanzados que analicen la estructura actual
-    // y determinen qué pregunta aportaría más información
+    // For now, we use a simple strategy: select the first unanswered question
+    // This can be improved with more advanced algorithms that analyze the current structure
+    // and determine which question would provide the most information
     
-    // En una implementación más avanzada, podríamos:
-    // 1. Calcular la centralidad de cada nodo en la matriz actual
-    // 2. Seleccionar preguntas que involucren nodos con alta centralidad
-    // 3. Analizar patrones en las respuestas existentes
+    // In a more advanced implementation, we could:
+    // 1. Calculate the centrality of each node in the current matrix
+    // 2. Select questions involving nodes with high centrality
+    // 3. Analyze patterns in existing responses
     
     const nextIndex = unansweredIndices[0];
     setCurrentQuestionIndex(nextIndex);
@@ -257,7 +257,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 `Does ${currentQuestions[nextIndex].ideaI.title} influence ${currentQuestions[nextIndex].ideaJ.title}?`);
   };
 
-  // Función para aplicar inferencias lógicas utilizando propiedades transitivas
+  // Function to apply logical inferences using transitive properties
   const applyLogicalInference = (
     currentQuestions: ISMQuestion[],
     answeredIndex: number
@@ -265,10 +265,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     const updatedQuestions = [...currentQuestions];
     const answeredQuestion = updatedQuestions[answeredIndex];
     
-    // Si aún no se ha respondido, no hay nada que inferir
+    // If it has not been answered yet, there is nothing to infer
     if (!answeredQuestion.response) return updatedQuestions;
     
-    // Construir una matriz SSIM provisional con las preguntas respondidas hasta ahora
+    // Build a provisional SSIM matrix with the questions answered so far
     const provisionalSSIM: SSIMCell[] = [];
     updatedQuestions.forEach((q, index) => {
       if (q.response) {
@@ -278,7 +278,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           relation: q.response,
         });
         
-        // Añadir la relación inversa
+        // Add the inverse relationship
         if (q.response === RelationType.V) {
           provisionalSSIM.push({
             ideaI: q.ideaJ.id,
@@ -307,30 +307,30 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       }
     });
     
-    // Construir matriz de alcanzabilidad inicial
+    // Build initial reachability matrix
     const initialMatrix = buildInitialReachabilityMatrix(selectedIdeas, provisionalSSIM);
     
-    // Aplicar cierre transitivo para encontrar relaciones indirectas
+    // Apply transitive closure to find indirect relationships
     const transitiveMatrix = applyTransitiveClosure(initialMatrix);
     
-    // Usar la matriz transitiva para inferir nuevas relaciones
+    // Use the transitive matrix to infer new relationships
     for (let i = 0; i < updatedQuestions.length; i++) {
-      // Saltamos las preguntas ya respondidas
+      // Skip questions already answered
       if (updatedQuestions[i].response !== null) continue;
       
       const ideaI = updatedQuestions[i].ideaI;
       const ideaJ = updatedQuestions[i].ideaJ;
       
-      // Encontrar los índices de estas ideas en la matriz
+      // Find the indices of these ideas in the matrix
       const idxI = selectedIdeas.findIndex(idea => idea.id === ideaI.id);
       const idxJ = selectedIdeas.findIndex(idea => idea.id === ideaJ.id);
       
       if (idxI !== -1 && idxJ !== -1) {
-        // Verificar si hay relación transitiva de I a J
+        // Check if there is a transitive relationship from I to J
         const iToJ = transitiveMatrix[idxI][idxJ];
         const jToI = transitiveMatrix[idxJ][idxI];
         
-        // Aplicar inferencias basadas en las relaciones transitivas
+        // Apply inferences based on transitive relationships
         if (iToJ && !jToI) {
           // I influences J, but J does not influence I
           updatedQuestions[i].response = RelationType.V;
@@ -344,18 +344,18 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           updatedQuestions[i].response = RelationType.X;
           console.log(`Inference: Mutual influence between ${ideaI.title} and ${ideaJ.title} (X)`);
         }
-        // Si no hay relación transitiva, no podemos inferir con certeza que no hay relación directa (O)
+        // If there is no transitive relationship, we cannot infer with certainty that there is no direct relationship (O)
       }
     }
     
     return updatedQuestions;
   };
 
-  // Construir la matriz SSIM a partir de las preguntas respondidas
+  // Build the SSIM matrix from the answered questions
   const buildSSIMMatrix = (answeredQuestions: ISMQuestion[]) => {
     const matrix: SSIMCell[] = [];
     
-    // Añadir las relaciones directamente respondidas
+    // Add the directly answered relationships
     answeredQuestions.forEach((q) => {
       if (q.response) {
         matrix.push({
@@ -364,7 +364,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           relation: q.response,
         });
         
-        // Añadir la relación inversa si es necesario
+        // Add the inverse relationship if necessary
         if (q.response === RelationType.V) {
           matrix.push({
             ideaI: q.ideaJ.id,
@@ -397,14 +397,14 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     setStage("ssim");
   };
 
-  // Avanzar a la etapa de matriz de alcance
+  // Proceed to the reachability matrix stage
   const proceedToReachabilityMatrix = () => {
     const initialMatrix = buildInitialReachabilityMatrix(selectedIdeas, ssimMatrix);
     setReachabilityMatrix(initialMatrix);
     setStage("reachability");
   };
 
-  // Aplicar cierre transitivo y avanzar a la determinación de niveles
+  // Apply transitive closure and proceed to level determination
   const applyTransitiveClosureAndProceed = () => {
     const transitiveMatrix = applyTransitiveClosure(reachabilityMatrix);
     setFinalReachabilityMatrix(transitiveMatrix);
@@ -412,7 +412,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     setStage("levels");
   };
 
-  // Identificar niveles en la jerarquía
+  // Identify levels in the hierarchy
   const identifyLevels = (transitiveMatrix: boolean[][]) => {
     const remainingIndices = Array.from({ length: selectedIdeas.length }, (_, i) => i);
     const computedLevels: number[][] = [];
@@ -421,7 +421,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       const levelIndices = determineLevel(remainingIndices, transitiveMatrix, selectedIdeas);
       if (levelIndices.length > 0) {
         computedLevels.push(levelIndices);
-        // Remover los elementos identificados para el siguiente nivel
+        // Remove the identified elements for the next level
         for (const idx of levelIndices) {
           const removeIndex = remainingIndices.indexOf(idx);
           if (removeIndex !== -1) {
@@ -429,7 +429,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           }
         }
       } else {
-        // Si no se identificaron elementos para este nivel, evitar un bucle infinito
+        // If no elements were identified for this level, avoid an infinite loop
         break;
       }
     }
@@ -437,12 +437,12 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     setLevels(computedLevels);
   };
 
-  // Avanzar a la visualización del diagrama
+  // Proceed to diagram visualization
   const proceedToDiagram = () => {
     setStage("diagram");
   };
 
-  // Renderizar la etapa actual
+  // Render the current stage
   const renderCurrentStage = () => {
     switch (stage) {
       case "intro":
@@ -567,14 +567,14 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                   </Badge>
                 </div>
                 
-                {/* Contexto del proyecto en la parte superior */}
+                {/* Project context at the top */}
                 <div className="text-center mb-8 text-lg font-medium">
                   {projectContext?.context || "Project Context"}
                 </div>
                 
-                {/* Diseño visual del diagrama de relación */}
+                {/* Visual design of relationship diagram */}
                 <div className="flex justify-between items-center gap-4 mb-8">
-                  {/* Idea i (izquierda) */}
+                  {/* Idea i (left) */}
                   <div className="w-2/5">
                     <div className="border-2 border-gray-300 p-4 h-full flex items-center justify-center">
                       <div className="text-center">
@@ -583,13 +583,13 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                     </div>
                   </div>
                   
-                  {/* Botones de relación verticales (centro) */}
+                  {/* Vertical relationship buttons (center) */}
                   <div className="flex flex-col space-y-3 items-center justify-center">
                     <div className="text-center mb-1">
                       <p className="font-semibold">{projectContext?.relation || "Influences"}</p>
                     </div>
                     
-                    {/* Botón V: Flecha izquierda a derecha */}
+                    {/* Button V: Arrow from left to right */}
                     <Button
                       variant="outline"
                       className="p-2 border-2 w-12 h-12 flex items-center justify-center"
@@ -599,7 +599,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                       <ArrowRight className="h-6 w-6 text-blue-600" />
                     </Button>
                     
-                    {/* Botón A: Flecha derecha a izquierda */}
+                    {/* Button A: Arrow from right to left */}
                     <Button
                       variant="outline"
                       className="p-2 border-2 w-12 h-12 flex items-center justify-center"
@@ -609,7 +609,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                       <ArrowLeft className="h-6 w-6 text-blue-600" />
                     </Button>
                     
-                    {/* Botón X: Flechas en ambos sentidos */}
+                    {/* Button X: Arrows in both directions */}
                     <Button
                       variant="outline"
                       className="p-2 border-2 w-12 h-12 flex items-center justify-center"
@@ -619,7 +619,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                       <ArrowLeftRight className="h-6 w-6 text-blue-600" />
                     </Button>
                     
-                    {/* Botón O: Círculo */}
+                    {/* Button O: Circle */}
                     <Button
                       variant="outline"
                       className="p-2 border-2 w-12 h-12 flex items-center justify-center"
@@ -630,7 +630,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                     </Button>
                   </div>
                   
-                  {/* Idea j (derecha) */}
+                  {/* Idea j (right) */}
                   <div className="w-2/5">
                     <div className="border-2 border-gray-300 p-4 h-full flex items-center justify-center">
                       <div className="text-center">
@@ -640,7 +640,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                   </div>
                 </div>
                 
-                {/* Restricción en la parte inferior */}
+                {/* Restriction at the bottom */}
                 <div className="text-center mb-4 text-base">
                   {projectContext?.restriction || "Restriction"}
                 </div>
@@ -817,7 +817,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
               understand the underlying structure and dynamics of the system.
             </p>
             
-            {/* Diagrama ISM usando el componente ISMDiagram */}
+            {/* ISM diagram using the ISMDiagram component */}
             <div className="mt-6">
               <ISMDiagram 
                 ideas={selectedIdeas}
@@ -831,7 +831,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     }
   };
 
-  // Botones de navegación según la etapa
+  // Navigation buttons according to the stage
   const renderNavigationButtons = () => {
     switch (stage) {
       case "intro":
