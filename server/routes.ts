@@ -1024,13 +1024,19 @@ export function registerRoutes(app: Express): Server {
       const userId = req.user!.id;
       const { projectId } = req.body;
       
+      console.log(`[SELECT IDEA] Starting process with ideaId=${ideaId}, userId=${userId}, projectId=${projectId}`);
+      
       if (!projectId) {
+        console.log(`[SELECT IDEA] Missing projectId in request body`);
         return res.status(400).json({ error: "Project ID is required" });
       }
       
       // Verify user has admin access to the project
       const userRole = await storage.getUserProjectRole(userId, projectId);
+      console.log(`[SELECT IDEA] User role check: userRole=${userRole}, isGlobalAdmin=${req.user!.role === 'admin'}`);
+      
       if (!userRole || (userRole !== 'admin' && req.user!.role !== 'admin')) {
+        console.log(`[SELECT IDEA] Permission denied: User does not have admin access`);
         return res.status(403).json({ 
           error: "Only administrators can select ideas for the connection process" 
         });
@@ -1038,32 +1044,47 @@ export function registerRoutes(app: Express): Server {
       
       // Get the idea to verify it exists and belongs to the project
       const idea = await storage.getIdea(ideaId);
+      console.log(`[SELECT IDEA] Idea check: idea exists=${!!idea}, belongs to project=${idea?.projectId === projectId}`);
+      
       if (!idea || idea.projectId !== projectId) {
+        console.log(`[SELECT IDEA] Idea not found or does not belong to project`);
         return res.status(404).json({ error: "Idea not found in the specified project" });
       }
       
-      console.log(`Attempting to toggle idea selection: ideaId=${ideaId}, projectId=${projectId}, selectedBy=${userId}`);
-      
-      // Toggle the idea selection
-      const selectionResult = await storage.toggleSelectedIdea({
+      console.log(`[SELECT IDEA] Attempting to toggle idea selection with data:`, {
         ideaId,
         projectId,
         selectedBy: userId
       });
       
-      if (selectionResult) {
-        // Idea was selected
-        res.status(201).json({
-          message: "Idea selected successfully",
-          selectedIdea: selectionResult
+      // Toggle the idea selection
+      try {
+        const selectionResult = await storage.toggleSelectedIdea({
+          ideaId,
+          projectId,
+          selectedBy: userId
         });
-      } else {
-        // Idea was deselected
-        res.status(200).json({
-          message: "Idea deselected successfully"
-        });
+        
+        console.log(`[SELECT IDEA] Toggle result:`, selectionResult);
+        
+        if (selectionResult) {
+          // Idea was selected
+          res.status(201).json({
+            message: "Idea selected successfully",
+            selectedIdea: selectionResult
+          });
+        } else {
+          // Idea was deselected
+          res.status(200).json({
+            message: "Idea deselected successfully"
+          });
+        }
+      } catch (toggleError) {
+        console.error(`[SELECT IDEA] Error in toggle operation:`, toggleError);
+        throw toggleError;
       }
     } catch (error) {
+      console.error(`[SELECT IDEA] Unhandled error:`, error);
       next(error);
     }
   });

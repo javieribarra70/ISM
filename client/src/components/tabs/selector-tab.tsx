@@ -173,15 +173,39 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
   // Toggle selected idea mutation
   const toggleSelectedIdeaMutation = useMutation({
     mutationFn: async (ideaId: number) => {
-      const response = await apiRequest(
-        "POST", 
-        `/api/ideas/${ideaId}/select`, 
-        { projectId }
-      );
-      return response.json();
+      console.log(`[CLIENT] Sending selection toggle request for ideaId=${ideaId}, projectId=${projectId}`);
+      
+      try {
+        const response = await apiRequest(
+          "POST", 
+          `/api/ideas/${ideaId}/select`, 
+          { projectId }
+        );
+        
+        console.log(`[CLIENT] Selection toggle API response status:`, response.status);
+        
+        if (!response.ok) {
+          // Try to get more detailed error info
+          try {
+            const errorData = await response.json();
+            console.error(`[CLIENT] Error response:`, errorData);
+            throw new Error(errorData.error || `Server returned ${response.status}`);
+          } catch (parseError) {
+            throw new Error(`Server returned ${response.status}`);
+          }
+        }
+        
+        const data = await response.json();
+        console.log(`[CLIENT] Selection toggle API response data:`, data);
+        return data;
+      } catch (error) {
+        console.error(`[CLIENT] Error in selection toggle request:`, error);
+        throw error;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Refetch selected ideas after toggling
+      console.log(`[CLIENT] Selection toggle success, refetching selected ideas`);
       refetchSelectedIdeas();
       
       toast({
@@ -190,6 +214,7 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
       });
     },
     onError: (error: Error) => {
+      console.error(`[CLIENT] Selection toggle mutation error:`, error);
       toast({
         title: "Error",
         description: `Failed to update selection: ${error.message}`,
@@ -200,7 +225,7 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
 
   // Function to handle selection/deselection of ideas for the connection process
   const handleConnectionToggle = (ideaId: number) => {
-    console.log(`Toggle connection for idea ${ideaId}. Current selected:`, connectionIdeas);
+    console.log(`[CLIENT] Toggle connection for idea ${ideaId}. Current selected:`, connectionIdeas);
     
     // Call the API to toggle the selected idea
     toggleSelectedIdeaMutation.mutate(ideaId);

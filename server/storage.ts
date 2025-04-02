@@ -1667,14 +1667,33 @@ export class DatabaseStorage implements IStorage {
   
   async toggleSelectedIdea(selectedIdeaData: InsertSelectedIdea): Promise<SelectedIdea | undefined> {
     try {
+      console.log('[STORAGE] toggleSelectedIdea called with data:', JSON.stringify(selectedIdeaData, null, 2));
+      
+      // Validate the input data
+      if (!selectedIdeaData.ideaId || !selectedIdeaData.projectId || !selectedIdeaData.selectedBy) {
+        console.error('[STORAGE] Invalid data: Missing required fields', {
+          hasIdeaId: !!selectedIdeaData.ideaId,
+          hasProjectId: !!selectedIdeaData.projectId,
+          hasSelectedBy: !!selectedIdeaData.selectedBy
+        });
+        throw new Error('Invalid data: Missing required fields for toggling idea selection');
+      }
+      
       // Verificar si la idea ya está seleccionada
       const existingSelected = await this.getSelectedIdea(
         selectedIdeaData.ideaId,
         selectedIdeaData.projectId
       );
       
+      console.log('[STORAGE] Existing selected idea check:', existingSelected ? 'Found' : 'Not found');
+      
       if (existingSelected) {
         // Si la idea ya está seleccionada, la eliminamos
+        console.log('[STORAGE] Deleting existing selected idea', {
+          ideaId: selectedIdeaData.ideaId,
+          projectId: selectedIdeaData.projectId
+        });
+        
         await db.delete(selectedIdeas)
           .where(and(
             eq(selectedIdeas.ideaId, selectedIdeaData.ideaId),
@@ -1683,19 +1702,57 @@ export class DatabaseStorage implements IStorage {
         return undefined;
       } else {
         // Si la idea no está seleccionada, la agregamos
-        console.log('Inserting selected idea:', selectedIdeaData);
-        const result = await db.insert(selectedIdeas)
-          .values({
-            ideaId: selectedIdeaData.ideaId,
-            projectId: selectedIdeaData.projectId,
-            selectedBy: selectedIdeaData.selectedBy
-            // createdAt will be automatically set by defaultNow()
-          })
-          .returning();
-        return result[0];
+        console.log('[STORAGE] Inserting new selected idea with values:', {
+          ideaId: selectedIdeaData.ideaId,
+          projectId: selectedIdeaData.projectId,
+          selectedBy: selectedIdeaData.selectedBy
+        });
+        
+        try {
+          const result = await db.insert(selectedIdeas)
+            .values({
+              ideaId: selectedIdeaData.ideaId,
+              projectId: selectedIdeaData.projectId,
+              selectedBy: selectedIdeaData.selectedBy
+              // createdAt will be automatically set by defaultNow()
+            })
+            .returning();
+          
+          console.log('[STORAGE] Insert result:', result);
+          return result[0];
+        } catch (insertError) {
+          console.error('[STORAGE] Error during insert operation:', insertError);
+          
+          // Try a manual SQL query as a fallback
+          try {
+            console.log('[STORAGE] Attempting manual SQL insert as fallback');
+            const manualInsertResult = await db.execute(sql`
+              INSERT INTO selected_ideas (idea_id, project_id, selected_by, created_at)
+              VALUES (${selectedIdeaData.ideaId}, ${selectedIdeaData.projectId}, ${selectedIdeaData.selectedBy}, NOW())
+              RETURNING *
+            `);
+            console.log('[STORAGE] Manual insert result:', manualInsertResult);
+            
+            if (manualInsertResult && manualInsertResult[0]) {
+              // Convert snake_case to camelCase
+              return {
+                id: manualInsertResult[0].id,
+                ideaId: manualInsertResult[0].idea_id,
+                projectId: manualInsertResult[0].project_id,
+                selectedBy: manualInsertResult[0].selected_by,
+                createdAt: manualInsertResult[0].created_at
+              };
+            }
+          } catch (manualInsertError) {
+            console.error('[STORAGE] Manual insert also failed:', manualInsertError);
+          }
+          
+          // Re-throw the original error if both approaches fail
+          throw insertError;
+        }
       }
     } catch (error) {
-      console.error('Error toggling selected idea:', error);
+      console.error('[STORAGE] Error toggling selected idea:', error);
       throw error;
     }
   }
