@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import { Idea } from '@shared/schema';
+import { computeTransitiveReduction } from './matrix-reduction';
 
 // Registrar el layout de dagre con Cytoscape
 cytoscape.use(dagre);
@@ -30,6 +31,11 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
     if (!containerRef.current || !ideas.length || !levels.length || !finalReachabilityMatrix.length) {
       return;
     }
+    
+    // Aplicar la reducción transitiva para eliminar relaciones redundantes
+    const reducedMatrix = computeTransitiveReduction(finalReachabilityMatrix);
+    console.log('Original Matrix:', finalReachabilityMatrix);
+    console.log('Reduced Matrix:', reducedMatrix);
     
     // Crear elementos para el gráfico
     const elements: cytoscape.ElementDefinition[] = [];
@@ -68,10 +74,10 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
       });
     });
     
-    // Crear conexiones directas basadas en la matriz de reachability
+    // Crear conexiones directas basadas en la matriz de reachability reducida
     for (let i = 0; i < ideas.length; i++) {
       for (let j = 0; j < ideas.length; j++) {
-        if (i !== j && finalReachabilityMatrix[i][j]) {
+        if (i !== j && reducedMatrix[i][j]) {
           const sourceIdea = ideas[i];
           const targetIdea = ideas[j];
           
@@ -79,10 +85,10 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
           const targetInfo = idToNodeMap.get(targetIdea.id);
           
           if (sourceInfo && targetInfo) {
-            // Verificar relación bidireccional
+            // Verificar relación bidireccional (usando la matriz reducida)
             const hasBidirectional = 
-              finalReachabilityMatrix[i][j] && 
-              finalReachabilityMatrix[j][i];
+              reducedMatrix[i][j] && 
+              reducedMatrix[j][i];
             
             // Crear una identificación única para esta conexión
             const edgeId = `edge-${sourceIdea.id}-${targetIdea.id}`;
@@ -308,6 +314,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
         <strong>Guía del diagrama:</strong>
         <ul className="list-disc ml-5 mt-1">
           <li>Mayor nivel de influencia = mayor capacidad de impactar al sistema</li>
+          <li>Solo se muestran relaciones directas esenciales (se eliminan relaciones redundantes)</li>
           <li>Las flechas continuas representan relaciones directas entre ideas</li>
           <li>Las flechas punteadas conectan ideas aisladas que no tienen relaciones establecidas</li>
           <li>Las flechas bidireccionales indican influencia mutua entre ideas</li>
