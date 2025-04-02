@@ -471,87 +471,100 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                   </Badge>
                 </div>
                 
-                <div className="grid grid-cols-1 gap-4 mb-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base">Idea i: {question.ideaI.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm">{question.ideaI.description}</p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base">Idea j: {question.ideaJ.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm">{question.ideaJ.description}</p>
-                    </CardContent>
-                  </Card>
+                {/* Contexto del proyecto en la parte superior */}
+                <div className="text-center mb-8 text-lg font-medium">
+                  {projectContext?.context || "Project Context"}
                 </div>
                 
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium mb-2">
-                    Context relationship:
-                  </h4>
-                  <p className="text-sm p-3 bg-slate-100 rounded">
-                    {projectContext?.relation}
-                  </p>
+                {/* Diseño visual del diagrama de relación */}
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
+                  {/* Idea i (izquierda) */}
+                  <div className="w-full md:w-2/5">
+                    <div className="border-2 border-gray-300 p-4 h-full flex items-center justify-center">
+                      <div className="text-center">
+                        <p className="font-semibold text-lg">{question.ideaI.title}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Flecha y relación (centro) */}
+                  <div className="flex flex-col items-center">
+                    <div className="text-center mb-2">
+                      <p className="font-semibold">{projectContext?.relation || "Influences"}</p>
+                    </div>
+                    <div className="w-24 h-12 relative">
+                      <div className="w-full h-2 bg-blue-600 absolute top-1/2 -translate-y-1/2"></div>
+                      <div className="w-0 h-0 border-t-[10px] border-t-transparent border-b-[10px] border-b-transparent border-l-[20px] border-l-blue-600 absolute right-0 top-1/2 -translate-y-1/2"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Idea j (derecha) */}
+                  <div className="w-full md:w-2/5">
+                    <div className="border-2 border-gray-300 p-4 h-full flex items-center justify-center">
+                      <div className="text-center">
+                        <p className="font-semibold text-lg">{question.ideaJ.title}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Restricción en la parte inferior */}
+                <div className="text-center mb-8 text-base">
+                  {projectContext?.restriction || "Restriction"}
                 </div>
                 
                 <div className="mb-6">
-                  <h4 className="font-medium mb-2">
-                    What type of relationship exists between ideas i and j?
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Select the most appropriate option based on the context and defined relationship.
-                  </p>
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-semibold text-base">
+                      What type of relationship exists between these ideas?
+                    </h4>
+                  </div>
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-3">
+              {/* Botones VAXO con descripción */}
+              <div className="grid grid-cols-2 gap-4">
                 <Button
                   variant="outline"
-                  className="p-6"
+                  className="p-4 border-2"
                   onClick={() => answerQuestion(RelationType.V)}
                 >
                   <div className="text-center">
                     <span className="text-lg font-bold block">V</span>
-                    <span className="text-xs">i influences j</span>
+                    <span className="text-sm">Yes ({question.ideaI.title} influences {question.ideaJ.title})</span>
                   </div>
                 </Button>
                 
                 <Button
                   variant="outline"
-                  className="p-6"
+                  className="p-4 border-2"
                   onClick={() => answerQuestion(RelationType.A)}
                 >
                   <div className="text-center">
                     <span className="text-lg font-bold block">A</span>
-                    <span className="text-xs">j influences i</span>
+                    <span className="text-sm">No ({question.ideaJ.title} influences {question.ideaI.title})</span>
                   </div>
                 </Button>
                 
                 <Button
                   variant="outline"
-                  className="p-6"
+                  className="p-4 border-2"
                   onClick={() => answerQuestion(RelationType.X)}
                 >
                   <div className="text-center">
                     <span className="text-lg font-bold block">X</span>
-                    <span className="text-xs">mutual influence</span>
+                    <span className="text-sm">Both (mutual influence)</span>
                   </div>
                 </Button>
                 
                 <Button
                   variant="outline"
-                  className="p-6"
+                  className="p-4 border-2"
                   onClick={() => answerQuestion(RelationType.O)}
                 >
                   <div className="text-center">
                     <span className="text-lg font-bold block">O</span>
-                    <span className="text-xs">no relationship</span>
+                    <span className="text-sm">No (0) (no relationship)</span>
                   </div>
                 </Button>
               </div>
