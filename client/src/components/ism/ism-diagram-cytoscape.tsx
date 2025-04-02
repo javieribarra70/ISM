@@ -289,17 +289,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
   
   return (
     <div className="w-full h-[600px] border rounded-md">
-      <div className="p-3 text-sm bg-blue-50 text-blue-700 border-b border-blue-200">
-        <strong>Guía del diagrama:</strong>
-        <ul className="list-disc ml-5 mt-1">
-          <li>Mayor nivel de influencia = mayor capacidad de impactar al sistema</li>
-          <li>Solo se muestran relaciones directas esenciales (se eliminan relaciones redundantes)</li>
-          <li>Las flechas continuas representan relaciones directas entre ideas</li>
-          <li>Las flechas punteadas conectan ideas aisladas que no tienen relaciones establecidas</li>
-          <li>La influencia mutua se muestra con dos flechas unidireccionales separadas</li>
-        </ul>
-      </div>
-      <div ref={containerRef} className="w-full h-[540px]" />
+      <div ref={containerRef} className="w-full h-[600px]" />
     </div>
   );
 };

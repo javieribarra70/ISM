@@ -802,20 +802,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
               ))}
             </div>
             
-            <div className="mt-6 p-4 bg-slate-50 rounded-md">
-              <h4 className="font-medium mb-2">Interpretation:</h4>
-              <p className="text-sm">
-                • Elements in Level 1 have the least influence power but receive influence
-                  from other elements.
-              </p>
-              <p className="text-sm">
-                • As the level increases, the influence power over the system increases.
-              </p>
-              <p className="text-sm">
-                • Elements at the highest level are the most influential and can be considered
-                  as key factors or drivers.
-              </p>
-            </div>
+
           </div>
         );
         
@@ -858,20 +845,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
               </div>
             </div>
             
-            <div className="mt-6 p-4 bg-slate-50 rounded-md">
-              <h4 className="font-medium mb-2">Conclusions:</h4>
-              <p className="text-sm">
-                • Ideas at higher levels have greater influence over the system.
-              </p>
-              <p className="text-sm">
-                • To generate effective changes, consider focusing first on ideas
-                  at higher levels.
-              </p>
-              <p className="text-sm">
-                • The model helps simplify the initial complexity and provides
-                  a structure for decision-making.
-              </p>
-            </div>
+
           </div>
         );
     }
