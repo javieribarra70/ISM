@@ -72,7 +72,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
         const influenceLevel = levels.length - levelNum;
         const categoryColor = getCategoryColor(idea.category);
         
-        // Si la idea tiene una categoría con color, usamos ese color; de lo contrario, usamos el color basado en nivel
+        // If the idea has a category with color, we use that color; otherwise, we use the level-based color
         elements.push({
           data: {
             id: `node-${idea.id}`,
@@ -83,7 +83,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
             category: idea.category
           },
           position: {
-            // Las posiciones se asignarán automáticamente por el layout
+            // Positions will be automatically assigned by the layout
             x: 0,
             y: 0
           },
@@ -94,7 +94,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
       });
     });
     
-    // Crear conexiones directas basadas en la matriz de reachability reducida
+    // Create direct connections based on the reduced reachability matrix
     for (let i = 0; i < ideas.length; i++) {
       for (let j = 0; j < ideas.length; j++) {
         if (i !== j && reducedMatrix[i][j]) {
@@ -105,16 +105,16 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
           const targetInfo = idToNodeMap.get(targetIdea.id);
           
           if (sourceInfo && targetInfo) {
-            // Verificar relación bidireccional (usando la matriz reducida)
+            // Verify bidirectional relationship (using the reduced matrix)
             const hasBidirectional = 
               reducedMatrix[i][j] && 
               reducedMatrix[j][i];
             
-            // Crear una identificación única para esta conexión
+            // Create a unique identifier for this connection
             const edgeId = `edge-${sourceIdea.id}-${targetIdea.id}`;
             
-            // Para todas las relaciones, usamos flechas unidireccionales
-            // Incluso cuando hay relación bidireccional, creamos dos flechas por separado
+            // For all relationships, we use unidirectional arrows
+            // Even when there is a bidirectional relationship, we create two separate arrows
             elements.push({
               data: {
                 id: edgeId,
@@ -124,8 +124,8 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
               group: 'edges'
             });
             
-            // Si hay relación bidireccional (I→J y J→I), agregar también la flecha en sentido contrario
-            if (hasBidirectional && i < j) { // Solo agregar cuando i < j para evitar duplicados
+            // If there is a bidirectional relationship (I→J and J→I), also add the arrow in the opposite direction
+            if (hasBidirectional && i < j) { // Only add when i < j to avoid duplicates
               elements.push({
                 data: {
                   id: `edge-reverse-${targetIdea.id}-${sourceIdea.id}`,
@@ -140,16 +140,16 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
       }
     }
     
-    // Agregar flechas para nodos solitarios
+    // Add arrows for solitary nodes
     if (levels.length > 1) {
-      // Para cada nivel, excepto el último
+      // For each level, except the last one
       for (let levelNum = 0; levelNum < levels.length - 1; levelNum++) {
         const currentLevelNodes = levels[levelNum];
         const nextLevelNodes = levels[levelNum + 1];
         
-        // Si ambos niveles tienen nodos
+        // If both levels have nodes
         if (currentLevelNodes.length > 0 && nextLevelNodes.length > 0) {
-          // Para cada nodo en el nivel actual
+          // For each node in the current level
           currentLevelNodes.forEach(currIdx => {
             const currIdea = ideas[currIdx];
             const hasExistingConnection = elements.some(
@@ -157,9 +157,9 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
               (ele.data.source === `node-${currIdea.id}` || ele.data.target === `node-${currIdea.id}`)
             );
             
-            // Si el nodo no tiene conexiones existentes, agregar una flecha hacia el siguiente nivel
+            // If the node has no existing connections, add an arrow to the next level
             if (!hasExistingConnection) {
-              // Elegir el primer nodo del siguiente nivel para crear una relación predeterminada
+              // Choose the first node from the next level to create a default relationship
               const nextIdea = ideas[nextLevelNodes[0]];
               
               elements.push({
@@ -174,7 +174,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
             }
           });
           
-          // Para cada nodo en el siguiente nivel
+          // For each node in the next level
           nextLevelNodes.forEach(nextIdx => {
             const nextIdea = ideas[nextIdx];
             const hasExistingConnection = elements.some(
@@ -182,9 +182,9 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
               (ele.data.source === `node-${nextIdea.id}` || ele.data.target === `node-${nextIdea.id}`)
             );
             
-            // Si el nodo no tiene conexiones existentes, agregar una flecha desde el nivel anterior
+            // If the node has no existing connections, add an arrow from the previous level
             if (!hasExistingConnection) {
-              // Elegir el primer nodo del nivel actual para crear una relación predeterminada
+              // Choose the first node from the current level to create a default relationship
               const currIdea = ideas[currentLevelNodes[0]];
               
               elements.push({
@@ -202,12 +202,12 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
       }
     }
     
-    // Inicializar Cytoscape
+    // Initialize Cytoscape
     const cy = cytoscape({
       container: containerRef.current,
       elements: elements,
       style: [
-        // Estilos para nodos
+        // Styles for nodes
         {
           selector: 'node',
           style: {
@@ -228,40 +228,75 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
             'text-outline-opacity': 1
           }
         },
-        // Estilo para nodos con categoryColor (prioridad sobre levelColor)
+        // Style for nodes with categoryColor (priority over levelColor)
         {
           selector: 'node[categoryColor]',
           style: {
             'border-color': 'data(categoryColor)',
             'background-color': function(ele) {
-              // Apply category color with 30% opacity to the background
+              // Blend category color with white at 50%
               const color = ele.data('categoryColor');
               if (!color) return 'white';
               
-              // Convert hex color to rgba with 30% opacity
+              // Convert hex color to rgb components and blend with white (255,255,255)
               if (color.startsWith('#')) {
                 const r = parseInt(color.slice(1, 3), 16);
                 const g = parseInt(color.slice(3, 5), 16);
                 const b = parseInt(color.slice(5, 7), 16);
-                return `rgba(${r}, ${g}, ${b}, 0.3)`;
+                
+                // Blend with white at 50%
+                const blendedR = Math.round((r + 255) / 2);
+                const blendedG = Math.round((g + 255) / 2);
+                const blendedB = Math.round((b + 255) / 2);
+                
+                return `rgb(${blendedR}, ${blendedG}, ${blendedB})`;
               }
-              // If it's already rgba, adjust opacity to 0.3
+              // If it's rgba, extract rgb components and blend with white
               else if (color.startsWith('rgba')) {
-                return color.replace(/[\d\.]+\)$/, '0.3)');
+                const matches = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                if (matches) {
+                  const r = parseInt(matches[1], 10);
+                  const g = parseInt(matches[2], 10);
+                  const b = parseInt(matches[3], 10);
+                  
+                  // Blend with white at 50%
+                  const blendedR = Math.round((r + 255) / 2);
+                  const blendedG = Math.round((g + 255) / 2);
+                  const blendedB = Math.round((b + 255) / 2);
+                  
+                  return `rgb(${blendedR}, ${blendedG}, ${blendedB})`;
+                }
               }
-              // If it's another format, return the color
-              return color;
+              // If it's rgb, extract components and blend with white
+              else if (color.startsWith('rgb(')) {
+                const matches = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/);
+                if (matches) {
+                  const r = parseInt(matches[1], 10);
+                  const g = parseInt(matches[2], 10);
+                  const b = parseInt(matches[3], 10);
+                  
+                  // Blend with white at 50%
+                  const blendedR = Math.round((r + 255) / 2);
+                  const blendedG = Math.round((g + 255) / 2);
+                  const blendedB = Math.round((b + 255) / 2);
+                  
+                  return `rgb(${blendedR}, ${blendedG}, ${blendedB})`;
+                }
+              }
+              
+              // For other formats, use a fallback lightened color
+              return 'rgb(240, 240, 240)';
             }
           }
         },
-        // Estilo para nodos con levelColor (solo si no tienen categoryColor)
+        // Style for nodes with levelColor (only if they don't have categoryColor)
         {
           selector: 'node[levelColor]:not([categoryColor])',
           style: {
             'border-color': 'data(levelColor)'
           }
         },
-        // Estilo para texto adicional (solo el título)
+        // Style for additional text (only the title)
         {
           selector: 'node',
           style: {
@@ -270,7 +305,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
             'z-index': 10
           }
         },
-        // Estilos para bordes (flechas)
+        // Styles for edges (arrows)
         {
           selector: 'edge',
           style: {
@@ -283,7 +318,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
           }
         },
 
-        // Estilos para líneas punteadas
+        // Styles for dashed lines
         {
           selector: 'edge[type = "dashed"]',
           style: {
@@ -298,23 +333,23 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
         rankSep: 120,  // Vertical spacing
         nodeSep: 80,   // Horizontal spacing
         padding: 40
-      } as any, // El tipo any es necesario porque dagre no está incluido en los tipos de Cytoscape
+      } as any, // The 'any' type is necessary because dagre is not included in Cytoscape types
       userZoomingEnabled: true,
       userPanningEnabled: true,
-      autoungrabify: false, // Permitir mover nodos
-      wheelSensitivity: 0.2 // Reducir sensibilidad del zoom
+      autoungrabify: false, // Allow moving nodes
+      wheelSensitivity: 0.2 // Reduce zoom sensitivity
     });
     
-    // Agregar un manejador para ajustar el tamaño después de renderizar
+    // Add handler to adjust size after rendering
     cy.on('layoutstop', () => {
       cy.fit();
       cy.center();
     });
     
-    // Guardar la referencia
+    // Save the reference
     cyRef.current = cy;
     
-    // Aplicar el diseño
+    // Apply the layout
     cy.layout({ 
       name: 'dagre',
       rankDir: 'TB',
