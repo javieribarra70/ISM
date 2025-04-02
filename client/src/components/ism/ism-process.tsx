@@ -826,7 +826,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 projectId={selectedIdeas[0]?.projectId}
                 projectInfo={{
                   name: "Producción",
-                  description: projectContext?.context || "",
+                  description: selectedIdeas[0]?.projectId 
+                    ? "Estos son problemas relacionados con el area de produccion" 
+                    : "",
                   createdAt: new Date().toISOString()
                 }}
               />
