@@ -825,7 +825,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 finalReachabilityMatrix={finalReachabilityMatrix}
                 projectId={selectedIdeas[0]?.projectId}
                 projectInfo={{
-                  name: selectedIdeas[0]?.projectId ? `Project #${selectedIdeas[0].projectId}` : "ISM Project",
+                  name: "Producción",
                   description: projectContext?.context || "",
                   createdAt: new Date().toISOString()
                 }}

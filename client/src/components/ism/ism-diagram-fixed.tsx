@@ -130,7 +130,6 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
           
           // Draw the legends directly on the PDF
           const margin = 10;
-          const legendWidth = 50;
           const titleHeight = 5;
           const itemHeight = 5;
           
@@ -138,12 +137,12 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
           if (projectInfo) {
             const projectLegendX = margin;
             const projectLegendY = margin;
-            const projectLegendWidth = 60;
+            const projectLegendWidth = 70;
             
             // Calculate project legend height
             let projectItemsCount = 2; // Name and Created always shown
             if (projectInfo.description) projectItemsCount++;
-            const projectTotalHeight = titleHeight + (projectItemsCount * itemHeight);
+            const projectTotalHeight = titleHeight + (projectItemsCount * 2 * itemHeight); // Double the height for line breaks
             
             // Draw project info background
             pdf.setFillColor(255, 255, 255); // white
@@ -156,40 +155,47 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
             pdf.setTextColor(75, 85, 99); // gray
             pdf.text('Project Information', projectLegendX + 4, projectLegendY + 4);
             
-            // Project info content
+            // Current Y position tracker
+            let currentY = projectLegendY + titleHeight + 2;
+            
+            // Name field
             pdf.setFont('helvetica', 'bold');
             pdf.setFontSize(7);
-            pdf.text('Name:', projectLegendX + 4, projectLegendY + titleHeight + 2);
+            pdf.text('Name:', projectLegendX + 4, currentY);
+            currentY += itemHeight;
             
             pdf.setFont('helvetica', 'normal');
-            pdf.text(projectInfo.name, projectLegendX + 15, projectLegendY + titleHeight + 2);
+            pdf.text(projectInfo.name, projectLegendX + 8, currentY);
+            currentY += itemHeight + 1;
             
-            let currentY = projectLegendY + titleHeight + itemHeight;
-            
+            // Description field (if exists)
             if (projectInfo.description) {
               pdf.setFont('helvetica', 'bold');
-              pdf.text('Description:', projectLegendX + 4, currentY + 2);
+              pdf.text('Description:', projectLegendX + 4, currentY);
+              currentY += itemHeight;
               
               pdf.setFont('helvetica', 'normal');
               // Truncate description if too long
               const desc = projectInfo.description.length > 30 
                 ? projectInfo.description.substring(0, 30) + '...' 
                 : projectInfo.description;
-              pdf.text(desc, projectLegendX + 15, currentY + 2);
-              
-              currentY += itemHeight;
+              pdf.text(desc, projectLegendX + 8, currentY);
+              currentY += itemHeight + 1;
             }
             
+            // Created field
             pdf.setFont('helvetica', 'bold');
-            pdf.text('Created:', projectLegendX + 4, currentY + 2);
+            pdf.text('Created:', projectLegendX + 4, currentY);
+            currentY += itemHeight;
             
             pdf.setFont('helvetica', 'normal');
             const date = new Date(projectInfo.createdAt).toLocaleDateString();
-            pdf.text(date, projectLegendX + 15, currentY + 2);
+            pdf.text(date, projectLegendX + 8, currentY);
           }
           
           // 2. Categories Legend (Right Side)
-          const categoriesLegendX = pdfWidth - legendWidth - margin;
+          const categoriesLegendWidth = 60;
+          const categoriesLegendX = pdfWidth - categoriesLegendWidth - margin;
           const categoriesLegendY = margin;
           
           // Filter the categories that are used
@@ -206,8 +212,8 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
           // Set background for categories legend
           pdf.setFillColor(255, 255, 255); // white
           pdf.setDrawColor(226, 232, 240); // light gray border
-          const categoriesHeight = titleHeight + (pdfVisibleCategories.length > 0 ? pdfVisibleCategories.length * itemHeight : itemHeight);
-          pdf.roundedRect(categoriesLegendX, categoriesLegendY, legendWidth, categoriesHeight, 1, 1, 'FD');
+          const categoriesHeight = titleHeight + (pdfVisibleCategories.length > 0 ? pdfVisibleCategories.length * itemHeight : itemHeight) + 2;
+          pdf.roundedRect(categoriesLegendX, categoriesLegendY, categoriesLegendWidth, categoriesHeight, 1, 1, 'FD');
           
           // Add categories title
           pdf.setFont('helvetica', 'bold');
@@ -218,7 +224,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
           // Add category items
           if (pdfVisibleCategories.length > 0) {
             pdfVisibleCategories.forEach((category, index) => {
-              const itemY = categoriesLegendY + titleHeight + (index * itemHeight);
+              const itemY = categoriesLegendY + titleHeight + (index * itemHeight) + 2;
               
               // Draw colored square
               const color = category.color || '#cbd5e1';
@@ -236,7 +242,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
             });
           } else {
             // If no categories, show a message
-            const itemY = categoriesLegendY + titleHeight;
+            const itemY = categoriesLegendY + titleHeight + 2;
             pdf.setFont('helvetica', 'italic');
             pdf.setFontSize(7);
             pdf.setTextColor(75, 85, 99); // #4b5563
@@ -642,17 +648,17 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
             <div className="flex flex-col gap-1">
               <div className="flex flex-col">
                 <span className="text-xs font-semibold text-gray-600">Name:</span>
-                <span className="text-xs text-gray-600">{projectInfo.name}</span>
+                <span className="text-xs text-gray-600 block">{projectInfo.name}</span>
               </div>
               {projectInfo.description && (
                 <div className="flex flex-col">
                   <span className="text-xs font-semibold text-gray-600">Description:</span>
-                  <span className="text-xs text-gray-600 line-clamp-2">{projectInfo.description}</span>
+                  <span className="text-xs text-gray-600 block line-clamp-2">{projectInfo.description}</span>
                 </div>
               )}
               <div className="flex flex-col">
                 <span className="text-xs font-semibold text-gray-600">Created:</span>
-                <span className="text-xs text-gray-600">
+                <span className="text-xs text-gray-600 block">
                   {new Date(projectInfo.createdAt).toLocaleDateString()}
                 </span>
               </div>
