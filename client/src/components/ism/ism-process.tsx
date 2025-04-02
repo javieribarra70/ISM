@@ -354,54 +354,54 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           <div className="space-y-4">
             <Alert className="bg-blue-50">
               <Info className="h-5 w-5" />
-              <AlertTitle>Proceso de Modelado Estructural Interpretativo (ISM)</AlertTitle>
+              <AlertTitle>Interpretive Structural Modeling (ISM) Process</AlertTitle>
               <AlertDescription>
-                Este proceso te guiará para construir un modelo de relaciones entre las ideas seleccionadas.
-                Utilizaremos el sistema VAXO para registrar las relaciones de influencia:
+                This process will guide you to build a relationship model between the selected ideas.
+                We will use the VAXO system to record influence relationships:
               </AlertDescription>
             </Alert>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">V: i influye en j</CardTitle>
+                  <CardTitle className="text-base">V: i influences j</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    La idea i tiene una influencia directa sobre la idea j
+                    Idea i has a direct influence on idea j
                   </p>
                 </CardContent>
               </Card>
               
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">A: j influye en i</CardTitle>
+                  <CardTitle className="text-base">A: j influences i</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    La idea j tiene una influencia directa sobre la idea i
+                    Idea j has a direct influence on idea i
                   </p>
                 </CardContent>
               </Card>
               
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">X: influencia mutua</CardTitle>
+                  <CardTitle className="text-base">X: mutual influence</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Las ideas i y j se influyen mutuamente
+                    Ideas i and j influence each other
                   </p>
                 </CardContent>
               </Card>
               
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">O: sin relación</CardTitle>
+                  <CardTitle className="text-base">O: no relationship</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    No existe relación de influencia entre las ideas i y j
+                    There is no influence relationship between ideas i and j
                   </p>
                 </CardContent>
               </Card>
@@ -409,32 +409,32 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             
             {projectContext && (
               <div className="my-6 bg-slate-100 p-4 rounded-lg">
-                <h3 className="text-lg font-semibold mb-2">Contexto del Proyecto</h3>
+                <h3 className="text-lg font-semibold mb-2">Project Context</h3>
                 
                 <div className="mb-3">
-                  <h4 className="font-medium text-sm">Contexto:</h4>
+                  <h4 className="font-medium text-sm">Context:</h4>
                   <p className="text-sm">{projectContext.context}</p>
                 </div>
                 
                 <div className="mb-3">
-                  <h4 className="font-medium text-sm">Pregunta Desencadenante:</h4>
+                  <h4 className="font-medium text-sm">Triggering Question:</h4>
                   <p className="text-sm">{projectContext.triggeringQuestion}</p>
                 </div>
                 
                 <div className="mb-3">
-                  <h4 className="font-medium text-sm">Relación:</h4>
+                  <h4 className="font-medium text-sm">Relation:</h4>
                   <p className="text-sm">{projectContext.relation}</p>
                 </div>
                 
                 <div>
-                  <h4 className="font-medium text-sm">Restricción:</h4>
+                  <h4 className="font-medium text-sm">Restriction:</h4>
                   <p className="text-sm">{projectContext.restriction}</p>
                 </div>
               </div>
             )}
             
             <div className="mb-4">
-              <h3 className="text-lg font-semibold mb-2">Ideas Seleccionadas</h3>
+              <h3 className="text-lg font-semibold mb-2">Selected Ideas</h3>
               
               <ul className="list-disc pl-6 space-y-2">
                 {selectedIdeas.map((idea) => (
@@ -450,9 +450,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             
             <div className="text-sm text-muted-foreground">
               <p>
-                A continuación, se te harán preguntas sobre la relación entre cada par de ideas.
-                Utiliza la información del contexto para determinar si existe una relación
-                de influencia de acuerdo con el sistema VAXO.
+                Next, you will be asked questions about the relationship between each pair of ideas.
+                Use the context information to determine if there is an influence relationship
+                according to the VAXO system.
               </p>
             </div>
           </div>
@@ -465,9 +465,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             <div className="space-y-6">
               <div>
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold">Relación de Influencia</h3>
+                  <h3 className="text-lg font-semibold">Influence Relationship</h3>
                   <Badge variant="outline">
-                    Pregunta {currentQuestionIndex + 1} de {questions.length}
+                    Question {currentQuestionIndex + 1} of {questions.length}
                   </Badge>
                 </div>
                 
@@ -493,7 +493,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 
                 <div className="mb-4">
                   <h4 className="text-sm font-medium mb-2">
-                    Relación de contexto:
+                    Context relationship:
                   </h4>
                   <p className="text-sm p-3 bg-slate-100 rounded">
                     {projectContext?.relation}
@@ -502,10 +502,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 
                 <div className="mb-6">
                   <h4 className="font-medium mb-2">
-                    ¿Qué tipo de relación existe entre las ideas i y j?
+                    What type of relationship exists between ideas i and j?
                   </h4>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Selecciona la opción más apropiada según el contexto y la relación definida.
+                    Select the most appropriate option based on the context and defined relationship.
                   </p>
                 </div>
               </div>
@@ -518,7 +518,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 >
                   <div className="text-center">
                     <span className="text-lg font-bold block">V</span>
-                    <span className="text-xs">i influye en j</span>
+                    <span className="text-xs">i influences j</span>
                   </div>
                 </Button>
                 
@@ -529,7 +529,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 >
                   <div className="text-center">
                     <span className="text-lg font-bold block">A</span>
-                    <span className="text-xs">j influye en i</span>
+                    <span className="text-xs">j influences i</span>
                   </div>
                 </Button>
                 
@@ -540,7 +540,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 >
                   <div className="text-center">
                     <span className="text-lg font-bold block">X</span>
-                    <span className="text-xs">influencia mutua</span>
+                    <span className="text-xs">mutual influence</span>
                   </div>
                 </Button>
                 
@@ -551,7 +551,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 >
                   <div className="text-center">
                     <span className="text-lg font-bold block">O</span>
-                    <span className="text-xs">sin relación</span>
+                    <span className="text-xs">no relationship</span>
                   </div>
                 </Button>
               </div>
@@ -563,11 +563,11 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       case "ssim":
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Matriz de Estructura de Auto-Interacción (SSIM)</h3>
+            <h3 className="text-lg font-semibold">Structural Self-Interaction Matrix (SSIM)</h3>
             
             <p className="text-sm text-muted-foreground mb-4">
-              La siguiente matriz muestra las relaciones de influencia que has indicado
-              entre cada par de ideas.
+              The following matrix shows the influence relationships you have indicated
+              between each pair of ideas.
             </p>
             
             <div className="overflow-x-auto mb-4">
@@ -609,16 +609,16 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             </div>
             
             <div className="mt-4 space-y-4">
-              <h4 className="font-medium">Leyenda:</h4>
+              <h4 className="font-medium">Legend:</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                <div>V: i influye en j</div>
-                <div>A: j influye en i</div>
-                <div>X: influencia mutua</div>
-                <div>O: sin relación</div>
+                <div>V: i influences j</div>
+                <div>A: j influences i</div>
+                <div>X: mutual influence</div>
+                <div>O: no relationship</div>
               </div>
               
               <div className="mt-4">
-                <h4 className="font-medium mb-2">Referencia de ideas:</h4>
+                <h4 className="font-medium mb-2">Ideas reference:</h4>
                 <ul className="list-decimal pl-6 space-y-1">
                   {selectedIdeas.map((idea, idx) => (
                     <li key={idea.id} className="text-sm">
@@ -634,11 +634,11 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       case "reachability":
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Matriz de Alcance Inicial</h3>
+            <h3 className="text-lg font-semibold">Initial Reachability Matrix</h3>
             
             <p className="text-sm text-muted-foreground mb-4">
-              La matriz de alcance inicial muestra las relaciones directas entre las ideas.
-              Un 1 indica que la idea i puede alcanzar (influir en) la idea j.
+              The initial reachability matrix shows the direct relationships between ideas.
+              A 1 indicates that idea i can reach (influence) idea j.
             </p>
             
             <div className="overflow-x-auto mb-4">
@@ -669,7 +669,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             </div>
             
             <div className="mt-4">
-              <h4 className="font-medium mb-2">Referencia de ideas:</h4>
+              <h4 className="font-medium mb-2">Ideas reference:</h4>
               <ul className="list-decimal pl-6 space-y-1">
                 {selectedIdeas.map((idea, idx) => (
                   <li key={idea.id} className="text-sm">
@@ -684,17 +684,17 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       case "levels":
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Partición por Niveles</h3>
+            <h3 className="text-lg font-semibold">Level Partitioning</h3>
             
             <p className="text-sm text-muted-foreground mb-4">
-              Los elementos han sido organizados en niveles jerárquicos según sus relaciones de influencia.
-              Cada nivel representa un grupo de ideas con similar poder de influencia en el sistema.
+              Elements have been organized into hierarchical levels according to their influence relationships.
+              Each level represents a group of ideas with similar influence power in the system.
             </p>
             
             <div className="space-y-6 mt-6">
               {levels.map((levelIndices, levelNum) => (
                 <div key={levelNum} className="border rounded-md p-4">
-                  <h4 className="font-medium mb-3">Nivel {levelNum + 1}</h4>
+                  <h4 className="font-medium mb-3">Level {levelNum + 1}</h4>
                   <ul className="space-y-2">
                     {levelIndices.map((idx) => (
                       <li key={idx} className="flex items-start gap-2">
@@ -713,17 +713,17 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             </div>
             
             <div className="mt-6 p-4 bg-slate-50 rounded-md">
-              <h4 className="font-medium mb-2">Interpretación:</h4>
+              <h4 className="font-medium mb-2">Interpretation:</h4>
               <p className="text-sm">
-                • Los elementos del nivel 1 tienen el menor poder de influencia pero reciben influencia
-                  de otros elementos.
+                • Elements in Level 1 have the least influence power but receive influence
+                  from other elements.
               </p>
               <p className="text-sm">
-                • Conforme aumenta el nivel, aumenta el poder de influencia sobre el sistema.
+                • As the level increases, the influence power over the system increases.
               </p>
               <p className="text-sm">
-                • Los elementos del nivel más alto son los más influyentes y pueden considerarse
-                  como factores clave o impulsores.
+                • Elements at the highest level are the most influential and can be considered
+                  as key factors or drivers.
               </p>
             </div>
           </div>
@@ -732,28 +732,28 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       case "diagram":
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Modelo ISM Final</h3>
+            <h3 className="text-lg font-semibold">Final ISM Model</h3>
             
             <p className="text-sm text-muted-foreground mb-4">
-              El resultado final del proceso ISM es un modelo jerárquico que muestra
-              las relaciones de influencia entre las ideas. Este modelo te ayudará a
-              comprender la estructura subyacente y las dinámicas del sistema.
+              The final result of the ISM process is a hierarchical model that shows
+              the influence relationships between ideas. This model will help you
+              understand the underlying structure and dynamics of the system.
             </p>
             
             <div className="p-6 bg-slate-50 rounded-md text-center">
               <p className="text-sm">
-                El diagrama será implementado para mostrar una representación gráfica
-                de las relaciones entre elementos en una actualización posterior.
+                The diagram will be implemented to show a graphical representation
+                of the relationships between elements in a future update.
               </p>
             </div>
             
             <div className="mt-6">
-              <h4 className="font-medium mb-2">Elementos Clave por Nivel:</h4>
+              <h4 className="font-medium mb-2">Key Elements by Level:</h4>
               
               <div className="space-y-4">
                 {levels.map((levelIndices, levelNum) => (
                   <div key={levelNum} className="border-l-4 border-primary pl-4 py-1">
-                    <h5 className="font-medium">Nivel {levelNum + 1}</h5>
+                    <h5 className="font-medium">Level {levelNum + 1}</h5>
                     <ul className="mt-2 space-y-1">
                       {levelIndices.map((idx) => (
                         <li key={idx} className="text-sm">
@@ -767,17 +767,17 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             </div>
             
             <div className="mt-6 p-4 bg-slate-50 rounded-md">
-              <h4 className="font-medium mb-2">Conclusiones:</h4>
+              <h4 className="font-medium mb-2">Conclusions:</h4>
               <p className="text-sm">
-                • Las ideas en los niveles superiores tienen mayor influencia sobre el sistema.
+                • Ideas at higher levels have greater influence over the system.
               </p>
               <p className="text-sm">
-                • Para generar cambios efectivos, considera enfocarte primero en las ideas
-                  de los niveles superiores.
+                • To generate effective changes, consider focusing first on ideas
+                  at higher levels.
               </p>
               <p className="text-sm">
-                • El modelo ayuda a simplificar la complejidad inicial y proporciona
-                  una estructura para la toma de decisiones.
+                • The model helps simplify the initial complexity and provides
+                  a structure for decision-making.
               </p>
             </div>
           </div>
@@ -792,10 +792,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         return (
           <div className="flex justify-between">
             <Button variant="outline" onClick={onClose}>
-              Cancelar
+              Cancel
             </Button>
             <Button onClick={() => setStage("questions")}>
-              Comenzar Proceso
+              Start Process
             </Button>
           </div>
         );
@@ -804,10 +804,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         return (
           <div className="flex justify-between">
             <Button variant="outline" onClick={() => setStage("questions")}>
-              Volver a Preguntas
+              Back to Questions
             </Button>
             <Button onClick={proceedToReachabilityMatrix}>
-              Generar Matriz de Alcance
+              Generate Reachability Matrix
             </Button>
           </div>
         );
@@ -816,10 +816,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         return (
           <div className="flex justify-between">
             <Button variant="outline" onClick={() => setStage("ssim")}>
-              Volver a SSIM
+              Back to SSIM
             </Button>
             <Button onClick={applyTransitiveClosureAndProceed}>
-              Aplicar Cierre Transitivo
+              Apply Transitive Closure
             </Button>
           </div>
         );
@@ -828,10 +828,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         return (
           <div className="flex justify-between">
             <Button variant="outline" onClick={() => setStage("reachability")}>
-              Volver
+              Back
             </Button>
             <Button onClick={proceedToDiagram}>
-              Ver Diagrama Final
+              View Final Diagram
             </Button>
           </div>
         );
@@ -840,7 +840,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         return (
           <div className="flex justify-end">
             <Button onClick={onClose}>
-              Finalizar
+              Finish
             </Button>
           </div>
         );
@@ -855,20 +855,20 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {stage === "intro" && "Modelado Estructural Interpretativo (ISM)"}
-            {stage === "questions" && "Identificación de Relaciones"}
-            {stage === "ssim" && "Matriz SSIM"}
-            {stage === "reachability" && "Matriz de Alcance"}
-            {stage === "levels" && "Jerarquización por Niveles"}
-            {stage === "diagram" && "Diagrama ISM Final"}
+            {stage === "intro" && "Interpretive Structural Modeling (ISM)"}
+            {stage === "questions" && "Relationship Identification"}
+            {stage === "ssim" && "SSIM Matrix"}
+            {stage === "reachability" && "Reachability Matrix"}
+            {stage === "levels" && "Level Partitioning"}
+            {stage === "diagram" && "Final ISM Diagram"}
           </DialogTitle>
           <DialogDescription>
-            {stage === "intro" && "Construye un modelo de la estructura de relaciones entre las ideas seleccionadas."}
-            {stage === "questions" && "Determina el tipo de relación entre cada par de ideas."}
-            {stage === "ssim" && "Visualiza la matriz de estructura de auto-interacción."}
-            {stage === "reachability" && "Analiza la matriz de alcance inicial."}
-            {stage === "levels" && "Explora la jerarquía de niveles identificada."}
-            {stage === "diagram" && "Visualiza el modelo estructural completo."}
+            {stage === "intro" && "Build a structural model of relationships between selected ideas."}
+            {stage === "questions" && "Determine the type of relationship between each pair of ideas."}
+            {stage === "ssim" && "View the structural self-interaction matrix."}
+            {stage === "reachability" && "Analyze the initial reachability matrix."}
+            {stage === "levels" && "Explore the identified level hierarchy."}
+            {stage === "diagram" && "View the complete structural model."}
           </DialogDescription>
         </DialogHeader>
         
