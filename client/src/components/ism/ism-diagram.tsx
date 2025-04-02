@@ -26,10 +26,10 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
     }
 
     const getNodeId = (idea: Idea) => `node-${idea.id}`;
-    const levelHeight = 150;
-    const nodeWidth = 180;
+    const levelHeight = 180; // Aumentar la separación vertical
+    const nodeWidth = 200;   // Nodos más anchos
     const nodeHeight = 80;
-    const horizontalGap = 50;
+    const horizontalGap = 100; // Mayor separación horizontal
     
     const newNodes: Node[] = [];
     const idToNodeMap = new Map<number, { idea: Idea, level: number, index: number }>();
@@ -44,12 +44,26 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
         const x = startX + indexInLevel * (nodeWidth + horizontalGap);
         const y = levelNum * levelHeight;
         
+        // Nivel de influencia más alto = nivel 0, nivel más bajo = nivel máximo
+        const influenceLevel = levels.length - levelNum;
+        
+        // Color del nodo basado en el nivel de influencia
+        const getLevelColor = (level: number) => {
+          // Escala de colores: del más influyente (azul más intenso) al menos influyente
+          const maxLevel = levels.length;
+          const intensity = Math.max(0, 100 - Math.floor((level / maxLevel) * 80));
+          return `rgba(59, 130, 246, ${intensity}%)`;
+        };
+        
         newNodes.push({
           id: getNodeId(idea),
           data: { 
             label: (
-              <div className="text-center">
-                <div className="font-medium text-sm truncate">{idea.title}</div>
+              <div className="text-center p-1">
+                <div className="font-medium text-sm">{idea.title}</div>
+                <div className="text-xs mt-1 text-blue-600 font-semibold">
+                  Nivel de influencia: {influenceLevel}
+                </div>
               </div>
             ) 
           },
@@ -59,9 +73,9 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
             height: nodeHeight,
             background: '#ffffff',
             borderRadius: '8px',
-            border: '1px solid #e2e8f0',
+            border: `2px solid ${getLevelColor(levelNum)}`,
             padding: '10px',
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+            boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.15)',
           },
         });
         
@@ -71,8 +85,8 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
     
     // Crear conexiones entre nodos según la matriz de alcance
     const newEdges: Edge[] = [];
-    const processedConnections = new Set<string>();
     
+    // Primero, crear todas las conexiones directas basadas en la matriz de reachability
     for (let i = 0; i < ideas.length; i++) {
       for (let j = 0; j < ideas.length; j++) {
         if (i !== j && finalReachabilityMatrix[i][j]) {
@@ -83,60 +97,52 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
           const targetInfo = idToNodeMap.get(targetIdea.id);
           
           if (sourceInfo && targetInfo) {
-            // Solo crear conexiones entre nodos de niveles adyacentes
-            // o dentro del mismo nivel si hay influencia mutua
-            const isAdjacent = Math.abs(sourceInfo.level - targetInfo.level) <= 1;
-            
             // Verificar relación bidireccional
             const hasBidirectional = 
               finalReachabilityMatrix[i][j] && 
               finalReachabilityMatrix[j][i];
             
-            // Crear una clave única para esta conexión
-            const connectionKey = [sourceIdea.id, targetIdea.id].sort().join('-');
+            // Crear una identificación única para esta conexión
+            const edgeId = `edge-${sourceIdea.id}-${targetIdea.id}`;
             
-            // Solo procesar si no hemos agregado esta conexión antes
-            if (isAdjacent && !processedConnections.has(connectionKey)) {
-              processedConnections.add(connectionKey);
-              
-              if (hasBidirectional) {
-                // Conectar nodos bidireccionales
+            // Para relaciones entre niveles adyacentes, mostrar siempre la flecha
+            if (Math.abs(sourceInfo.level - targetInfo.level) === 1) {
+              // Si el nivel de origen es menor (más arriba en el diagrama),
+              // la flecha va hacia abajo (mayor influencia → menor influencia)
+              if (sourceInfo.level < targetInfo.level) {
                 newEdges.push({
-                  id: `edge-${sourceIdea.id}-${targetIdea.id}`,
+                  id: edgeId,
                   source: getNodeId(sourceIdea),
                   target: getNodeId(targetIdea),
-                  type: 'straight',
-                  animated: true,
-                  style: { stroke: '#3b82f6', strokeWidth: 2 },
-                  markerEnd: {
-                    type: MarkerType.ArrowClosed,
-                    color: '#3b82f6',
-                  },
-                });
-                
-                // Agregar la conexión inversa también
-                newEdges.push({
-                  id: `edge-${targetIdea.id}-${sourceIdea.id}`,
-                  source: getNodeId(targetIdea),
-                  target: getNodeId(sourceIdea),
-                  type: 'straight',
-                  animated: true,
-                  style: { stroke: '#3b82f6', strokeWidth: 2 },
-                  markerEnd: {
-                    type: MarkerType.ArrowClosed,
-                    color: '#3b82f6',
-                  },
-                });
-              } else if (sourceInfo.level < targetInfo.level) {
-                // Conexión entre niveles diferentes - solo hacia abajo
-                newEdges.push({
-                  id: `edge-${sourceIdea.id}-${targetIdea.id}`,
-                  source: getNodeId(sourceIdea),
-                  target: getNodeId(targetIdea),
-                  type: 'straight',
+                  type: 'default', // Usar curvas suaves
                   animated: false,
                   style: { stroke: '#3b82f6', strokeWidth: 1.5 },
                   markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    color: '#3b82f6',
+                  },
+                  sourceHandle: Position.Bottom,
+                  targetHandle: Position.Top,
+                });
+              }
+            }
+            
+            // Para relaciones bidireccionales dentro del mismo nivel
+            if (sourceInfo.level === targetInfo.level && hasBidirectional) {
+              // Solo agregar si i < j para evitar duplicados
+              if (i < j) {
+                newEdges.push({
+                  id: `edge-bidir-${sourceIdea.id}-${targetIdea.id}`,
+                  source: getNodeId(sourceIdea),
+                  target: getNodeId(targetIdea),
+                  type: 'straight',
+                  animated: true,
+                  style: { stroke: '#3b82f6', strokeWidth: 2 },
+                  markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    color: '#3b82f6',
+                  },
+                  markerStart: {
                     type: MarkerType.ArrowClosed,
                     color: '#3b82f6',
                   },
@@ -167,13 +173,20 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
   }
 
   return (
-    <div className="w-full h-[500px] border rounded-md">
+    <div className="w-full h-[600px] border rounded-md">
+      <div className="p-2 text-sm bg-blue-50 text-blue-700 border-b border-blue-200">
+        <strong>Guía:</strong> Los elementos se organizan por niveles de influencia. Mayor nivel = mayor influencia.
+        Las flechas indican relaciones de influencia entre ideas.
+      </div>
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        connectionLineType={ConnectionLineType.Straight}
+        connectionLineType={ConnectionLineType.Bezier}
         fitView
         attributionPosition="bottom-right"
+        minZoom={0.4}
+        maxZoom={1.5}
+        defaultZoom={0.8}
       >
         <Controls />
         <Background color="#f8fafc" gap={16} />
