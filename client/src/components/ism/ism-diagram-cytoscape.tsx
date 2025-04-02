@@ -1,12 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
+import cytoscapeSvg from 'cytoscape-svg';
+import { jsPDF } from 'jspdf';
 import { Idea, Category } from '@shared/schema';
 import { computeTransitiveReduction } from './matrix-reduction';
 import { useQuery } from '@tanstack/react-query';
+import { Button } from '../ui/button';
+import { Download, RefreshCw } from 'lucide-react';
 
-// Register the dagre layout with Cytoscape
+// Register the dagre layout and svg extension with Cytoscape
 cytoscape.use(dagre);
+cytoscape.use(cytoscapeSvg);
 
 interface ISMDiagramProps {
   ideas: Idea[];
@@ -18,6 +23,8 @@ interface ISMDiagramProps {
 const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDiagramProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   
   // Get the project categories
   const { data: categories = [] } = useQuery<Category[]>({
@@ -31,6 +38,108 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
     
     const category = categories.find(cat => cat.name === categoryName);
     return category?.color || null;
+  };
+  
+  // Function to download the diagram as PDF
+  const handleDownloadPDF = () => {
+    if (!cyRef.current) return;
+    
+    setIsDownloading(true);
+    
+    try {
+      // Generate SVG string from Cytoscape graph
+      // Use type assertion to access the svg method added by the cytoscapeSvg extension
+      const svg = (cyRef.current as any).svg({ scale: 2, full: true, bg: 'white' });
+      
+      // Create a new jsPDF instance
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+      });
+      
+      // Create a temporary image element to convert SVG to Canvas
+      const img = new Image();
+      const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      
+      img.onload = () => {
+        // Create a canvas and draw the image
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          
+          // Convert canvas to image data URL
+          const imgData = canvas.toDataURL('image/png');
+          
+          // Calculate dimensions to fit in PDF
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          const imgAspectRatio = img.width / img.height;
+          
+          let imgWidth = pdfWidth - 20; // margins
+          let imgHeight = imgWidth / imgAspectRatio;
+          
+          // Ensure the image fits in the page
+          if (imgHeight > pdfHeight - 20) {
+            imgHeight = pdfHeight - 20;
+            imgWidth = imgHeight * imgAspectRatio;
+          }
+          
+          // Add the image to the PDF
+          pdf.addImage(
+            imgData, 
+            'PNG', 
+            (pdfWidth - imgWidth) / 2, // center horizontally
+            (pdfHeight - imgHeight) / 2, // center vertically
+            imgWidth, 
+            imgHeight
+          );
+          
+          // Save the PDF
+          pdf.save('ism-diagram.pdf');
+          
+          // Clean up
+          URL.revokeObjectURL(url);
+          setIsDownloading(false);
+        }
+      };
+      
+      img.src = url;
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      setIsDownloading(false);
+    }
+  };
+  
+  // Function to reset the diagram to its original layout
+  const handleResetLayout = () => {
+    if (!cyRef.current) return;
+    
+    setIsResetting(true);
+    
+    // Apply the original layout
+    cyRef.current.layout({ 
+      name: 'dagre',
+      rankDir: 'TB',
+      rankSep: 120,
+      nodeSep: 80,
+      padding: 40,
+      animate: true,
+      animationDuration: 500,
+    } as any).run();
+    
+    // Fit and center the diagram
+    setTimeout(() => {
+      if (cyRef.current) {
+        cyRef.current.fit();
+        cyRef.current.center();
+      }
+      setIsResetting(false);
+    }, 600);
   };
   
   useEffect(() => {
@@ -371,8 +480,31 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
   }
   
   return (
-    <div className="w-full h-[600px] border rounded-md">
-      <div ref={containerRef} className="w-full h-[600px]" />
+    <div className="w-full border rounded-md">
+      {/* Controls bar */}
+      <div className="p-2 bg-slate-50 border-b flex justify-end gap-2">
+        <Button 
+          size="sm" 
+          variant="outline" 
+          onClick={handleResetLayout}
+          disabled={isResetting}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${isResetting ? 'animate-spin' : ''}`} />
+          Reset
+        </Button>
+        <Button 
+          size="sm" 
+          variant="outline" 
+          onClick={handleDownloadPDF}
+          disabled={isDownloading}
+        >
+          <Download className="h-4 w-4 mr-2" />
+          {isDownloading ? 'Downloading...' : 'Download PDF'}
+        </Button>
+      </div>
+      
+      {/* Diagram container */}
+      <div ref={containerRef} className="w-full h-[570px]" />
     </div>
   );
 };
