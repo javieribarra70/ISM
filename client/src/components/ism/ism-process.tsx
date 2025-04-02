@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info, ArrowRight, ArrowLeft, ArrowLeftRight, Circle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import ISMDiagram from "./ism-diagram";
+import ISMDiagram from "./ism-diagram-cytoscape";
 
 interface ISMProcessProps {
   isOpen: boolean;
