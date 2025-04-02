@@ -210,31 +210,54 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     if (currentQuestionIndex < questions.length) {
       const updatedQuestions = [...questions];
       updatedQuestions[currentQuestionIndex].response = response;
-      setQuestions(updatedQuestions);
       
       // Inferir relaciones lógicas si es posible
       const inferredQuestions = applyLogicalInference(updatedQuestions, currentQuestionIndex);
       setQuestions(inferredQuestions);
       
-      // Avanzar a la siguiente pregunta no respondida
-      let nextIndex = currentQuestionIndex + 1;
-      while (
-        nextIndex < inferredQuestions.length &&
-        inferredQuestions[nextIndex].response !== null
-      ) {
-        nextIndex++;
-      }
+      // Contar cuántas preguntas faltan por responder
+      const pendingQuestions = inferredQuestions.filter(q => q.response === null);
       
-      if (nextIndex < inferredQuestions.length) {
-        setCurrentQuestionIndex(nextIndex);
+      if (pendingQuestions.length > 0) {
+        // Seleccionar la siguiente pregunta más informativa
+        selectNextMostInformativeQuestion(inferredQuestions);
       } else {
         // Todas las preguntas han sido respondidas, construir la matriz SSIM
         buildSSIMMatrix(inferredQuestions);
       }
     }
   };
+  
+  // Función para seleccionar la siguiente pregunta más informativa
+  const selectNextMostInformativeQuestion = (currentQuestions: ISMQuestion[]) => {
+    // Encontrar todas las preguntas que aún no se han respondido
+    const unansweredIndices = currentQuestions
+      .map((q, index) => q.response === null ? index : -1)
+      .filter(index => index !== -1);
+    
+    if (unansweredIndices.length === 0) {
+      // No hay más preguntas por responder
+      buildSSIMMatrix(currentQuestions);
+      return;
+    }
+    
+    // Por ahora, usamos una estrategia simple: seleccionar la primera pregunta no respondida
+    // Esto se puede mejorar con algoritmos más avanzados que analicen la estructura actual
+    // y determinen qué pregunta aportaría más información
+    
+    // En una implementación más avanzada, podríamos:
+    // 1. Calcular la centralidad de cada nodo en la matriz actual
+    // 2. Seleccionar preguntas que involucren nodos con alta centralidad
+    // 3. Analizar patrones en las respuestas existentes
+    
+    const nextIndex = unansweredIndices[0];
+    setCurrentQuestionIndex(nextIndex);
+    
+    console.log(`Seleccionada la siguiente pregunta #${nextIndex + 1}: ` +
+                `¿${currentQuestions[nextIndex].ideaI.title} influye en ${currentQuestions[nextIndex].ideaJ.title}?`);
+  };
 
-  // Función para aplicar inferencias lógicas
+  // Función para aplicar inferencias lógicas utilizando propiedades transitivas
   const applyLogicalInference = (
     currentQuestions: ISMQuestion[],
     answeredIndex: number
@@ -245,12 +268,85 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     // Si aún no se ha respondido, no hay nada que inferir
     if (!answeredQuestion.response) return updatedQuestions;
     
-    const iId = answeredQuestion.ideaI.id;
-    const jId = answeredQuestion.ideaJ.id;
-    const relation = answeredQuestion.response;
+    // Construir una matriz SSIM provisional con las preguntas respondidas hasta ahora
+    const provisionalSSIM: SSIMCell[] = [];
+    updatedQuestions.forEach((q, index) => {
+      if (q.response) {
+        provisionalSSIM.push({
+          ideaI: q.ideaI.id,
+          ideaJ: q.ideaJ.id,
+          relation: q.response,
+        });
+        
+        // Añadir la relación inversa
+        if (q.response === RelationType.V) {
+          provisionalSSIM.push({
+            ideaI: q.ideaJ.id,
+            ideaJ: q.ideaI.id,
+            relation: RelationType.A,
+          });
+        } else if (q.response === RelationType.A) {
+          provisionalSSIM.push({
+            ideaI: q.ideaJ.id,
+            ideaJ: q.ideaI.id,
+            relation: RelationType.V,
+          });
+        } else if (q.response === RelationType.X) {
+          provisionalSSIM.push({
+            ideaI: q.ideaJ.id,
+            ideaJ: q.ideaI.id,
+            relation: RelationType.X,
+          });
+        } else if (q.response === RelationType.O) {
+          provisionalSSIM.push({
+            ideaI: q.ideaJ.id,
+            ideaJ: q.ideaI.id,
+            relation: RelationType.O,
+          });
+        }
+      }
+    });
     
-    // No implementamos inferencias adicionales por ahora
-    // Este es un punto donde se podría extender la lógica
+    // Construir matriz de alcanzabilidad inicial
+    const initialMatrix = buildInitialReachabilityMatrix(selectedIdeas, provisionalSSIM);
+    
+    // Aplicar cierre transitivo para encontrar relaciones indirectas
+    const transitiveMatrix = applyTransitiveClosure(initialMatrix);
+    
+    // Usar la matriz transitiva para inferir nuevas relaciones
+    for (let i = 0; i < updatedQuestions.length; i++) {
+      // Saltamos las preguntas ya respondidas
+      if (updatedQuestions[i].response !== null) continue;
+      
+      const ideaI = updatedQuestions[i].ideaI;
+      const ideaJ = updatedQuestions[i].ideaJ;
+      
+      // Encontrar los índices de estas ideas en la matriz
+      const idxI = selectedIdeas.findIndex(idea => idea.id === ideaI.id);
+      const idxJ = selectedIdeas.findIndex(idea => idea.id === ideaJ.id);
+      
+      if (idxI !== -1 && idxJ !== -1) {
+        // Verificar si hay relación transitiva de I a J
+        const iToJ = transitiveMatrix[idxI][idxJ];
+        const jToI = transitiveMatrix[idxJ][idxI];
+        
+        // Aplicar inferencias basadas en las relaciones transitivas
+        if (iToJ && !jToI) {
+          // I influye en J, pero J no influye en I
+          updatedQuestions[i].response = RelationType.V;
+          console.log(`Inferencia: ${ideaI.title} influye en ${ideaJ.title} (V)`);
+        } else if (!iToJ && jToI) {
+          // J influye en I, pero I no influye en J
+          updatedQuestions[i].response = RelationType.A;
+          console.log(`Inferencia: ${ideaJ.title} influye en ${ideaI.title} (A)`);
+        } else if (iToJ && jToI) {
+          // Influencia mutua
+          updatedQuestions[i].response = RelationType.X;
+          console.log(`Inferencia: Influencia mutua entre ${ideaI.title} y ${ideaJ.title} (X)`);
+        }
+        // Si no hay relación transitiva, no podemos inferir con certeza que no hay relación directa (O)
+      }
+    }
     
     return updatedQuestions;
   };
