@@ -23,9 +23,14 @@ interface ISMDiagramProps {
   levels: number[][];
   finalReachabilityMatrix: boolean[][];
   projectId?: number; // We add projectId to obtain the categories
+  projectInfo?: {
+    name: string;
+    description: string;
+    createdAt: string;
+  };
 }
 
-const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDiagramProps) => {
+const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, projectInfo }: ISMDiagramProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -123,13 +128,69 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
             imgHeight
           );
           
-          // Draw the legend directly on the PDF
+          // Draw the legends directly on the PDF
           const margin = 10;
           const legendWidth = 50;
-          const legendY = margin;
-          const legendX = pdfWidth - legendWidth - margin;
           const titleHeight = 5;
           const itemHeight = 5;
+          
+          // 1. Project Info Legend (Left Side)
+          if (projectInfo) {
+            const projectLegendX = margin;
+            const projectLegendY = margin;
+            const projectLegendWidth = 60;
+            
+            // Calculate project legend height
+            let projectItemsCount = 2; // Name and Created always shown
+            if (projectInfo.description) projectItemsCount++;
+            const projectTotalHeight = titleHeight + (projectItemsCount * itemHeight);
+            
+            // Draw project info background
+            pdf.setFillColor(255, 255, 255); // white
+            pdf.setDrawColor(226, 232, 240); // light gray border
+            pdf.roundedRect(projectLegendX, projectLegendY, projectLegendWidth, projectTotalHeight, 1, 1, 'FD');
+            
+            // Project info title
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(8);
+            pdf.setTextColor(75, 85, 99); // gray
+            pdf.text('Project Information', projectLegendX + 4, projectLegendY + 4);
+            
+            // Project info content
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(7);
+            pdf.text('Name:', projectLegendX + 4, projectLegendY + titleHeight + 2);
+            
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(projectInfo.name, projectLegendX + 15, projectLegendY + titleHeight + 2);
+            
+            let currentY = projectLegendY + titleHeight + itemHeight;
+            
+            if (projectInfo.description) {
+              pdf.setFont('helvetica', 'bold');
+              pdf.text('Description:', projectLegendX + 4, currentY + 2);
+              
+              pdf.setFont('helvetica', 'normal');
+              // Truncate description if too long
+              const desc = projectInfo.description.length > 30 
+                ? projectInfo.description.substring(0, 30) + '...' 
+                : projectInfo.description;
+              pdf.text(desc, projectLegendX + 15, currentY + 2);
+              
+              currentY += itemHeight;
+            }
+            
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Created:', projectLegendX + 4, currentY + 2);
+            
+            pdf.setFont('helvetica', 'normal');
+            const date = new Date(projectInfo.createdAt).toLocaleDateString();
+            pdf.text(date, projectLegendX + 15, currentY + 2);
+          }
+          
+          // 2. Categories Legend (Right Side)
+          const categoriesLegendX = pdfWidth - legendWidth - margin;
+          const categoriesLegendY = margin;
           
           // Filter the categories that are used
           const usedCategoryNames = new Set<string>();
@@ -142,22 +203,22 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
           // Filter only the categories used in the diagram
           const pdfVisibleCategories = categories.filter(cat => usedCategoryNames.has(cat.name));
           
-          // Set background for legend
+          // Set background for categories legend
           pdf.setFillColor(255, 255, 255); // white
-          pdf.setDrawColor(226, 232, 240); // #e2e8f0 - light gray border
-          const totalHeight = titleHeight + (pdfVisibleCategories.length > 0 ? pdfVisibleCategories.length * itemHeight : itemHeight);
-          pdf.roundedRect(legendX, legendY, legendWidth, totalHeight, 1, 1, 'FD'); // 'FD' = fill and draw
+          pdf.setDrawColor(226, 232, 240); // light gray border
+          const categoriesHeight = titleHeight + (pdfVisibleCategories.length > 0 ? pdfVisibleCategories.length * itemHeight : itemHeight);
+          pdf.roundedRect(categoriesLegendX, categoriesLegendY, legendWidth, categoriesHeight, 1, 1, 'FD');
           
-          // Add title
+          // Add categories title
           pdf.setFont('helvetica', 'bold');
           pdf.setFontSize(8);
-          pdf.setTextColor(75, 85, 99); // #4b5563 - gray
-          pdf.text('Categories', legendX + 4, legendY + 4);
+          pdf.setTextColor(75, 85, 99); // gray
+          pdf.text('Categories', categoriesLegendX + 4, categoriesLegendY + 4);
           
           // Add category items
           if (pdfVisibleCategories.length > 0) {
             pdfVisibleCategories.forEach((category, index) => {
-              const itemY = legendY + titleHeight + (index * itemHeight);
+              const itemY = categoriesLegendY + titleHeight + (index * itemHeight);
               
               // Draw colored square
               const color = category.color || '#cbd5e1';
@@ -165,21 +226,21 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
               const g = parseInt(color.slice(3, 5), 16);
               const b = parseInt(color.slice(5, 7), 16);
               pdf.setFillColor(r, g, b);
-              pdf.rect(legendX + 4, itemY + 1, 3, 3, 'F');
+              pdf.rect(categoriesLegendX + 4, itemY + 1, 3, 3, 'F');
               
               // Draw category name
               pdf.setFont('helvetica', 'normal');
               pdf.setFontSize(7);
               pdf.setTextColor(75, 85, 99); // #4b5563
-              pdf.text(category.name, legendX + 10, itemY + 3);
+              pdf.text(category.name, categoriesLegendX + 10, itemY + 3);
             });
           } else {
             // If no categories, show a message
-            const itemY = legendY + titleHeight;
+            const itemY = categoriesLegendY + titleHeight;
             pdf.setFont('helvetica', 'italic');
             pdf.setFontSize(7);
             pdf.setTextColor(75, 85, 99); // #4b5563
-            pdf.text('No categories found', legendX + 4, itemY + 3);
+            pdf.text('No categories found', categoriesLegendX + 4, itemY + 3);
           }
           
           // Save the PDF
@@ -570,6 +631,34 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
       <div className="relative">
         {/* Cytoscape container */}
         <div ref={containerRef} className="w-full h-[570px]" />
+        
+        {/* Project Info Legend */}
+        {projectInfo && (
+          <div 
+            className="absolute top-4 left-4 bg-white border border-slate-200 rounded-md p-3 shadow-sm"
+            style={{ maxWidth: '300px', zIndex: 10 }}
+          >
+            <div className="text-sm font-semibold text-gray-600 mb-2">Project Information</div>
+            <div className="flex flex-col gap-1">
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-gray-600">Name:</span>
+                <span className="text-xs text-gray-600">{projectInfo.name}</span>
+              </div>
+              {projectInfo.description && (
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold text-gray-600">Description:</span>
+                  <span className="text-xs text-gray-600 line-clamp-2">{projectInfo.description}</span>
+                </div>
+              )}
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-gray-600">Created:</span>
+                <span className="text-xs text-gray-600">
+                  {new Date(projectInfo.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Categories legend */}
         {visibleCategories.length > 0 && (
