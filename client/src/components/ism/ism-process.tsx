@@ -22,29 +22,29 @@ interface ISMProcessProps {
   } | null;
 }
 
-// Enum para representar las relaciones VAXO
+// Enum to represent VAXO relationships
 enum RelationType {
-  V = "V", // i influye en j
-  A = "A", // j influye en i
-  X = "X", // se influyen mutuamente
-  O = "O", // no hay relación
+  V = "V", // i influences j
+  A = "A", // j influences i
+  X = "X", // mutual influence
+  O = "O", // no relationship
 }
 
-// Interface para una pregunta en el proceso ISM
+// Interface for a question in the ISM process
 interface ISMQuestion {
   ideaI: Idea;
   ideaJ: Idea;
   response: RelationType | null;
 }
 
-// Interface para una celda de la matriz SSIM
+// Interface for a SSIM matrix cell
 interface SSIMCell {
   ideaI: number;
   ideaJ: number;
   relation: RelationType | null;
 }
 
-// Función que construye la matriz de alcance inicial
+// Function that builds the initial reachability matrix
 function buildInitialReachabilityMatrix(
   ideas: Idea[],
   ssimMatrix: SSIMCell[]
@@ -161,30 +161,30 @@ function areSetEqual(a: Set<number>, b: Set<number>): boolean {
 }
 
 export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectContext }: ISMProcessProps) {
-  // Estado para almacenar la etapa actual del proceso ISM
+  // State to store the current stage of the ISM process
   const [stage, setStage] = useState<
     "intro" | "questions" | "ssim" | "reachability" | "levels" | "diagram"
   >("intro");
 
-  // Estado para las preguntas VAXO a realizar
+  // State for the VAXO questions to be asked
   const [questions, setQuestions] = useState<ISMQuestion[]>([]);
-  // Índice de la pregunta actual
+  // Index of the current question
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  // Matriz SSIM resultante
+  // Resulting SSIM matrix
   const [ssimMatrix, setSSIMMatrix] = useState<SSIMCell[]>([]);
-  // Matriz de alcance
+  // Reachability matrix
   const [reachabilityMatrix, setReachabilityMatrix] = useState<boolean[][]>([]);
-  // Matriz de alcance final (con transitividad)
+  // Final reachability matrix (with transitivity)
   const [finalReachabilityMatrix, setFinalReachabilityMatrix] = useState<boolean[][]>([]);
-  // Niveles de los elementos
+  // Element levels
   const [levels, setLevels] = useState<number[][]>([]);
 
-  // Generar todas las preguntas necesarias para el ISM cuando se abra el diálogo
+  // Generate all necessary questions for the ISM when the dialog opens
   useEffect(() => {
     if (isOpen && selectedIdeas.length > 0) {
       const newQuestions: ISMQuestion[] = [];
       
-      // Generamos preguntas para cada par (i,j) donde i < j
+      // Generate questions for each pair (i,j) where i < j
       for (let i = 0; i < selectedIdeas.length - 1; i++) {
         for (let j = i + 1; j < selectedIdeas.length; j++) {
           newQuestions.push({
@@ -205,13 +205,13 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     }
   }, [isOpen, selectedIdeas]);
 
-  // Función para responder a una pregunta
+  // Function to answer a question
   const answerQuestion = (response: RelationType) => {
     if (currentQuestionIndex < questions.length) {
       const updatedQuestions = [...questions];
       updatedQuestions[currentQuestionIndex].response = response;
       
-      // Inferir relaciones lógicas si es posible
+      // Infer logical relationships if possible
       const inferredQuestions = applyLogicalInference(updatedQuestions, currentQuestionIndex);
       setQuestions(inferredQuestions);
       
@@ -253,8 +253,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     const nextIndex = unansweredIndices[0];
     setCurrentQuestionIndex(nextIndex);
     
-    console.log(`Seleccionada la siguiente pregunta #${nextIndex + 1}: ` +
-                `¿${currentQuestions[nextIndex].ideaI.title} influye en ${currentQuestions[nextIndex].ideaJ.title}?`);
+    console.log(`Selected the next question #${nextIndex + 1}: ` +
+                `Does ${currentQuestions[nextIndex].ideaI.title} influence ${currentQuestions[nextIndex].ideaJ.title}?`);
   };
 
   // Función para aplicar inferencias lógicas utilizando propiedades transitivas
@@ -332,17 +332,17 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         
         // Aplicar inferencias basadas en las relaciones transitivas
         if (iToJ && !jToI) {
-          // I influye en J, pero J no influye en I
+          // I influences J, but J does not influence I
           updatedQuestions[i].response = RelationType.V;
-          console.log(`Inferencia: ${ideaI.title} influye en ${ideaJ.title} (V)`);
+          console.log(`Inference: ${ideaI.title} influences ${ideaJ.title} (V)`);
         } else if (!iToJ && jToI) {
-          // J influye en I, pero I no influye en J
+          // J influences I, but I does not influence J
           updatedQuestions[i].response = RelationType.A;
-          console.log(`Inferencia: ${ideaJ.title} influye en ${ideaI.title} (A)`);
+          console.log(`Inference: ${ideaJ.title} influences ${ideaI.title} (A)`);
         } else if (iToJ && jToI) {
-          // Influencia mutua
+          // Mutual influence
           updatedQuestions[i].response = RelationType.X;
-          console.log(`Inferencia: Influencia mutua entre ${ideaI.title} y ${ideaJ.title} (X)`);
+          console.log(`Inference: Mutual influence between ${ideaI.title} and ${ideaJ.title} (X)`);
         }
         // Si no hay relación transitiva, no podemos inferir con certeza que no hay relación directa (O)
       }
