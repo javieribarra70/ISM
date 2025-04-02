@@ -86,7 +86,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
     // Crear conexiones entre nodos según la matriz de alcance
     const newEdges: Edge[] = [];
     
-    // Primero, crear todas las conexiones directas basadas en la matriz de reachability
+    // Crear todas las conexiones directas basadas en la matriz de reachability
     for (let i = 0; i < ideas.length; i++) {
       for (let j = 0; j < ideas.length; j++) {
         if (i !== j && finalReachabilityMatrix[i][j]) {
@@ -104,28 +104,6 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
             
             // Crear una identificación única para esta conexión
             const edgeId = `edge-${sourceIdea.id}-${targetIdea.id}`;
-            
-            // Para relaciones entre niveles adyacentes, mostrar siempre la flecha
-            if (Math.abs(sourceInfo.level - targetInfo.level) === 1) {
-              // Si el nivel de origen es menor (más arriba en el diagrama),
-              // la flecha va hacia abajo (mayor influencia → menor influencia)
-              if (sourceInfo.level < targetInfo.level) {
-                newEdges.push({
-                  id: edgeId,
-                  source: getNodeId(sourceIdea),
-                  target: getNodeId(targetIdea),
-                  type: 'default', // Usar curvas suaves
-                  animated: false,
-                  style: { stroke: '#3b82f6', strokeWidth: 1.5 },
-                  markerEnd: {
-                    type: MarkerType.ArrowClosed,
-                    color: '#3b82f6',
-                  },
-                  sourceHandle: Position.Bottom,
-                  targetHandle: Position.Top,
-                });
-              }
-            }
             
             // Para relaciones bidireccionales dentro del mismo nivel
             if (sourceInfo.level === targetInfo.level && hasBidirectional) {
@@ -148,8 +126,102 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
                   },
                 });
               }
+            } 
+            // Para relaciones unidireccionales o entre diferentes niveles
+            else {
+              // Para ideas que están en cualquier nivel, mostrar relaciones directas
+              newEdges.push({
+                id: edgeId,
+                source: getNodeId(sourceIdea),
+                target: getNodeId(targetIdea),
+                type: 'default', // Usar curvas suaves
+                animated: false,
+                style: { stroke: '#3b82f6', strokeWidth: 1.5 },
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                  color: '#3b82f6',
+                },
+                // Si están en niveles adyacentes, usar manejadores de posición específicos
+                ...(Math.abs(sourceInfo.level - targetInfo.level) === 1 ? {
+                  sourceHandle: sourceInfo.level < targetInfo.level ? Position.Bottom : Position.Top,
+                  targetHandle: sourceInfo.level < targetInfo.level ? Position.Top : Position.Bottom,
+                } : {})
+              });
             }
           }
+        }
+      }
+    }
+    
+    // Agregar flechas para nodos solitarios que no tienen relaciones
+    // si hay más de un nivel en el diagrama
+    if (levels.length > 1) {
+      // Para cada nivel, excepto el último
+      for (let levelNum = 0; levelNum < levels.length - 1; levelNum++) {
+        const currentLevelNodes = levels[levelNum];
+        const nextLevelNodes = levels[levelNum + 1];
+        
+        // Si ambos niveles tienen nodos
+        if (currentLevelNodes.length > 0 && nextLevelNodes.length > 0) {
+          // Para cada nodo en el nivel actual
+          currentLevelNodes.forEach(currIdx => {
+            const currIdea = ideas[currIdx];
+            const hasExistingConnection = newEdges.some(edge => 
+              edge.source === getNodeId(currIdea) || 
+              edge.target === getNodeId(currIdea)
+            );
+            
+            // Si el nodo no tiene conexiones existentes, agregar una flecha hacia el siguiente nivel
+            if (!hasExistingConnection) {
+              // Elegir el primer nodo del siguiente nivel para crear una relación predeterminada
+              const nextIdea = ideas[nextLevelNodes[0]];
+              
+              newEdges.push({
+                id: `edge-default-${currIdea.id}-${nextIdea.id}`,
+                source: getNodeId(currIdea),
+                target: getNodeId(nextIdea),
+                type: 'default',
+                animated: false,
+                style: { stroke: '#3b82f6', strokeWidth: 1, strokeDasharray: '5,5' }, // Línea punteada
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                  color: '#3b82f6',
+                },
+                sourceHandle: Position.Bottom,
+                targetHandle: Position.Top,
+              });
+            }
+          });
+          
+          // Para cada nodo en el siguiente nivel
+          nextLevelNodes.forEach(nextIdx => {
+            const nextIdea = ideas[nextIdx];
+            const hasExistingConnection = newEdges.some(edge => 
+              edge.source === getNodeId(nextIdea) || 
+              edge.target === getNodeId(nextIdea)
+            );
+            
+            // Si el nodo no tiene conexiones existentes, agregar una flecha desde el nivel anterior
+            if (!hasExistingConnection) {
+              // Elegir el primer nodo del nivel actual para crear una relación predeterminada
+              const currIdea = ideas[currentLevelNodes[0]];
+              
+              newEdges.push({
+                id: `edge-default-${currIdea.id}-${nextIdea.id}`,
+                source: getNodeId(currIdea),
+                target: getNodeId(nextIdea),
+                type: 'default',
+                animated: false,
+                style: { stroke: '#3b82f6', strokeWidth: 1, strokeDasharray: '5,5' }, // Línea punteada
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                  color: '#3b82f6',
+                },
+                sourceHandle: Position.Bottom,
+                targetHandle: Position.Top,
+              });
+            }
+          });
         }
       }
     }
@@ -174,9 +246,14 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix }: ISMDiagramProps)
 
   return (
     <div className="w-full h-[600px] border rounded-md">
-      <div className="p-2 text-sm bg-blue-50 text-blue-700 border-b border-blue-200">
-        <strong>Guía:</strong> Los elementos se organizan por niveles de influencia. Mayor nivel = mayor influencia.
-        Las flechas indican relaciones de influencia entre ideas.
+      <div className="p-3 text-sm bg-blue-50 text-blue-700 border-b border-blue-200">
+        <strong>Guía del diagrama:</strong>
+        <ul className="list-disc ml-5 mt-1">
+          <li>Mayor nivel de influencia = mayor capacidad de impactar al sistema</li>
+          <li>Las flechas continuas representan relaciones directas entre ideas</li>
+          <li>Las flechas punteadas conectan ideas aisladas que no tienen relaciones establecidas</li>
+          <li>Las flechas bidireccionales indican influencia mutua entre ideas</li>
+        </ul>
       </div>
       <ReactFlow
         nodes={nodes}
