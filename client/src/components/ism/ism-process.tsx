@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Info } from "lucide-react";
+import { Info, ArrowRight, ArrowLeft, ArrowLeftRight, Circle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface ISMProcessProps {
@@ -477,9 +477,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 </div>
                 
                 {/* Diseño visual del diagrama de relación */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
+                <div className="flex justify-between items-center gap-4 mb-8">
                   {/* Idea i (izquierda) */}
-                  <div className="w-full md:w-2/5">
+                  <div className="w-2/5">
                     <div className="border-2 border-gray-300 p-4 h-full flex items-center justify-center">
                       <div className="text-center">
                         <p className="font-semibold text-lg">{question.ideaI.title}</p>
@@ -487,19 +487,55 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                     </div>
                   </div>
                   
-                  {/* Flecha y relación (centro) */}
-                  <div className="flex flex-col items-center">
-                    <div className="text-center mb-2">
+                  {/* Botones de relación verticales (centro) */}
+                  <div className="flex flex-col space-y-3 items-center justify-center">
+                    <div className="text-center mb-1">
                       <p className="font-semibold">{projectContext?.relation || "Influences"}</p>
                     </div>
-                    <div className="w-24 h-12 relative">
-                      <div className="w-full h-2 bg-blue-600 absolute top-1/2 -translate-y-1/2"></div>
-                      <div className="w-0 h-0 border-t-[10px] border-t-transparent border-b-[10px] border-b-transparent border-l-[20px] border-l-blue-600 absolute right-0 top-1/2 -translate-y-1/2"></div>
-                    </div>
+                    
+                    {/* Botón V: Flecha izquierda a derecha */}
+                    <Button
+                      variant="outline"
+                      className="p-2 border-2 w-12 h-12 flex items-center justify-center"
+                      onClick={() => answerQuestion(RelationType.V)}
+                      title="Yes (i influences j)"
+                    >
+                      <ArrowRight className="h-6 w-6 text-blue-600" />
+                    </Button>
+                    
+                    {/* Botón A: Flecha derecha a izquierda */}
+                    <Button
+                      variant="outline"
+                      className="p-2 border-2 w-12 h-12 flex items-center justify-center"
+                      onClick={() => answerQuestion(RelationType.A)}
+                      title="No (j influences i)"
+                    >
+                      <ArrowLeft className="h-6 w-6 text-blue-600" />
+                    </Button>
+                    
+                    {/* Botón X: Flechas en ambos sentidos */}
+                    <Button
+                      variant="outline"
+                      className="p-2 border-2 w-12 h-12 flex items-center justify-center"
+                      onClick={() => answerQuestion(RelationType.X)}
+                      title="Both (mutual influence)"
+                    >
+                      <ArrowLeftRight className="h-6 w-6 text-blue-600" />
+                    </Button>
+                    
+                    {/* Botón O: Círculo */}
+                    <Button
+                      variant="outline"
+                      className="p-2 border-2 w-12 h-12 flex items-center justify-center"
+                      onClick={() => answerQuestion(RelationType.O)}
+                      title="No (0) (no relationship)"
+                    >
+                      <Circle className="h-6 w-6 text-blue-600" strokeWidth={1.5} />
+                    </Button>
                   </div>
                   
                   {/* Idea j (derecha) */}
-                  <div className="w-full md:w-2/5">
+                  <div className="w-2/5">
                     <div className="border-2 border-gray-300 p-4 h-full flex items-center justify-center">
                       <div className="text-center">
                         <p className="font-semibold text-lg">{question.ideaJ.title}</p>
@@ -509,74 +545,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 </div>
                 
                 {/* Restricción en la parte inferior */}
-                <div className="text-center mb-8 text-base">
+                <div className="text-center mb-4 text-base">
                   {projectContext?.restriction || "Restriction"}
                 </div>
-                
-                <div className="mb-6">
-                  <div className="flex justify-between items-center">
-                    <h4 className="font-semibold text-base">
-                      What type of relationship exists between these ideas?
-                    </h4>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Botones de relación ubicados entre ambas ideas */}
-              <div className="flex justify-center gap-4 mt-8">
-                {/* Botón V: Flecha izquierda a derecha */}
-                <Button
-                  variant="outline"
-                  className="p-3 border-2 w-16 h-16 flex items-center justify-center"
-                  onClick={() => answerQuestion(RelationType.V)}
-                  title="Yes (i influences j)"
-                >
-                  <div className="w-10 h-10 relative">
-                    <div className="w-full h-2 bg-blue-600 absolute top-1/2 -translate-y-1/2"></div>
-                    <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[12px] border-l-blue-600 absolute right-0 top-1/2 -translate-y-1/2"></div>
-                  </div>
-                </Button>
-                
-                {/* Botón A: Flecha derecha a izquierda */}
-                <Button
-                  variant="outline"
-                  className="p-3 border-2 w-16 h-16 flex items-center justify-center"
-                  onClick={() => answerQuestion(RelationType.A)}
-                  title="No (j influences i)"
-                >
-                  <div className="w-10 h-10 relative">
-                    <div className="w-full h-2 bg-blue-600 absolute top-1/2 -translate-y-1/2"></div>
-                    <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-r-[12px] border-r-blue-600 absolute left-0 top-1/2 -translate-y-1/2"></div>
-                  </div>
-                </Button>
-                
-                {/* Botón X: Flechas en ambos sentidos */}
-                <Button
-                  variant="outline"
-                  className="p-3 border-2 w-16 h-16 flex items-center justify-center"
-                  onClick={() => answerQuestion(RelationType.X)}
-                  title="Both (mutual influence)"
-                >
-                  <div className="w-10 h-10 relative">
-                    {/* Flecha izquierda a derecha */}
-                    <div className="w-full h-1.5 bg-blue-600 absolute top-[40%] -translate-y-1/2"></div>
-                    <div className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-l-[10px] border-l-blue-600 absolute right-0 top-[40%] -translate-y-1/2"></div>
-                    
-                    {/* Flecha derecha a izquierda */}
-                    <div className="w-full h-1.5 bg-blue-600 absolute top-[60%] -translate-y-1/2"></div>
-                    <div className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[10px] border-r-blue-600 absolute left-0 top-[60%] -translate-y-1/2"></div>
-                  </div>
-                </Button>
-                
-                {/* Botón O: Círculo */}
-                <Button
-                  variant="outline"
-                  className="p-3 border-2 w-16 h-16 flex items-center justify-center"
-                  onClick={() => answerQuestion(RelationType.O)}
-                  title="No (0) (no relationship)"
-                >
-                  <div className="w-8 h-8 rounded-full border-2 border-blue-600"></div>
-                </Button>
               </div>
             </div>
           );
