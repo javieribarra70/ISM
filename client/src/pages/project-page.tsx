@@ -15,6 +15,7 @@ import CategoriesTab from "@/components/tabs/categories-tab";
 import SelectorTab from "@/components/tabs/selector-tab";
 import SettingsTab from "@/components/tabs/settings-tab";
 import ContextTab from "@/components/tabs/context-tab";
+import ConnectionTab from "@/components/tabs/connection-tab";
 import { Avatars } from "@/components/avatars";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -528,13 +529,7 @@ export default function ProjectPage() {
             </TabsContent>
             
             <TabsContent value="connection" className="mt-0 p-4">
-              <div className="bg-white rounded-lg shadow p-6 min-h-[600px]">
-                <h2 className="text-xl font-semibold mb-4">Connection Management</h2>
-                <p className="text-muted-foreground">
-                  This section will allow viewing and editing relationships between project ideas,
-                  creating more complex structures and hierarchies.
-                </p>
-              </div>
+              <ConnectionTab projectId={parsedProjectId} />
             </TabsContent>
             
             {isUserProjectAdmin() && (
