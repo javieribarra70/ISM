@@ -1025,6 +1025,7 @@ export function registerRoutes(app: Express): Server {
       const { projectId } = req.body;
       
       console.log(`[SELECT IDEA] Starting process with ideaId=${ideaId}, userId=${userId}, projectId=${projectId}`);
+      console.log(`[SELECT IDEA] Full request body:`, req.body);
       
       if (!projectId) {
         console.log(`[SELECT IDEA] Missing projectId in request body`);
@@ -1059,11 +1060,14 @@ export function registerRoutes(app: Express): Server {
       
       // Toggle the idea selection
       try {
-        const selectionResult = await storage.toggleSelectedIdea({
+        const toggleData = {
           ideaId,
           projectId,
           selectedBy: userId
-        });
+        };
+        console.log(`[SELECT IDEA] Calling storage.toggleSelectedIdea with:`, JSON.stringify(toggleData));
+        
+        const selectionResult = await storage.toggleSelectedIdea(toggleData);
         
         console.log(`[SELECT IDEA] Toggle result:`, selectionResult);
         

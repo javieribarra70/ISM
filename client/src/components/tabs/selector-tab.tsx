@@ -176,10 +176,17 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
       console.log(`[CLIENT] Sending selection toggle request for ideaId=${ideaId}, projectId=${projectId}`);
       
       try {
+        // Add more details to the request
+        const payload = { 
+          projectId,
+          userId: user?.id 
+        };
+        console.log(`[CLIENT] Selection toggle payload:`, payload);
+        
         const response = await apiRequest(
           "POST", 
           `/api/ideas/${ideaId}/select`, 
-          { projectId }
+          payload
         );
         
         console.log(`[CLIENT] Selection toggle API response status:`, response.status);
@@ -191,6 +198,7 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
             console.error(`[CLIENT] Error response:`, errorData);
             throw new Error(errorData.error || `Server returned ${response.status}`);
           } catch (parseError) {
+            console.error(`[CLIENT] Failed to parse error response:`, parseError);
             throw new Error(`Server returned ${response.status}`);
           }
         }
@@ -215,9 +223,16 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
     },
     onError: (error: Error) => {
       console.error(`[CLIENT] Selection toggle mutation error:`, error);
+      
+      // Enhanced error messaging
+      let errorMessage = error.message;
+      if (errorMessage.includes("502")) {
+        errorMessage = "Server is experiencing issues (502 Bad Gateway). Please try again later.";
+      }
+      
       toast({
         title: "Error",
-        description: `Failed to update selection: ${error.message}`,
+        description: `Failed to update selection: ${errorMessage}`,
         variant: "destructive"
       });
     }

@@ -1639,10 +1639,27 @@ export class DatabaseStorage implements IStorage {
   // Selected ideas for connection process
   async getProjectSelectedIdeas(projectId: number): Promise<SelectedIdea[]> {
     try {
-      const result = await db.select()
-        .from(selectedIdeas)
-        .where(eq(selectedIdeas.projectId, projectId));
-      return result;
+      console.log('[STORAGE] Getting all selected ideas for project:', projectId);
+      
+      const results = await db.execute(sql`
+        SELECT * FROM selected_ideas
+        WHERE project_id = ${projectId}
+      `);
+      
+      console.log('[STORAGE] Project selected ideas results:', results);
+      
+      if (results && Array.isArray(results)) {
+        // Convert rows to our expected type
+        return results.map(row => ({
+          id: row.id,
+          ideaId: row.idea_id,
+          projectId: row.project_id,
+          selectedBy: row.selected_by,
+          createdAt: new Date(row.created_at)
+        }));
+      }
+      
+      return [];
     } catch (error) {
       console.error('Error getting project selected ideas:', error);
       throw error;
@@ -1651,15 +1668,33 @@ export class DatabaseStorage implements IStorage {
   
   async getSelectedIdea(ideaId: number, projectId: number): Promise<SelectedIdea | undefined> {
     try {
-      const result = await db.select()
-        .from(selectedIdeas)
-        .where(and(
-          eq(selectedIdeas.ideaId, ideaId),
-          eq(selectedIdeas.projectId, projectId)
-        ))
-        .limit(1);
-      return result.length > 0 ? result[0] : undefined;
-    } catch (error) {
+      console.log('[STORAGE] Getting selected idea for ideaId:', ideaId, 'projectId:', projectId);
+      
+      const results = await db.execute(sql`
+        SELECT * FROM selected_ideas
+        WHERE idea_id = ${ideaId}
+        AND project_id = ${projectId}
+      `);
+      
+      console.log('[STORAGE] Get selected idea results:', results);
+      
+      if (results && results.length > 0) {
+        const row = results[0];
+        
+        // Convert the row to our expected type
+        const selectedIdea: SelectedIdea = {
+          id: row.id,
+          ideaId: row.idea_id,
+          projectId: row.project_id,
+          selectedBy: row.selected_by,
+          createdAt: new Date(row.created_at)
+        };
+        
+        return selectedIdea;
+      }
+      
+      return undefined;
+    } catch (error){
       console.error('Error getting selected idea:', error);
       throw error;
     }
@@ -1679,77 +1714,61 @@ export class DatabaseStorage implements IStorage {
         throw new Error('Invalid data: Missing required fields for toggling idea selection');
       }
       
-      // Verificar si la idea ya está seleccionada
-      const existingSelected = await this.getSelectedIdea(
-        selectedIdeaData.ideaId,
-        selectedIdeaData.projectId
-      );
+      // Check if the idea already exists using raw SQL query
+      console.log('[STORAGE] Checking if idea is already selected using raw SQL');
       
-      console.log('[STORAGE] Existing selected idea check:', existingSelected ? 'Found' : 'Not found');
+      const checkResult = await db.execute(sql`
+        SELECT * FROM selected_ideas 
+        WHERE idea_id = ${selectedIdeaData.ideaId} 
+        AND project_id = ${selectedIdeaData.projectId}
+      `);
       
-      if (existingSelected) {
-        // Si la idea ya está seleccionada, la eliminamos
-        console.log('[STORAGE] Deleting existing selected idea', {
-          ideaId: selectedIdeaData.ideaId,
-          projectId: selectedIdeaData.projectId
-        });
+      console.log('[STORAGE] Check result:', checkResult);
+      
+      const exists = checkResult && checkResult.length > 0;
+      console.log('[STORAGE] Idea already selected:', exists);
+      
+      if (exists) {
+        // If idea is already selected, delete it
+        console.log('[STORAGE] Deleting existing selected idea');
         
-        await db.delete(selectedIdeas)
-          .where(and(
-            eq(selectedIdeas.ideaId, selectedIdeaData.ideaId),
-            eq(selectedIdeas.projectId, selectedIdeaData.projectId)
-          ));
+        await db.execute(sql`
+          DELETE FROM selected_ideas 
+          WHERE idea_id = ${selectedIdeaData.ideaId} 
+          AND project_id = ${selectedIdeaData.projectId}
+        `);
+        
         return undefined;
       } else {
-        // Si la idea no está seleccionada, la agregamos
-        console.log('[STORAGE] Inserting new selected idea with values:', {
-          ideaId: selectedIdeaData.ideaId,
-          projectId: selectedIdeaData.projectId,
-          selectedBy: selectedIdeaData.selectedBy
-        });
+        // If idea is not selected, add it
+        console.log('[STORAGE] Inserting new selected idea');
         
-        try {
-          const result = await db.insert(selectedIdeas)
-            .values({
-              ideaId: selectedIdeaData.ideaId,
-              projectId: selectedIdeaData.projectId,
-              selectedBy: selectedIdeaData.selectedBy
-              // createdAt will be automatically set by defaultNow()
-            })
-            .returning();
+        const insertResult = await db.execute(sql`
+          INSERT INTO selected_ideas (idea_id, project_id, selected_by, created_at)
+          VALUES (${selectedIdeaData.ideaId}, ${selectedIdeaData.projectId}, ${selectedIdeaData.selectedBy}, NOW())
+          RETURNING *
+        `);
+        
+        console.log('[STORAGE] Insert result:', insertResult);
+        
+        if (insertResult && insertResult.length > 0) {
+          const row = insertResult[0];
           
-          console.log('[STORAGE] Insert result:', result);
-          return result[0];
-        } catch (insertError) {
-          console.error('[STORAGE] Error during insert operation:', insertError);
+          // Convert the row to our expected type
+          const selectedIdea: SelectedIdea = {
+            id: row.id,
+            ideaId: row.idea_id,
+            projectId: row.project_id,
+            selectedBy: row.selected_by,
+            createdAt: new Date(row.created_at)
+          };
           
-          // Try a manual SQL query as a fallback
-          try {
-            console.log('[STORAGE] Attempting manual SQL insert as fallback');
-            const manualInsertResult = await db.execute(sql`
-              INSERT INTO selected_ideas (idea_id, project_id, selected_by, created_at)
-              VALUES (${selectedIdeaData.ideaId}, ${selectedIdeaData.projectId}, ${selectedIdeaData.selectedBy}, NOW())
-              RETURNING *
-            `);
-            console.log('[STORAGE] Manual insert result:', manualInsertResult);
-            
-            if (manualInsertResult && manualInsertResult[0]) {
-              // Convert snake_case to camelCase
-              return {
-                id: manualInsertResult[0].id,
-                ideaId: manualInsertResult[0].idea_id,
-                projectId: manualInsertResult[0].project_id,
-                selectedBy: manualInsertResult[0].selected_by,
-                createdAt: manualInsertResult[0].created_at
-              };
-            }
-          } catch (manualInsertError) {
-            console.error('[STORAGE] Manual insert also failed:', manualInsertError);
-          }
-          
-          // Re-throw the original error if both approaches fail
-          throw insertError;
+          console.log('[STORAGE] Returning new selected idea:', selectedIdea);
+          return selectedIdea;
         }
+        
+        console.log('[STORAGE] Insert did not return expected data');
+        return undefined;
       }
     } catch (error) {
       console.error('[STORAGE] Error toggling selected idea:', error);
@@ -1759,11 +1778,17 @@ export class DatabaseStorage implements IStorage {
   
   async clearProjectSelectedIdeas(projectId: number): Promise<boolean> {
     try {
-      await db.delete(selectedIdeas)
-        .where(eq(selectedIdeas.projectId, projectId));
+      console.log('[STORAGE] Clearing all selected ideas for project:', projectId);
+      
+      await db.execute(sql`
+        DELETE FROM selected_ideas
+        WHERE project_id = ${projectId}
+      `);
+      
+      console.log('[STORAGE] Successfully cleared selected ideas for project:', projectId);
       return true;
     } catch (error) {
-      console.error('Error clearing project selected ideas:', error);
+      console.error('[STORAGE] Error clearing project selected ideas:', error);
       throw error;
     }
   }
