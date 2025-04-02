@@ -157,19 +157,20 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
     setIsDownloading(true);
     
     try {
-      // Add the legend node to the graph before export
-      addLegendNode();
+      // Remove existing legend node if present
+      if (legendNodeRef.current) {
+        const existingLegend = cyRef.current.getElementById(legendNodeRef.current);
+        if (existingLegend.length > 0) {
+          cyRef.current.remove(existingLegend);
+          legendNodeRef.current = null;
+        }
+      }
       
-      // Generate SVG string from Cytoscape graph
-      // Use type assertion to access the svg method added by the cytoscapeSvg extension
+      // Instead of using the HTML-based legend in the PDF, we'll draw it directly
+      // First, generate the SVG string from Cytoscape graph without the legend
       const svg = (cyRef.current as any).svg({ scale: 2, full: true, bg: 'white' });
       
-      // Remove the legend node after export
-      const legendNode = cyRef.current.getElementById('legend-node');
-      if (legendNode.length > 0) {
-        cyRef.current.remove(legendNode);
-        legendNodeRef.current = null;
-      }
+      // We'll add the legend later in the PDF directly
       
       // Create a new jsPDF instance
       const pdf = new jsPDF({
@@ -218,6 +219,65 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
             imgWidth, 
             imgHeight
           );
+          
+          // Draw the legend directly on the PDF
+          const margin = 10;
+          const legendWidth = 50;
+          const legendY = margin;
+          const legendX = pdfWidth - legendWidth - margin;
+          const titleHeight = 5;
+          const itemHeight = 5;
+          
+          // Filter the categories that are used
+          const usedCategoryNames = new Set<string>();
+          ideas.forEach(idea => {
+            if (idea.category) {
+              usedCategoryNames.add(idea.category);
+            }
+          });
+          
+          // Filtrar solo las categorías que se usan en el diagrama
+          const visibleCategories = categories.filter(cat => usedCategoryNames.has(cat.name));
+          
+          // Set background for legend
+          pdf.setFillColor(255, 255, 255); // white
+          pdf.setDrawColor(226, 232, 240); // #e2e8f0 - light gray border
+          const totalHeight = titleHeight + (visibleCategories.length > 0 ? visibleCategories.length * itemHeight : itemHeight);
+          pdf.roundedRect(legendX, legendY, legendWidth, totalHeight, 1, 1, 'FD'); // 'FD' = fill and draw
+          
+          // Add title
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(8);
+          pdf.setTextColor(75, 85, 99); // #4b5563 - gray
+          pdf.text('Categories', legendX + 4, legendY + 4);
+          
+          // Add category items
+          if (visibleCategories.length > 0) {
+            visibleCategories.forEach((category, index) => {
+              const itemY = legendY + titleHeight + (index * itemHeight);
+              
+              // Draw colored square
+              const color = category.color || '#cbd5e1';
+              const r = parseInt(color.slice(1, 3), 16);
+              const g = parseInt(color.slice(3, 5), 16);
+              const b = parseInt(color.slice(5, 7), 16);
+              pdf.setFillColor(r, g, b);
+              pdf.rect(legendX + 4, itemY + 1, 3, 3, 'F');
+              
+              // Draw category name
+              pdf.setFont('helvetica', 'normal');
+              pdf.setFontSize(7);
+              pdf.setTextColor(75, 85, 99); // #4b5563
+              pdf.text(category.name, legendX + 10, itemY + 3);
+            });
+          } else {
+            // If no categories, show a message
+            const itemY = legendY + titleHeight;
+            pdf.setFont('helvetica', 'italic');
+            pdf.setFontSize(7);
+            pdf.setTextColor(75, 85, 99); // #4b5563
+            pdf.text('No categories found', legendX + 4, itemY + 3);
+          }
           
           // Save the PDF
           pdf.save('ism-diagram.pdf');
