@@ -204,6 +204,9 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
     });
     
     // Create direct connections based on the reduced reachability matrix
+    // Use a Set to track which bidirectional connections we've already processed
+    const processedBidirectionalPairs = new Set<string>();
+    
     for (let i = 0; i < ideas.length; i++) {
       for (let j = 0; j < ideas.length; j++) {
         if (i !== j && reducedMatrix[i][j]) {
@@ -214,32 +217,55 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
           const targetInfo = idToNodeMap.get(targetIdea.id);
           
           if (sourceInfo && targetInfo) {
-            // Verify bidirectional relationship (using the reduced matrix)
+            // Verify if there's a bidirectional relationship (using the reduced matrix)
             const hasBidirectional = 
               reducedMatrix[i][j] && 
               reducedMatrix[j][i];
             
-            // Create a unique identifier for this connection
-            const edgeId = `edge-${sourceIdea.id}-${targetIdea.id}`;
-            
-            // For all relationships, we use unidirectional arrows
-            // Even when there is a bidirectional relationship, we create two separate arrows
-            elements.push({
-              data: {
-                id: edgeId,
-                source: `node-${sourceIdea.id}`,
-                target: `node-${targetIdea.id}`
-              },
-              group: 'edges'
-            });
-            
-            // If there is a bidirectional relationship (I→J and J→I), also add the arrow in the opposite direction
-            if (hasBidirectional && i < j) { // Only add when i < j to avoid duplicates
+            // For bidirectional relationships, only process each pair once
+            if (hasBidirectional) {
+              // Create a unique key for this bidirectional pair (using smaller id first to ensure consistency)
+              const pairKey = sourceIdea.id < targetIdea.id 
+                ? `${sourceIdea.id}-${targetIdea.id}` 
+                : `${targetIdea.id}-${sourceIdea.id}`;
+              
+              // Skip if we've already processed this bidirectional pair
+              if (processedBidirectionalPairs.has(pairKey)) {
+                continue;
+              }
+              
+              // Mark this pair as processed
+              processedBidirectionalPairs.add(pairKey);
+              
+              // Add both directions for this bidirectional relationship
               elements.push({
                 data: {
-                  id: `edge-reverse-${targetIdea.id}-${sourceIdea.id}`,
+                  id: `edge-${sourceIdea.id}-${targetIdea.id}`,
+                  source: `node-${sourceIdea.id}`,
+                  target: `node-${targetIdea.id}`
+                },
+                group: 'edges'
+              });
+              
+              elements.push({
+                data: {
+                  id: `edge-${targetIdea.id}-${sourceIdea.id}`,
                   source: `node-${targetIdea.id}`,
                   target: `node-${sourceIdea.id}`
+                },
+                group: 'edges'
+              });
+            } 
+            // For unidirectional relationships, just add the single arrow
+            else {
+              // Create a unique identifier for this connection
+              const edgeId = `edge-${sourceIdea.id}-${targetIdea.id}`;
+              
+              elements.push({
+                data: {
+                  id: edgeId,
+                  source: `node-${sourceIdea.id}`,
+                  target: `node-${targetIdea.id}`
                 },
                 group: 'edges'
               });
