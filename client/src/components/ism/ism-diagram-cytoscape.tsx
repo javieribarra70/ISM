@@ -84,23 +84,32 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
     // Filtrar solo las categorías que se usan en el diagrama
     const visibleCategories = categories.filter(cat => usedCategoryNames.has(cat.name));
     
-    if (visibleCategories.length === 0) return;
-    
-    // Create HTML content for the legend
+    // Create HTML content for the legend - always create a legend even if no categories are used
     let legendHTML = '<div style="background-color: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; width: 180px; text-align: left; cursor: move;">';
     legendHTML += '<div style="font-weight: 600; font-size: 12px; margin-bottom: 6px; color: #4b5563;">Categories</div>';
     legendHTML += '<div style="display: flex; flex-direction: column; gap: 6px;">';
     
-    visibleCategories.forEach(category => {
+    if (visibleCategories.length > 0) {
+      visibleCategories.forEach(category => {
+        legendHTML += `
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 12px; height: 12px; border-radius: 3px; background-color: ${category.color || '#cbd5e1'};"></div>
+            <span style="font-size: 11px; color: #4b5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px;">
+              ${category.name}
+            </span>
+          </div>
+        `;
+      });
+    } else {
+      // Si no hay categorías usadas, mostrar un mensaje
       legendHTML += `
         <div style="display: flex; align-items: center; gap: 8px;">
-          <div style="width: 12px; height: 12px; border-radius: 3px; background-color: ${category.color || '#cbd5e1'};"></div>
-          <span style="font-size: 11px; color: #4b5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px;">
-            ${category.name}
+          <span style="font-size: 11px; color: #4b5563; font-style: italic;">
+            No categories found
           </span>
         </div>
       `;
-    });
+    }
     
     legendHTML += '</div></div>';
     
@@ -124,7 +133,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
     cyRef.current.style().selector('node[legend]').style({
       'shape': 'rectangle',
       'width': '180px',
-      'height': visibleCategories.length * 22 + 30, // Dynamic height based on categories
+      'height': Math.max(50, visibleCategories.length * 22 + 30), // Dynamic height with minimum size
       'background-color': 'white',
       'border-color': '#e2e8f0',
       'border-width': '1px',
