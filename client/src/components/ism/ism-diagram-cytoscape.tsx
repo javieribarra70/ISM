@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, MouseEvent as ReactMouseEvent } from 'react';
 import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import cytoscapeSvg from 'cytoscape-svg';
@@ -7,7 +7,7 @@ import { Idea, Category } from '@shared/schema';
 import { computeTransitiveReduction } from './matrix-reduction';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '../ui/button';
-import { Download, RefreshCw } from 'lucide-react';
+import { Download, GripHorizontal, RefreshCw } from 'lucide-react';
 
 // Register the dagre layout and svg extension with Cytoscape
 cytoscape.use(dagre);
@@ -20,11 +20,60 @@ interface ISMDiagramProps {
   projectId?: number; // We add projectId to obtain the categories
 }
 
+// Componente para la paleta de categorías
+interface CategoryLegendProps {
+  categories: Category[];
+  position: { x: number, y: number };
+  onDragStart: (e: ReactMouseEvent) => void;
+  usedCategories: Set<string>;
+}
+
+const CategoryLegend = ({ categories, position, onDragStart, usedCategories }: CategoryLegendProps) => {
+  // Filtrar solo las categorías que se usan en el diagrama
+  const visibleCategories = categories.filter(cat => usedCategories.has(cat.name));
+  
+  if (visibleCategories.length === 0) return null;
+  
+  return (
+    <div 
+      className="absolute bg-white border rounded-md shadow-md p-2 z-10"
+      style={{ 
+        left: `${position.x}px`, 
+        top: `${position.y}px`,
+        maxWidth: '220px'
+      }}
+    >
+      <div className="flex justify-between items-center mb-2 cursor-move" onMouseDown={onDragStart}>
+        <span className="text-xs font-semibold text-gray-700">Categories</span>
+        <GripHorizontal size={14} className="text-gray-500" />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {visibleCategories.map(category => (
+          <div key={category.id} className="flex items-center gap-2">
+            <div 
+              className="w-4 h-4 rounded-sm" 
+              style={{ backgroundColor: category.color || '#cbd5e1' }}
+            />
+            <span className="text-xs text-gray-700 truncate" title={category.name}>
+              {category.name}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDiagramProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  
+  // Estado para la paleta de categorías
+  const [legendPosition, setLegendPosition] = useState({ x: 20, y: 20 });
+  const [isDraggingLegend, setIsDraggingLegend] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   
   // Get the project categories
   const { data: categories = [] } = useQuery<Category[]>({
@@ -495,6 +544,55 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
     
   }, [ideas, levels, finalReachabilityMatrix, categories]);
   
+  // Manejadores para el arrastre de la paleta de categorías
+  const handleLegendDragStart = (e: ReactMouseEvent) => {
+    if (containerRef.current) {
+      // Iniciar el arrastre y guardar el desplazamiento
+      setIsDraggingLegend(true);
+      const containerRect = containerRef.current.getBoundingClientRect();
+      setDragOffset({
+        x: e.clientX - legendPosition.x,
+        y: e.clientY - legendPosition.y
+      });
+    }
+  };
+  
+  // Evento de movimiento del mouse para actualizar la posición de la paleta
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingLegend && containerRef.current) {
+        // Calcular la nueva posición dentro de los límites del contenedor
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const newX = Math.max(0, Math.min(e.clientX - dragOffset.x, containerRect.width - 150));
+        const newY = Math.max(0, Math.min(e.clientY - dragOffset.y, containerRect.height - 100));
+        
+        setLegendPosition({ x: newX, y: newY });
+      }
+    };
+    
+    const handleMouseUp = () => {
+      setIsDraggingLegend(false);
+    };
+    
+    if (isDraggingLegend) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingLegend, dragOffset]);
+  
+  // Recopilar las categorías utilizadas en las ideas
+  const usedCategories = new Set<string>();
+  ideas.forEach(idea => {
+    if (idea.category) {
+      usedCategories.add(idea.category);
+    }
+  });
+  
   if (!ideas.length || !levels.length || !finalReachabilityMatrix.length) {
     return (
       <div className="w-full h-64 flex items-center justify-center bg-slate-50 rounded-md">
@@ -506,7 +604,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
   }
   
   return (
-    <div className="w-full border rounded-md">
+    <div className="w-full border rounded-md relative">
       {/* Controls bar */}
       <div className="p-2 bg-slate-50 border-b flex justify-end gap-2">
         <Button 
@@ -529,8 +627,19 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
         </Button>
       </div>
       
-      {/* Diagram container */}
-      <div ref={containerRef} className="w-full h-[570px]" />
+      {/* Diagram container with relative positioning */}
+      <div className="relative">
+        {/* Paleta de categorías arrastrable */}
+        <CategoryLegend 
+          categories={categories} 
+          position={legendPosition} 
+          onDragStart={handleLegendDragStart}
+          usedCategories={usedCategories}
+        />
+        
+        {/* Cytoscape container */}
+        <div ref={containerRef} className="w-full h-[570px]" />
+      </div>
     </div>
   );
 };
