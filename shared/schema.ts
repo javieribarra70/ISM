@@ -107,6 +107,15 @@ export const ideaVotes = pgTable("idea_votes", {
   };
 });
 
+// Selected ideas for connection process
+export const selectedIdeas = pgTable("selected_ideas", {
+  id: serial("id").primaryKey(),
+  ideaId: integer("idea_id").notNull().references(() => ideas.id),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  selectedBy: integer("selected_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users)
   .pick({
@@ -194,6 +203,13 @@ export const insertIdeaVoteSchema = createInsertSchema(ideaVotes)
     projectId: true,
   });
 
+export const insertSelectedIdeaSchema = createInsertSchema(selectedIdeas)
+  .pick({
+    ideaId: true,
+    projectId: true,
+    selectedBy: true,
+  });
+
 // Export types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -218,3 +234,6 @@ export type Invitation = typeof invitations.$inferSelect;
 
 export type InsertIdeaVote = z.infer<typeof insertIdeaVoteSchema>;
 export type IdeaVote = typeof ideaVotes.$inferSelect;
+
+export type InsertSelectedIdea = z.infer<typeof insertSelectedIdeaSchema>;
+export type SelectedIdea = typeof selectedIdeas.$inferSelect;

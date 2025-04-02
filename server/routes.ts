@@ -1006,6 +1006,87 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get all selected ideas for a project
+  app.get("/api/projects/:projectId/selected-ideas", hasProjectAccess, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const selectedIdeas = await storage.getProjectSelectedIdeas(projectId);
+      res.json(selectedIdeas);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Toggle idea selection (select/deselect)
+  app.post("/api/ideas/:ideaId/select", isAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ideaId = parseInt(req.params.ideaId);
+      const userId = req.user!.id;
+      const { projectId } = req.body;
+      
+      if (!projectId) {
+        return res.status(400).json({ error: "Project ID is required" });
+      }
+      
+      // Verify user has admin access to the project
+      const userRole = await storage.getUserProjectRole(userId, projectId);
+      if (!userRole || (userRole !== 'admin' && req.user!.role !== 'admin')) {
+        return res.status(403).json({ 
+          error: "Only administrators can select ideas for the connection process" 
+        });
+      }
+      
+      // Get the idea to verify it exists and belongs to the project
+      const idea = await storage.getIdea(ideaId);
+      if (!idea || idea.projectId !== projectId) {
+        return res.status(404).json({ error: "Idea not found in the specified project" });
+      }
+      
+      // Toggle the idea selection
+      const selectionResult = await storage.toggleSelectedIdea({
+        ideaId,
+        projectId,
+        selectedAt: new Date()
+      });
+      
+      if (selectionResult) {
+        // Idea was selected
+        res.status(201).json({
+          message: "Idea selected successfully",
+          selectedIdea: selectionResult
+        });
+      } else {
+        // Idea was deselected
+        res.status(200).json({
+          message: "Idea deselected successfully"
+        });
+      }
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Clear all selected ideas for a project
+  app.delete("/api/projects/:projectId/selected-ideas", isAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const userId = req.user!.id;
+      
+      // Verify user has admin access to the project
+      const userRole = await storage.getUserProjectRole(userId, projectId);
+      if (!userRole || (userRole !== 'admin' && req.user!.role !== 'admin')) {
+        return res.status(403).json({ 
+          error: "Only administrators can clear selected ideas" 
+        });
+      }
+      
+      const result = await storage.clearProjectSelectedIdeas(projectId);
+      res.json({ success: result });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -1,8 +1,8 @@
 import {
-  users, ideas, projects, projectUsers, relationships, invitations, categories, ideaVotes,
-  type User, type Idea, type Project, type ProjectUser, type Relationship, type Invitation, type Category, type IdeaVote,
+  users, ideas, projects, projectUsers, relationships, invitations, categories, ideaVotes, selectedIdeas,
+  type User, type Idea, type Project, type ProjectUser, type Relationship, type Invitation, type Category, type IdeaVote, type SelectedIdea,
   type InsertUser, type InsertIdea, type InsertProject, type InsertProjectUser, 
-  type InsertRelationship, type InsertInvitation, type InsertCategory, type InsertIdeaVote
+  type InsertRelationship, type InsertInvitation, type InsertCategory, type InsertIdeaVote, type InsertSelectedIdea
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
@@ -78,6 +78,12 @@ export interface IStorage {
   toggleIdeaVote(vote: InsertIdeaVote): Promise<IdeaVote | undefined>;
   countIdeaVotes(ideaId: number): Promise<number>;
   getVotingLimitForProject(projectId: number): Promise<number>;
+  
+  // Selected ideas for connection process
+  getProjectSelectedIdeas(projectId: number): Promise<SelectedIdea[]>;
+  getSelectedIdea(ideaId: number, projectId: number): Promise<SelectedIdea | undefined>;
+  toggleSelectedIdea(selectedIdea: InsertSelectedIdea): Promise<SelectedIdea | undefined>;
+  clearProjectSelectedIdeas(projectId: number): Promise<boolean>;
 
   // Session store
   sessionStore: any; // Using any to avoid type issues with session.SessionStore
@@ -92,6 +98,7 @@ export class MemStorage implements IStorage {
   private relationships: Map<number, Relationship>;
   private invitations: Map<number, Invitation>;
   private ideaVotes: Map<string, IdeaVote>;
+  private selectedIdeas: Map<string, SelectedIdea>;
   
   sessionStore: any; // Using any type for session store
   
@@ -112,6 +119,7 @@ export class MemStorage implements IStorage {
     this.relationships = new Map();
     this.invitations = new Map();
     this.ideaVotes = new Map();
+    this.selectedIdeas = new Map();
     
     this.currentUserId = 1;
     this.currentProjectId = 1;
@@ -584,6 +592,54 @@ export class MemStorage implements IStorage {
     // La regla es "1/3 + 1" del total de ideas
     const votingLimit = Math.floor(ideaCount / 3) + 1;
     return votingLimit;
+  }
+  
+  // Selected ideas for connection process
+  async getProjectSelectedIdeas(projectId: number): Promise<SelectedIdea[]> {
+    return Array.from(this.selectedIdeas.values())
+      .filter(selected => selected.projectId === projectId);
+  }
+  
+  async getSelectedIdea(ideaId: number, projectId: number): Promise<SelectedIdea | undefined> {
+    const selectedKey = `${projectId}-${ideaId}`;
+    return this.selectedIdeas.get(selectedKey);
+  }
+  
+  async toggleSelectedIdea(selectedIdeaData: InsertSelectedIdea): Promise<SelectedIdea | undefined> {
+    // Generar una clave única para la idea seleccionada (combinación de projectId + ideaId)
+    const selectedKey = `${selectedIdeaData.projectId}-${selectedIdeaData.ideaId}`;
+    
+    // Verificar si la idea ya está seleccionada
+    const existingSelectedIdea = this.selectedIdeas.get(selectedKey);
+    
+    if (existingSelectedIdea) {
+      // Si la idea ya está seleccionada, la eliminamos
+      this.selectedIdeas.delete(selectedKey);
+      return undefined;
+    } else {
+      // Si la idea no está seleccionada, la agregamos
+      const newSelectedIdea: SelectedIdea = {
+        id: Date.now(), // Usamos timestamp como ID único
+        ...selectedIdeaData,
+        createdAt: new Date()
+      };
+      
+      this.selectedIdeas.set(selectedKey, newSelectedIdea);
+      return newSelectedIdea;
+    }
+  }
+  
+  async clearProjectSelectedIdeas(projectId: number): Promise<boolean> {
+    // Obtener todas las ideas seleccionadas del proyecto
+    const selectedIdeas = await this.getProjectSelectedIdeas(projectId);
+    
+    // Eliminar cada una de las ideas seleccionadas
+    for (const selected of selectedIdeas) {
+      const selectedKey = `${selected.projectId}-${selected.ideaId}`;
+      this.selectedIdeas.delete(selectedKey);
+    }
+    
+    return true;
   }
 }
 
@@ -1572,9 +1628,82 @@ export class DatabaseStorage implements IStorage {
       
       // La regla es "1/3 + 1" del total de ideas
       const votingLimit = Math.floor(ideaCount / 3) + 1;
+      
       return votingLimit;
     } catch (error) {
       console.error('Error getting voting limit for project:', error);
+      throw error;
+    }
+  }
+  
+  // Selected ideas for connection process
+  async getProjectSelectedIdeas(projectId: number): Promise<SelectedIdea[]> {
+    try {
+      const result = await db.select()
+        .from(selectedIdeas)
+        .where(eq(selectedIdeas.projectId, projectId));
+      return result;
+    } catch (error) {
+      console.error('Error getting project selected ideas:', error);
+      throw error;
+    }
+  }
+  
+  async getSelectedIdea(ideaId: number, projectId: number): Promise<SelectedIdea | undefined> {
+    try {
+      const result = await db.select()
+        .from(selectedIdeas)
+        .where(and(
+          eq(selectedIdeas.ideaId, ideaId),
+          eq(selectedIdeas.projectId, projectId)
+        ))
+        .limit(1);
+      return result.length > 0 ? result[0] : undefined;
+    } catch (error) {
+      console.error('Error getting selected idea:', error);
+      throw error;
+    }
+  }
+  
+  async toggleSelectedIdea(selectedIdeaData: InsertSelectedIdea): Promise<SelectedIdea | undefined> {
+    try {
+      // Verificar si la idea ya está seleccionada
+      const existingSelected = await this.getSelectedIdea(
+        selectedIdeaData.ideaId,
+        selectedIdeaData.projectId
+      );
+      
+      if (existingSelected) {
+        // Si la idea ya está seleccionada, la eliminamos
+        await db.delete(selectedIdeas)
+          .where(and(
+            eq(selectedIdeas.ideaId, selectedIdeaData.ideaId),
+            eq(selectedIdeas.projectId, selectedIdeaData.projectId)
+          ));
+        return undefined;
+      } else {
+        // Si la idea no está seleccionada, la agregamos
+        const result = await db.insert(selectedIdeas)
+          .values({
+            ...selectedIdeaData,
+            createdAt: new Date()
+          })
+          .returning();
+        return result[0];
+      }
+    } catch (error) {
+      console.error('Error toggling selected idea:', error);
+      throw error;
+    }
+  }
+  
+  async clearProjectSelectedIdeas(projectId: number): Promise<boolean> {
+    try {
+      await db.delete(selectedIdeas)
+        .where(eq(selectedIdeas.projectId, projectId));
+      return true;
+    } catch (error) {
+      console.error('Error clearing project selected ideas:', error);
       throw error;
     }
   }

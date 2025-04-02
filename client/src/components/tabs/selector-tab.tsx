@@ -160,17 +160,59 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
     return voters.join(", ");
   };
   
-  // Función para manejar la selección/deselección de ideas para el proceso de conexión
+  // Fetch project selected ideas for connection process
+  const {
+    data: selectedIdeaData = [],
+    isLoading: isSelectedIdeasLoading,
+    refetch: refetchSelectedIdeas
+  } = useQuery({
+    queryKey: [`/api/projects/${projectId}/selected-ideas`],
+    enabled: !!projectId && !!user && (user.role === "admin" || isUserProjectAdmin()),
+  });
+
+  // Toggle selected idea mutation
+  const toggleSelectedIdeaMutation = useMutation({
+    mutationFn: async (ideaId: number) => {
+      const response = await apiRequest(
+        "POST", 
+        `/api/ideas/${ideaId}/select`, 
+        { projectId }
+      );
+      return response.json();
+    },
+    onSuccess: () => {
+      // Refetch selected ideas after toggling
+      refetchSelectedIdeas();
+      
+      toast({
+        title: "Selection Updated",
+        description: "Your idea selection has been updated.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to update selection: ${error.message}`,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Function to handle selection/deselection of ideas for the connection process
   const handleConnectionToggle = (ideaId: number) => {
     console.log(`Toggle connection for idea ${ideaId}. Current selected:`, connectionIdeas);
     
+    // Call the API to toggle the selected idea
+    toggleSelectedIdeaMutation.mutate(ideaId);
+    
+    // Update local state for immediate UI feedback
     setConnectionIdeas(prevSelected => {
-      // Si ya está seleccionada, la quitamos
+      // If already selected, remove it
       if (prevSelected.includes(ideaId)) {
         console.log(`Removing idea ${ideaId} from selection`);
         return prevSelected.filter(id => id !== ideaId);
       } 
-      // Si no está seleccionada, la añadimos
+      // If not selected, add it
       else {
         console.log(`Adding idea ${ideaId} to selection`);
         return [...prevSelected, ideaId];
@@ -178,38 +220,14 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
     });
   };
   
-  // Efecto para guardar en localStorage cuando cambian las ideas seleccionadas
+  // Load selected ideas from database when data is fetched
   useEffect(() => {
-    console.log("Saving to localStorage:", connectionIdeas);
-    localStorage.setItem(`project_${projectId}_connection_ideas`, JSON.stringify(connectionIdeas));
-    
-    // No mostrar notificación toast en cada renderizado, solo cuando el usuario hace clic en el checkbox
-  }, [connectionIdeas, projectId]);
-  
-  // Cargar las ideas previamente seleccionadas para conexión, si existen
-  useEffect(() => {
-    console.log("Loading ideas for project", projectId);
-    const savedIdeas = localStorage.getItem(`project_${projectId}_connection_ideas`);
-    console.log("Retrieved from localStorage:", savedIdeas);
-    
-    if (savedIdeas) {
-      try {
-        const parsedIdeas = JSON.parse(savedIdeas);
-        console.log("Parsed ideas:", parsedIdeas);
-        
-        if (Array.isArray(parsedIdeas)) {
-          console.log("Setting connection ideas to:", parsedIdeas);
-          setConnectionIdeas(parsedIdeas);
-        }
-      } catch (e) {
-        console.error("Error loading saved ideas for connection:", e);
-      }
-    } else {
-      // Initialize with empty array if nothing is saved
-      console.log("No saved ideas found, initializing with empty array");
-      setConnectionIdeas([]);
+    if (selectedIdeaData && Array.isArray(selectedIdeaData)) {
+      const selectedIdeaIds = selectedIdeaData.map(item => item.ideaId);
+      console.log("Setting connection ideas from database:", selectedIdeaIds);
+      setConnectionIdeas(selectedIdeaIds);
     }
-  }, [projectId]);
+  }, [selectedIdeaData]);
 
   // Loading state
   if (isIdeasLoading || isUserVotesLoading || isLimitLoading) {
@@ -313,28 +331,36 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
             })}
           </div>
           
-          <div className="mt-4 flex justify-between">
+          {/* Clear Selection button - now using API to clear selected ideas */}
+          <div className="mt-4 flex justify-end">
             <Button 
               variant="outline"
               size="sm"
-              onClick={() => setConnectionIdeas([])}
-              disabled={connectionIdeas.length === 0}
-            >
-              Clear Selection
-            </Button>
-            <Button 
-              variant="default"
-              size="sm"
               onClick={() => {
-                toast({
-                  title: "Ideas saved for connection",
-                  description: `${connectionIdeas.length} ideas are ready for the connection process.`,
-                });
-                // Additional logic for connection tab can be added here
+                // Call API to clear selected ideas
+                apiRequest("DELETE", `/api/projects/${projectId}/selected-ideas`, {})
+                  .then(() => {
+                    // Update local state
+                    setConnectionIdeas([]);
+                    // Refresh data from server
+                    refetchSelectedIdeas();
+                    
+                    toast({
+                      title: "Selection Cleared",
+                      description: "All selected ideas have been cleared from the connection process.",
+                    });
+                  })
+                  .catch(error => {
+                    toast({
+                      title: "Error",
+                      description: `Failed to clear selection: ${error.message}`,
+                      variant: "destructive"
+                    });
+                  });
               }}
               disabled={connectionIdeas.length === 0}
             >
-              Confirm Selection
+              Clear Selection
             </Button>
           </div>
         </div>
