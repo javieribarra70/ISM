@@ -825,27 +825,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 finalReachabilityMatrix={finalReachabilityMatrix}
               />
             </div>
-            
-            <div className="mt-6">
-              <h4 className="font-medium mb-2">Key Elements by Level:</h4>
-              
-              <div className="space-y-4">
-                {levels.map((levelIndices, levelNum) => (
-                  <div key={levelNum} className="border-l-4 border-primary pl-4 py-1">
-                    <h5 className="font-medium">Level {levelNum + 1}</h5>
-                    <ul className="mt-2 space-y-1">
-                      {levelIndices.map((idx) => (
-                        <li key={idx} className="text-sm">
-                          {selectedIdeas[idx].title}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-
           </div>
         );
     }
