@@ -9,11 +9,11 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '../ui/button';
 import { Download, RefreshCw } from 'lucide-react';
 
-// Register the dagre layout and svg extension with Cytoscape
+// Register the extensions
 cytoscape.use(dagre);
 
 // Only register cytoscapeSvg once
-if (!cytoscape.prototype.hasInitializer('svg')) {
+if (!('svg' in cytoscape.prototype)) {
   cytoscape.use(cytoscapeSvg);
 }
 
@@ -28,7 +28,6 @@ interface ISMDiagramProps {
 const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDiagramProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
-  const legendContainerRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   
@@ -75,8 +74,6 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
     try {
       // Generate the SVG string from Cytoscape graph
       const svg = (cyRef.current as any).svg({ scale: 2, full: true, bg: 'white' });
-      
-      // We'll add the legend directly in the PDF
       
       // Create a new jsPDF instance
       const pdf = new jsPDF({
@@ -142,13 +139,13 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
             }
           });
           
-          // Filtrar solo las categorías que se usan en el diagrama
-          const visibleCategories = categories.filter(cat => usedCategoryNames.has(cat.name));
+          // Filter only the categories used in the diagram
+          const pdfVisibleCategories = categories.filter(cat => usedCategoryNames.has(cat.name));
           
           // Set background for legend
           pdf.setFillColor(255, 255, 255); // white
           pdf.setDrawColor(226, 232, 240); // #e2e8f0 - light gray border
-          const totalHeight = titleHeight + (visibleCategories.length > 0 ? visibleCategories.length * itemHeight : itemHeight);
+          const totalHeight = titleHeight + (pdfVisibleCategories.length > 0 ? pdfVisibleCategories.length * itemHeight : itemHeight);
           pdf.roundedRect(legendX, legendY, legendWidth, totalHeight, 1, 1, 'FD'); // 'FD' = fill and draw
           
           // Add title
@@ -158,8 +155,8 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
           pdf.text('Categories', legendX + 4, legendY + 4);
           
           // Add category items
-          if (visibleCategories.length > 0) {
-            visibleCategories.forEach((category, index) => {
+          if (pdfVisibleCategories.length > 0) {
+            pdfVisibleCategories.forEach((category, index) => {
               const itemY = legendY + titleHeight + (index * itemHeight);
               
               // Draw colored square
@@ -454,97 +451,51 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
           selector: 'node[categoryColor]',
           style: {
             'border-color': 'data(categoryColor)',
-            'background-color': function(ele) {
-              // Blend category color with white at 50%
-              const color = ele.data('categoryColor');
-              if (!color) return 'white';
+            // Use semi-transparent color for fills (mix category color with white at 50%)
+            'background-color': (ele) => {
+              const categoryColor = ele.data('categoryColor');
+              if (!categoryColor) return 'white';
               
-              // Convert hex color to rgb components and blend with white (255,255,255)
-              if (color.startsWith('#')) {
-                const r = parseInt(color.slice(1, 3), 16);
-                const g = parseInt(color.slice(3, 5), 16);
-                const b = parseInt(color.slice(5, 7), 16);
-                
-                // Blend with white at 50%
-                const blendedR = Math.round((r + 255) / 2);
-                const blendedG = Math.round((g + 255) / 2);
-                const blendedB = Math.round((b + 255) / 2);
-                
-                return `rgb(${blendedR}, ${blendedG}, ${blendedB})`;
-              }
-              // If it's rgba, extract rgb components and blend with white
-              else if (color.startsWith('rgba')) {
-                const matches = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-                if (matches) {
-                  const r = parseInt(matches[1], 10);
-                  const g = parseInt(matches[2], 10);
-                  const b = parseInt(matches[3], 10);
-                  
-                  // Blend with white at 50%
-                  const blendedR = Math.round((r + 255) / 2);
-                  const blendedG = Math.round((g + 255) / 2);
-                  const blendedB = Math.round((b + 255) / 2);
-                  
-                  return `rgb(${blendedR}, ${blendedG}, ${blendedB})`;
-                }
-              }
-              // If it's rgb, extract components and blend with white
-              else if (color.startsWith('rgb(')) {
-                const matches = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/);
-                if (matches) {
-                  const r = parseInt(matches[1], 10);
-                  const g = parseInt(matches[2], 10);
-                  const b = parseInt(matches[3], 10);
-                  
-                  // Blend with white at 50%
-                  const blendedR = Math.round((r + 255) / 2);
-                  const blendedG = Math.round((g + 255) / 2);
-                  const blendedB = Math.round((b + 255) / 2);
-                  
-                  return `rgb(${blendedR}, ${blendedG}, ${blendedB})`;
-                }
-              }
+              // Convert HEX to RGB
+              const r = parseInt(categoryColor.slice(1, 3), 16);
+              const g = parseInt(categoryColor.slice(3, 5), 16);
+              const b = parseInt(categoryColor.slice(5, 7), 16);
               
-              // For other formats, use a fallback lightened color
-              return 'rgb(240, 240, 240)';
+              // Mix with white (255,255,255) at 50% opacity
+              const mixedR = Math.round(r * 0.5 + 255 * 0.5);
+              const mixedG = Math.round(g * 0.5 + 255 * 0.5);
+              const mixedB = Math.round(b * 0.5 + 255 * 0.5);
+              
+              return `rgb(${mixedR}, ${mixedG}, ${mixedB})`;
             }
           }
         },
-        // Style for nodes with levelColor (only if they don't have categoryColor)
+        // Style for nodes without categoryColor (fallback to levelColor)
         {
-          selector: 'node[levelColor]:not([categoryColor])',
+          selector: 'node:not([categoryColor])',
           style: {
             'border-color': 'data(levelColor)'
           }
         },
-        // Style for additional text (only the title)
-        {
-          selector: 'node',
-          style: {
-            'overlay-padding': 8,
-            'overlay-opacity': 0,
-            'z-index': 10
-          }
-        },
-        // Styles for edges (arrows)
+        // Style for edges (arrows)
         {
           selector: 'edge',
           style: {
-            'width': 1.5,
-            'line-color': '#3b82f6',
-            'target-arrow-color': '#3b82f6',
+            'width': 2,
+            'line-color': '#64748b', // slate-500
+            'target-arrow-color': '#64748b',
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
             'arrow-scale': 1.5
           }
         },
-
-        // Styles for dashed lines
+        // Style for dashed edges
         {
-          selector: 'edge[type = "dashed"]',
+          selector: 'edge[type="dashed"]',
           style: {
             'line-style': 'dashed',
-            'line-dash-pattern': [5, 5]
+            'line-dash-pattern': [6, 3],
+            'opacity': 0.7
           }
         }
       ],
@@ -579,9 +530,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
       padding: 40
     } as any).run();
     
-  }, [ideas, levels, finalReachabilityMatrix, categories]);
-  
-  // Ya no necesitamos código para manejar la paleta, ya que está directamente incorporada en Cytoscape
+  }, [ideas, levels, finalReachabilityMatrix, categories, getCategoryColor]);
   
   if (!ideas.length || !levels.length || !finalReachabilityMatrix.length) {
     return (
