@@ -114,9 +114,18 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
     legendHTML += '</div></div>';
     
     // Find a good position for the legend - top right corner
-    const boundingBox = cyRef.current.elements().boundingBox();
-    const legendX = boundingBox.x2 - 100; // Offset from right edge
-    const legendY = boundingBox.y1 + 30; // Near top edge
+    let legendX = 300; // Default X position
+    let legendY = 50;  // Default Y position
+    
+    // Calculate position based on elements if they exist
+    const elements = cyRef.current.elements();
+    if (elements && elements.length > 0) {
+      const boundingBox = elements.boundingBox();
+      if (boundingBox && typeof boundingBox.x2 === 'number' && typeof boundingBox.y1 === 'number') {
+        legendX = boundingBox.x2 - 100; // Offset from right edge
+        legendY = boundingBox.y1 + 30;  // Near top edge
+      }
+    }
     
     // Add the legend node to the graph
     cyRef.current.add({
@@ -657,6 +666,8 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId }: ISMDi
     
     // Add handler to adjust size after rendering
     cy.on('layoutstop', () => {
+      // Add the legend node after layout is complete
+      addLegendNode();
       cy.fit();
       cy.center();
     });
