@@ -18,6 +18,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   const { toast } = useToast();
   const [isStarting, setIsStarting] = useState(false);
   const [isISMDialogOpen, setIsISMDialogOpen] = useState(false);
+  const [isStartingAlternative, setIsStartingAlternative] = useState(false);
 
   // Fetch project details to get context information
   const {
@@ -54,7 +55,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   // Filter ideas to only include those that were selected
   const selectedIdeas = ideas.filter(idea => selectedIdeaIds.includes(idea.id));
 
-  // Handle the start process button
+  // Handle the start VAXO process button
   const handleStartProcess = () => {
     // Set starting state to show loading UI
     setIsStarting(true);
@@ -65,6 +66,23 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     // Reset the starting state after a short delay
     setTimeout(() => {
       setIsStarting(false);
+    }, 500);
+  };
+
+  // Handle the start alternative process button
+  const handleStartAlternativeProcess = () => {
+    // Set starting state to show loading UI
+    setIsStartingAlternative(true);
+    
+    // Por ahora simplemente muestra un mensaje toast, pero se puede extender
+    toast({
+      title: "Start ISM Process",
+      description: "Iniciando el proceso alternativo de ISM...",
+    });
+    
+    // Reset the starting state after a short delay
+    setTimeout(() => {
+      setIsStartingAlternative(false);
     }, 500);
   };
 
@@ -130,14 +148,25 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
               Connect selected ideas to create a relationship structure.
             </p>
           </div>
-          <Button 
-            onClick={handleStartProcess}
-            className="gap-2"
-            disabled={isStarting || selectedIdeas.length < 2}
-          >
-            <PlayCircle className="h-5 w-5" />
-            {isStarting ? "Starting..." : "Start Process"}
-          </Button>
+          <div className="flex space-x-3">
+            <Button 
+              onClick={handleStartProcess}
+              className="gap-2"
+              disabled={isStarting || isStartingAlternative || selectedIdeas.length < 2}
+            >
+              <PlayCircle className="h-5 w-5" />
+              {isStarting ? "Starting..." : "Start VAXO Process"}
+            </Button>
+            <Button 
+              onClick={handleStartAlternativeProcess}
+              className="gap-2"
+              variant="outline"
+              disabled={isStarting || isStartingAlternative || selectedIdeas.length < 2}
+            >
+              <PlayCircle className="h-5 w-5" />
+              {isStartingAlternative ? "Starting..." : "Start ISM Process"}
+            </Button>
+          </div>
         </div>
         
         <Separator className="mb-4" />
