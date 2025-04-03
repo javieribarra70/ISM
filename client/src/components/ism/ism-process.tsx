@@ -347,6 +347,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     } finally {
       setIsSaving(false);
     }
+    
+    // Importante: NO cerrar el modal después de guardar
+    // return true para indicar que todo salió bien
+    return true;
   };
 
   // Function to answer a question
@@ -1191,6 +1195,12 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       if (!open && isSaving) {
         return;
       }
+      
+      // No cerrar automáticamente después de guardar relaciones VAXO
+      if (!open && stage === "questions") {
+        return;
+      }
+      
       // Only call onClose when the dialog is explicitly closed by the user
       if (!open) {
         onClose();
