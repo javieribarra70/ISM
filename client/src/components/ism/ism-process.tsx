@@ -269,11 +269,99 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     }
   }, [isOpen, selectedIdeas, existingRelationships, toast]);
 
+  // Function to save individual VAXO relationship to the database
+  const saveIndividualRelationship = async (ideaI: number, ideaJ: number, relation: RelationType) => {
+    if (!user || !selectedIdeas[0]?.projectId) return;
+    
+    try {
+      setIsSaving(true);
+      
+      // Find existing relationship for these ideas
+      const existingRel = existingRelationships && Array.isArray(existingRelationships) ?
+        (existingRelationships as Relationship[]).find(rel => 
+          (rel.fromIdeaId === ideaI && rel.toIdeaId === ideaJ) ||
+          (rel.fromIdeaId === ideaJ && rel.toIdeaId === ideaI && (relation === RelationType.X || relation === RelationType.O))
+        ) : null;
+      
+      // Delete existing relationship if it exists
+      if (existingRel) {
+        try {
+          await apiRequest('DELETE', `/api/relationships/${existingRel.id}`);
+          console.log(`Relación existente ${existingRel.id} eliminada`);
+        } catch (error) {
+          console.error(`Error al eliminar relación ${existingRel.id}:`, error);
+        }
+      }
+      
+      // Create new relationship
+      if (relation !== RelationType.O) { // No need to save "O" relationships
+        try {
+          console.log(`Guardando relación: ${ideaI} -> ${ideaJ} (${relation})`);
+          
+          await apiRequest('POST', `/api/projects/${selectedIdeas[0].projectId}/relationships`, {
+            fromIdeaId: ideaI,
+            toIdeaId: ideaJ,
+            projectId: selectedIdeas[0].projectId,
+            createdBy: user.id,
+            relationType: relation
+          });
+          
+          console.log(`Relación guardada correctamente`);
+          
+          // Also create inverse relationship if needed
+          if (relation === RelationType.V || relation === RelationType.A || relation === RelationType.X) {
+            const inverseRelation = relation === RelationType.V ? RelationType.A :
+                                     relation === RelationType.A ? RelationType.V :
+                                     RelationType.X;
+            
+            console.log(`Guardando relación inversa: ${ideaJ} -> ${ideaI} (${inverseRelation})`);
+            
+            await apiRequest('POST', `/api/projects/${selectedIdeas[0].projectId}/relationships`, {
+              fromIdeaId: ideaJ,
+              toIdeaId: ideaI,
+              projectId: selectedIdeas[0].projectId,
+              createdBy: user.id,
+              relationType: inverseRelation
+            });
+            
+            console.log(`Relación inversa guardada correctamente`);
+          }
+          
+        } catch (error) {
+          console.error(`Error al guardar relación:`, error);
+          toast({
+            title: "Error saving relationship",
+            description: "There was a problem saving the VAXO relationship.",
+            variant: "destructive"
+          });
+        }
+      }
+      
+      // Invalidate relationships query to refresh data
+      queryClient.invalidateQueries({
+        queryKey: ['/api/projects', selectedIdeas[0].projectId, 'relationships']
+      });
+      
+    } catch (error) {
+      console.error("Error saving relationship:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Function to answer a question
-  const answerQuestion = (response: RelationType) => {
+  const answerQuestion = async (response: RelationType) => {
     if (currentQuestionIndex < questions.length) {
       const updatedQuestions = [...questions];
-      updatedQuestions[currentQuestionIndex].response = response;
+      const currentQuestion = updatedQuestions[currentQuestionIndex];
+      currentQuestion.response = response;
+      
+      // Save this relationship to database immediately
+      await saveIndividualRelationship(
+        currentQuestion.ideaI.id,
+        currentQuestion.ideaJ.id,
+        response
+      );
       
       // Infer logical relationships if possible
       const inferredQuestions = applyLogicalInference(updatedQuestions, currentQuestionIndex);
@@ -286,8 +374,22 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         // Select the next most informative question
         selectNextMostInformativeQuestion(inferredQuestions);
       } else {
-        // All questions have been answered, build the SSIM matrix
-        buildSSIMMatrix(inferredQuestions);
+        // All questions have been answered, build the SSIM matrix (without saving again)
+        const matrix: SSIMCell[] = [];
+        
+        // Add the directly answered relationships
+        inferredQuestions.forEach((q) => {
+          if (q.response) {
+            matrix.push({
+              ideaI: q.ideaI.id,
+              ideaJ: q.ideaJ.id,
+              relation: q.response,
+            });
+          }
+        });
+        
+        setSSIMMatrix(matrix);
+        setStage("ssim");
       }
     }
   };
@@ -301,7 +403,22 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     
     if (unansweredIndices.length === 0) {
       // No more questions to answer
-      buildSSIMMatrix(currentQuestions);
+      // Ya no necesitamos guardar las relaciones aquí, pues se han guardado conforme se avanza
+      const matrix: SSIMCell[] = [];
+      
+      // Add the directly answered relationships
+      currentQuestions.forEach((q) => {
+        if (q.response) {
+          matrix.push({
+            ideaI: q.ideaI.id,
+            ideaJ: q.ideaJ.id,
+            relation: q.response,
+          });
+        }
+      });
+      
+      setSSIMMatrix(matrix);
+      setStage("ssim");
       return;
     }
     
