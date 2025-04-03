@@ -355,46 +355,63 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
 
   // Function to answer a question
   const answerQuestion = async (response: RelationType) => {
-    if (currentQuestionIndex < questions.length) {
-      const updatedQuestions = [...questions];
-      const currentQuestion = updatedQuestions[currentQuestionIndex];
-      currentQuestion.response = response;
-      
-      // Save this relationship to database immediately
-      await saveIndividualRelationship(
-        currentQuestion.ideaI.id,
-        currentQuestion.ideaJ.id,
-        response
-      );
-      
-      // Infer logical relationships if possible
-      const inferredQuestions = applyLogicalInference(updatedQuestions, currentQuestionIndex);
-      setQuestions(inferredQuestions);
-      
-      // Count how many questions are left to answer
-      const pendingQuestions = inferredQuestions.filter(q => q.response === null);
-      
-      if (pendingQuestions.length > 0) {
-        // Select the next most informative question
-        selectNextMostInformativeQuestion(inferredQuestions);
-      } else {
-        // All questions have been answered, build the SSIM matrix (without saving again)
-        const matrix: SSIMCell[] = [];
+    try {
+      if (currentQuestionIndex < questions.length) {
+        // Establecemos isSaving para evitar cierres automáticos
+        setIsSaving(true);
         
-        // Add the directly answered relationships
-        inferredQuestions.forEach((q) => {
-          if (q.response) {
-            matrix.push({
-              ideaI: q.ideaI.id,
-              ideaJ: q.ideaJ.id,
-              relation: q.response,
-            });
-          }
-        });
+        const updatedQuestions = [...questions];
+        const currentQuestion = updatedQuestions[currentQuestionIndex];
+        currentQuestion.response = response;
         
-        setSSIMMatrix(matrix);
-        setStage("ssim");
+        console.log(`Guardando relación de pregunta ${currentQuestionIndex + 1}: ${currentQuestion.ideaI.title} -> ${currentQuestion.ideaJ.title} (${response})`);
+        
+        // Save this relationship to database immediately
+        await saveIndividualRelationship(
+          currentQuestion.ideaI.id,
+          currentQuestion.ideaJ.id,
+          response
+        );
+        
+        // Infer logical relationships if possible
+        const inferredQuestions = applyLogicalInference(updatedQuestions, currentQuestionIndex);
+        setQuestions(inferredQuestions);
+        
+        // Count how many questions are left to answer
+        const pendingQuestions = inferredQuestions.filter(q => q.response === null);
+        
+        if (pendingQuestions.length > 0) {
+          // Select the next most informative question
+          selectNextMostInformativeQuestion(inferredQuestions);
+        } else {
+          // All questions have been answered, build the SSIM matrix (without saving again)
+          const matrix: SSIMCell[] = [];
+          
+          // Add the directly answered relationships
+          inferredQuestions.forEach((q) => {
+            if (q.response) {
+              matrix.push({
+                ideaI: q.ideaI.id,
+                ideaJ: q.ideaJ.id,
+                relation: q.response,
+              });
+            }
+          });
+          
+          setSSIMMatrix(matrix);
+          setStage("ssim");
+        }
       }
+    } catch (error) {
+      console.error("Error al procesar respuesta:", error);
+      toast({
+        title: "Error al procesar respuesta",
+        description: "Ocurrió un error al guardar la relación. Por favor intente nuevamente.",
+        variant: "destructive"
+      });
+    } finally {
+      // Solo desactivamos isSaving cuando terminamos completamente
+      setIsSaving(false);
     }
   };
   
@@ -1191,17 +1208,17 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      // Prevent automatic closing of the dialog when data is being saved
-      if (!open && isSaving) {
+      console.log(`Dialog onOpenChange triggered: ${open ? 'opening' : 'closing'}, stage: ${stage}, isSaving: ${isSaving}`);
+      
+      // IMPORTANTE: Si el diálogo está intentando cerrarse y estamos en la fase de preguntas
+      // o estamos guardando, NO permitimos que se cierre
+      if (!open && (stage === "questions" || isSaving)) {
+        console.log("Evitando cierre automático del diálogo durante el proceso VAXO");
         return;
       }
       
-      // No cerrar automáticamente después de guardar relaciones VAXO
-      if (!open && stage === "questions") {
-        return;
-      }
-      
-      // Only call onClose when the dialog is explicitly closed by the user
+      // Solo llamamos a onClose cuando el diálogo se cierra explícitamente por el usuario
+      // y no estamos en la fase de preguntas ni guardando
       if (!open) {
         onClose();
       }
