@@ -191,9 +191,27 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   
   // Get existing relationships to check if we need to load previous VAXO responses
   const { data: existingRelationships, isLoading: isLoadingRelationships, error: relationshipsError } = useQuery({
-    queryKey: ['/api/projects', selectedIdeas[0]?.projectId, 'relationships'],
-    enabled: isOpen && selectedIdeas.length > 0
+    queryKey: [`/api/projects/${selectedIdeas[0]?.projectId}/relationships`],
+    enabled: isOpen && selectedIdeas.length > 0 && selectedIdeas[0]?.projectId !== undefined
   });
+
+  // Debug en consola para ver qué relaciones se están cargando
+  useEffect(() => {
+    if (existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
+      // Mostrar toda la información de las relaciones para depuración
+      console.log("Relaciones VAXO cargadas (datos completos):", existingRelationships);
+      
+      // Mostrar las relaciones en un formato más legible
+      console.log("Relaciones VAXO cargadas (formato resumen):", existingRelationships.map(r => ({
+        id: r.id,
+        from: r.fromIdeaId,
+        to: r.toIdeaId,
+        type: r.relationType
+      })));
+    } else {
+      console.log("No se encontraron relaciones existentes o el array está vacío");
+    }
+  }, [existingRelationships]);
   
   // Display error if there is a problem loading relationships
   useEffect(() => {
@@ -213,6 +231,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   // Manejador para reiniciar el estado al cerrar el modal
   useEffect(() => {
     if (!isOpen) {
+      console.log("Modal cerrado, reseteando estado de inicialización");
       setIsInitialized(false);
     }
   }, [isOpen]);
@@ -257,9 +276,29 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         );
       }
       
+      // Verificar si estamos recibiendo datos de relaciones correctamente (con campos fromIdeaId, toIdeaId)
+      if (existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
+        // Verificar si los datos tienen la estructura esperada
+        const hasExpectedStructure = existingRelationships.some(rel => 
+          rel.fromIdeaId !== undefined && rel.toIdeaId !== undefined
+        );
+        
+        if (!hasExpectedStructure) {
+          console.error("Datos de relaciones con estructura incorrecta:", existingRelationships);
+          toast({
+            title: "Error en el formato de relaciones",
+            description: "Los datos de relaciones no tienen el formato esperado. Iniciando proceso desde cero.",
+            variant: "destructive"
+          });
+        }
+      }
+      
       // Filtrar relaciones para asegurarnos que solo consideramos las que tienen relationType definido
+      // y la estructura correcta (fromIdeaId, toIdeaId)
       const validRelationships = existingRelationships && Array.isArray(existingRelationships) 
         ? (existingRelationships as Relationship[]).filter(rel => 
+            rel.fromIdeaId !== undefined && 
+            rel.toIdeaId !== undefined && 
             rel.relationType && 
             (rel.relationType === 'V' || rel.relationType === 'A' || rel.relationType === 'X' || rel.relationType === 'O')
           )
@@ -549,7 +588,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       
       // Invalidate relationships query to refresh data
       queryClient.invalidateQueries({
-        queryKey: ['/api/projects', selectedIdeas[0].projectId, 'relationships']
+        queryKey: [`/api/projects/${selectedIdeas[0].projectId}/relationships`]
       });
       
     } catch (error) {
@@ -820,7 +859,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       
         // Invalidate the relationships query to refresh the data
         queryClient.invalidateQueries({
-          queryKey: ['/api/projects', selectedIdeas[0].projectId, 'relationships']
+          queryKey: [`/api/projects/${selectedIdeas[0].projectId}/relationships`]
         });
         
         toast({

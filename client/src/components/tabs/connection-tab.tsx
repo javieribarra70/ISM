@@ -205,7 +205,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
               disabled={isStarting || isStartingAlternative || selectedIdeas.length < 2}
             >
               <PlayCircle className="h-5 w-5" />
-              {isStartingAlternative ? "Starting..." : "Start Voting Process"}
+              {isStartingAlternative ? "Starting..." : "Start VAXO Process"}
             </Button>
           </div>
         </div>
