@@ -913,7 +913,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             {stage === "ssim" && "SSIM Matrix"}
             {stage === "reachability" && "Reachability Matrix"}
             {stage === "levels" && "Level Partitioning"}
-            {stage === "diagram" && "ISM Diagram"}
+            {stage === "diagram" && "Final ISM Diagram Model"}
           </DialogTitle>
           <DialogDescription>
             {stage === "intro" && "Build a structural model of relationships between selected ideas."}
