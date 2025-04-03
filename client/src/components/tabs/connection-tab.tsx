@@ -76,8 +76,8 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     
     // Por ahora simplemente muestra un mensaje toast, pero se puede extender
     toast({
-      title: "Start ISM Process",
-      description: "Iniciando el proceso alternativo de ISM...",
+      title: "Start Vote Process",
+      description: "Iniciando el proceso de votación...",
     });
     
     // Reset the starting state after a short delay
@@ -164,7 +164,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
               disabled={isStarting || isStartingAlternative || selectedIdeas.length < 2}
             >
               <PlayCircle className="h-5 w-5" />
-              {isStartingAlternative ? "Starting..." : "Start ISM Process"}
+              {isStartingAlternative ? "Starting..." : "Start Vote Process"}
             </Button>
           </div>
         </div>
