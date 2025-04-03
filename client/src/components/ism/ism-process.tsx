@@ -277,32 +277,34 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       }
       
       // Verificar si estamos recibiendo datos de relaciones correctamente (con campos fromIdeaId, toIdeaId)
+      // Verificar la forma de las relaciones recibidas y normalizarlas
+      let normalizedRelationships: any[] = [];
+      
       if (existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
-        // Verificar si los datos tienen la estructura esperada
-        const hasExpectedStructure = existingRelationships.some(rel => 
-          rel.fromIdeaId !== undefined && rel.toIdeaId !== undefined
-        );
+        console.log("Estructura original de las relaciones:", existingRelationships[0]);
         
-        if (!hasExpectedStructure) {
-          console.error("Datos de relaciones con estructura incorrecta:", existingRelationships);
-          toast({
-            title: "Error en el formato de relaciones",
-            description: "Los datos de relaciones no tienen el formato esperado. Iniciando proceso desde cero.",
-            variant: "destructive"
-          });
-        }
+        // Normalizar las relaciones para manejar diferentes estructuras de respuesta
+        normalizedRelationships = existingRelationships.map(rel => {
+          // Mapear las propiedades según la estructura recibida
+          return {
+            id: rel.id,
+            fromIdeaId: rel.fromIdeaId || rel.from_idea_id || rel.from,
+            toIdeaId: rel.toIdeaId || rel.to_idea_id || rel.to,
+            relationType: rel.relationType || rel.relation_type
+          };
+        });
+        
+        console.log("Relaciones normalizadas:", normalizedRelationships[0]);
       }
       
       // Filtrar relaciones para asegurarnos que solo consideramos las que tienen relationType definido
       // y la estructura correcta (fromIdeaId, toIdeaId)
-      const validRelationships = existingRelationships && Array.isArray(existingRelationships) 
-        ? (existingRelationships as Relationship[]).filter(rel => 
-            rel.fromIdeaId !== undefined && 
-            rel.toIdeaId !== undefined && 
-            rel.relationType && 
-            (rel.relationType === 'V' || rel.relationType === 'A' || rel.relationType === 'X' || rel.relationType === 'O')
-          )
-        : [];
+      const validRelationships = normalizedRelationships.filter(rel => 
+        rel.fromIdeaId !== undefined && 
+        rel.toIdeaId !== undefined && 
+        rel.relationType && 
+        (rel.relationType === 'V' || rel.relationType === 'A' || rel.relationType === 'X' || rel.relationType === 'O')
+      );
       
       console.log(`Relaciones válidas filtradas: ${validRelationships.length}`);
       
@@ -527,10 +529,14 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       
       // Find existing relationship for these ideas
       const existingRel = existingRelationships && Array.isArray(existingRelationships) ?
-        (existingRelationships as Relationship[]).find(rel => 
-          (rel.fromIdeaId === ideaI && rel.toIdeaId === ideaJ) ||
-          (rel.fromIdeaId === ideaJ && rel.toIdeaId === ideaI && (relation === RelationType.X || relation === RelationType.O))
-        ) : null;
+        (existingRelationships as any[]).find(rel => {
+          // Extraer los IDs correctos según el formato de los datos
+          const fromId = rel.fromIdeaId || rel.from_idea_id || rel.from;
+          const toId = rel.toIdeaId || rel.to_idea_id || rel.to;
+          
+          return (fromId === ideaI && toId === ideaJ) ||
+                (fromId === ideaJ && toId === ideaI && (relation === RelationType.X || relation === RelationType.O))
+        }) : null;
       
       // Delete existing relationship if it exists
       if (existingRel) {
