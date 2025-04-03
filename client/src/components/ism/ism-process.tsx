@@ -226,6 +226,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     setIsInitialized(true);
     
     if (selectedIdeas.length > 0) {
+      console.log("Inicializando proceso ISM con relaciones existentes...");
+      
       // Generamos todas las preguntas posibles
       const newQuestions: ISMQuestion[] = [];
       
@@ -244,11 +246,15 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       
       // Si hay relaciones existentes, marcar las preguntas como ya respondidas
       if (existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
+        console.log(`Se encontraron ${existingRelationships.length} relaciones existentes`);
+        
         const existingSSIM: SSIMCell[] = [];
         let answeredCount = 0;
         
         // Por cada relación existente, actualizamos la respuesta en las preguntas correspondientes
         (existingRelationships as Relationship[]).forEach(rel => {
+          console.log(`Procesando relación ${rel.id}: ${rel.fromIdeaId} -> ${rel.toIdeaId} (${rel.relationType})`);
+          
           const fromIdea = selectedIdeas.find(idea => idea.id === rel.fromIdeaId);
           const toIdea = selectedIdeas.find(idea => idea.id === rel.toIdeaId);
           
@@ -277,6 +283,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 // X y O se quedan igual en ambas direcciones
               }
               
+              console.log(`Marcando pregunta ${questionIndex} como respondida: ${response}`);
+              
               newQuestions[questionIndex].response = response;
               answeredCount++;
               processStarted = true;
@@ -284,6 +292,98 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           }
         });
         
+        // Aplicar inferencia lógica a las relaciones conocidas para posiblemente deducir más respuestas
+        console.log("Aplicando inferencia lógica a las relaciones existentes...");
+        
+        // Construir una matriz provisional con las relaciones conocidas
+        const provisionalSSIM: SSIMCell[] = [];
+        newQuestions.forEach(q => {
+          if (q.response) {
+            provisionalSSIM.push({
+              ideaI: q.ideaI.id,
+              ideaJ: q.ideaJ.id,
+              relation: q.response
+            });
+            
+            // Añadir la relación inversa
+            if (q.response === RelationType.V) {
+              provisionalSSIM.push({
+                ideaI: q.ideaJ.id,
+                ideaJ: q.ideaI.id,
+                relation: RelationType.A
+              });
+            } else if (q.response === RelationType.A) {
+              provisionalSSIM.push({
+                ideaI: q.ideaJ.id,
+                ideaJ: q.ideaI.id,
+                relation: RelationType.V
+              });
+            } else if (q.response === RelationType.X) {
+              provisionalSSIM.push({
+                ideaI: q.ideaJ.id,
+                ideaJ: q.ideaI.id,
+                relation: RelationType.X
+              });
+            } else if (q.response === RelationType.O) {
+              provisionalSSIM.push({
+                ideaI: q.ideaJ.id,
+                ideaJ: q.ideaI.id,
+                relation: RelationType.O
+              });
+            }
+          }
+        });
+        
+        // Construir la matriz de alcance inicial
+        const reachMatrix = buildInitialReachabilityMatrix(selectedIdeas, provisionalSSIM);
+        
+        // Aplicar clausura transitiva
+        const transitiveMatrix = applyTransitiveClosure(reachMatrix);
+        
+        // Inferir relaciones adicionales
+        let inferredCount = 0;
+        for (let i = 0; i < newQuestions.length; i++) {
+          // Ignorar preguntas ya respondidas
+          if (newQuestions[i].response !== null) continue;
+          
+          const ideaI = newQuestions[i].ideaI;
+          const ideaJ = newQuestions[i].ideaJ;
+          
+          // Encontrar los índices de estas ideas en la matriz
+          const idxI = selectedIdeas.findIndex(idea => idea.id === ideaI.id);
+          const idxJ = selectedIdeas.findIndex(idea => idea.id === ideaJ.id);
+          
+          if (idxI !== -1 && idxJ !== -1) {
+            // Verificar si hay relación transitiva de I a J
+            const iToJ = transitiveMatrix[idxI][idxJ];
+            const jToI = transitiveMatrix[idxJ][idxI];
+            
+            // Inferir relaciones basadas en transitividad
+            if (iToJ && !jToI) {
+              // I influye en J, pero J no influye en I
+              newQuestions[i].response = RelationType.V;
+              inferredCount++;
+              console.log(`Inferencia: ${ideaI.title} influye en ${ideaJ.title} (V)`);
+            } else if (!iToJ && jToI) {
+              // J influye en I, pero I no influye en J
+              newQuestions[i].response = RelationType.A;
+              inferredCount++;
+              console.log(`Inferencia: ${ideaJ.title} influye en ${ideaI.title} (A)`);
+            } else if (iToJ && jToI) {
+              // Influencia mutua
+              newQuestions[i].response = RelationType.X;
+              inferredCount++;
+              console.log(`Inferencia: Influencia mutua entre ${ideaI.title} y ${ideaJ.title} (X)`);
+            }
+          }
+        }
+        
+        console.log(`Se infirieron ${inferredCount} relaciones adicionales`);
+        
+        // Actualizar el contador de respuestas 
+        answeredCount += inferredCount;
+        
+        // Actualizar la matriz SSIM
         setSSIMMatrix(existingSSIM);
         
         // Si todas las preguntas han sido respondidas, ir a la matriz SSIM
@@ -303,17 +403,21 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           const nextUnansweredIndex = newQuestions.findIndex(q => q.response === null);
           
           if (nextUnansweredIndex !== -1) {
+            console.log(`Continuando desde la pregunta ${nextUnansweredIndex + 1}: ${newQuestions[nextUnansweredIndex].ideaI.title} -> ${newQuestions[nextUnansweredIndex].ideaJ.title}`);
+            
             setQuestions(newQuestions);
             setCurrentQuestionIndex(nextUnansweredIndex);
             setStage("questions");
             toast({
               title: "Continuando proceso",
-              description: `Se encontraron ${answeredCount} relaciones existentes. Continuando desde donde se quedó.`,
+              description: `Se encontraron ${answeredCount} relaciones (${answeredCount - inferredCount} directas, ${inferredCount} inferidas). Continuando desde donde se quedó.`,
               variant: "default"
             });
             return;
           }
         }
+      } else {
+        console.log("No se encontraron relaciones existentes. Iniciando proceso desde cero.");
       }
       
       // Si no hay relaciones o no se pudo continuar desde un punto específico, iniciar desde cero
