@@ -421,31 +421,53 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     
     try {
       setIsSaving(true);
+      console.log("Guardando relaciones VAXO...");
       
       // Delete any existing relationships first (to avoid duplicates)
       if (existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
+        console.log(`Eliminando ${existingRelationships.length} relaciones existentes`);
         // Use Promise.all to delete all existing relationships
-        await Promise.all(
-          existingRelationships.map(rel => 
-            apiRequest('DELETE', '/api/relationships/' + rel.id)
-          )
-        );
+        for (const rel of existingRelationships) {
+          try {
+            await apiRequest('DELETE', `/api/relationships/${rel.id}`);
+            console.log(`Relación ${rel.id} eliminada correctamente`);
+          } catch (error) {
+            console.error(`Error al eliminar relación ${rel.id}:`, error);
+          }
+        }
       }
       
-      // Create the new VAXO relationships
-      const savePromises = relationships
-        .filter(rel => rel.relation !== RelationType.O) // Typically we don't store "no relationship"
-        .map(rel => {
-          return apiRequest('POST', `/api/projects/${selectedIdeas[0].projectId}/relationships`, {
+      console.log(`Creando nuevas relaciones VAXO (${relationships.filter(rel => rel.relation !== RelationType.O).length})`);
+      
+      // Create the new VAXO relationships one by one to better track errors
+      const filteredRelationships = relationships.filter(rel => rel.relation !== RelationType.O);
+      
+      for (const rel of filteredRelationships) {
+        try {
+          console.log(`Creando relación: ${rel.ideaI} -> ${rel.ideaJ} (${rel.relation})`);
+          
+          await apiRequest('POST', `/api/projects/${selectedIdeas[0].projectId}/relationships`, {
             fromIdeaId: rel.ideaI,
             toIdeaId: rel.ideaJ,
             projectId: selectedIdeas[0].projectId,
             createdBy: user.id,
             relationType: rel.relation
           });
-        });
+          
+          console.log(`Relación creada correctamente`);
+        } catch (error) {
+          console.error(`Error al crear relación:`, error);
+          console.error(`Datos enviados:`, {
+            fromIdeaId: rel.ideaI,
+            toIdeaId: rel.ideaJ, 
+            projectId: selectedIdeas[0].projectId,
+            createdBy: user.id,
+            relationType: rel.relation
+          });
+        }
+      }
       
-      await Promise.all(savePromises);
+      // Ya no usamos Promise.all porque ahora procesamos las relaciones una por una
       
       // Invalidate the relationships query to refresh the data
       queryClient.invalidateQueries({
