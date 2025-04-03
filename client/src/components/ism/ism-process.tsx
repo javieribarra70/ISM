@@ -227,6 +227,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     
     if (selectedIdeas.length > 0) {
       console.log("Inicializando proceso ISM con relaciones existentes...");
+      console.log("SelectedIdeas:", selectedIdeas);
       
       // Generamos todas las preguntas posibles
       const newQuestions: ISMQuestion[] = [];
@@ -244,21 +245,45 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       
       let processStarted = false;
       
+      // Imprimir detalles de las relaciones existentes para depuración
+      if (existingRelationships && Array.isArray(existingRelationships)) {
+        console.log(`Relaciones existentes (${existingRelationships.length}):`, 
+          existingRelationships.map(rel => ({
+            id: rel.id,
+            from: rel.fromIdeaId,
+            to: rel.toIdeaId,
+            type: rel.relationType,
+          }))
+        );
+      }
+      
+      // Filtrar relaciones para asegurarnos que solo consideramos las que tienen relationType definido
+      const validRelationships = existingRelationships && Array.isArray(existingRelationships) 
+        ? (existingRelationships as Relationship[]).filter(rel => 
+            rel.relationType && 
+            (rel.relationType === 'V' || rel.relationType === 'A' || rel.relationType === 'X' || rel.relationType === 'O')
+          )
+        : [];
+      
+      console.log(`Relaciones válidas filtradas: ${validRelationships.length}`);
+      
       // Si hay relaciones existentes, marcar las preguntas como ya respondidas
-      if (existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
-        console.log(`Se encontraron ${existingRelationships.length} relaciones existentes`);
+      if (validRelationships.length > 0) {
+        console.log(`Se encontraron ${validRelationships.length} relaciones VAXO existentes`);
         
         const existingSSIM: SSIMCell[] = [];
         let answeredCount = 0;
         
         // Por cada relación existente, actualizamos la respuesta en las preguntas correspondientes
-        (existingRelationships as Relationship[]).forEach(rel => {
+        validRelationships.forEach(rel => {
           console.log(`Procesando relación ${rel.id}: ${rel.fromIdeaId} -> ${rel.toIdeaId} (${rel.relationType})`);
           
           const fromIdea = selectedIdeas.find(idea => idea.id === rel.fromIdeaId);
           const toIdea = selectedIdeas.find(idea => idea.id === rel.toIdeaId);
           
           if (fromIdea && toIdea) {
+            console.log(`Match encontrado: ${fromIdea.title} -> ${toIdea.title}`);
+            
             // Añadir a la matriz SSIM para visualización
             existingSSIM.push({
               ideaI: fromIdea.id,
@@ -288,8 +313,18 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
               newQuestions[questionIndex].response = response;
               answeredCount++;
               processStarted = true;
+            } else {
+              console.log(`No se encontró una pregunta correspondiente para ${fromIdea.id} -> ${toIdea.id}`);
             }
+          } else {
+            console.log(`Ideas no encontradas para relación: fromIdea=${fromIdea?.title || "no encontrada"}, toIdea=${toIdea?.title || "no encontrada"}`);
           }
+        });
+        
+        // Mostrar el progreso actual para depuración
+        console.log("Estado de preguntas después de cargar relaciones existentes:");
+        newQuestions.forEach((q, idx) => {
+          console.log(`  Q${idx}: ${q.ideaI.title} -> ${q.ideaJ.title}: ${q.response || "no respondida"}`);
         });
         
         // Aplicar inferencia lógica a las relaciones conocidas para posiblemente deducir más respuestas
@@ -383,6 +418,12 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         // Actualizar el contador de respuestas 
         answeredCount += inferredCount;
         
+        // Mostrar el estado final de las preguntas después de inferencias
+        console.log("Estado final de preguntas después de inferencias:");
+        newQuestions.forEach((q, idx) => {
+          console.log(`  Q${idx}: ${q.ideaI.title} -> ${q.ideaJ.title}: ${q.response || "no respondida"}`);
+        });
+        
         // Actualizar la matriz SSIM
         setSSIMMatrix(existingSSIM);
         
@@ -417,7 +458,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           }
         }
       } else {
-        console.log("No se encontraron relaciones existentes. Iniciando proceso desde cero.");
+        console.log("No se encontraron relaciones VAXO existentes. Iniciando proceso desde cero.");
       }
       
       // Si no hay relaciones o no se pudo continuar desde un punto específico, iniciar desde cero
