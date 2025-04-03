@@ -295,7 +295,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
             pdf.text('No categories found', categoriesLegendX + 4, itemY + 3);
           }
           
-          // Save the PDF
+          // Save the PDF with a simple name
           pdf.save('ism-diagram.pdf');
           
           // Clean up
