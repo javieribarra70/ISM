@@ -244,6 +244,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     // Marcamos como inicializado para evitar reiniciar el proceso
     setIsInitialized(true);
     
+    // Marcar que estamos cargando para evitar cierres automáticos
+    setIsSaving(true);
+    
     if (selectedIdeas.length > 0) {
       console.log("Inicializando proceso ISM con relaciones existentes...");
       console.log("SelectedIdeas:", selectedIdeas);
@@ -308,7 +311,12 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       
       console.log(`Relaciones válidas filtradas: ${validRelationships.length}`);
       
-      // Si hay relaciones existentes, marcar las preguntas como ya respondidas
+      // Desactivar el indicador de carga después de completar la inicialización
+    setTimeout(() => {
+      setIsSaving(false);
+    }, 500); // Breve retraso para asegurar que el estado se actualiza correctamente
+    
+    // Si hay relaciones existentes, marcar las preguntas como ya respondidas
       if (validRelationships.length > 0) {
         console.log(`Se encontraron ${validRelationships.length} relaciones VAXO existentes`);
         
@@ -475,9 +483,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           toast({
             title: "Proceso completado",
             description: "Todas las relaciones VAXO ya están definidas. Mostrando la matriz SSIM.",
-            variant: "default"
+            variant: "default",
+            duration: 5000 // Duración de 5 segundos para que el usuario pueda leer la notificación
           });
-          return;
+          // No devolvemos inmediatamente para evitar el cierre del modal
         }
         
         // Si hay algunas preguntas respondidas pero no todas, encontrar la primera sin responder
@@ -490,12 +499,15 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             setQuestions(newQuestions);
             setCurrentQuestionIndex(nextUnansweredIndex);
             setStage("questions");
+            // Establecer un retraso breve antes de continuar para permitir que el usuario vea la notificación
             toast({
               title: "Continuando proceso",
               description: `Se encontraron ${answeredCount} relaciones (${answeredCount - inferredCount} directas, ${inferredCount} inferidas). Continuando desde donde se quedó.`,
-              variant: "default"
+              variant: "default",
+              duration: 5000 // Duración de 5 segundos para que el usuario pueda leer la notificación
             });
-            return;
+            
+            // No devolver inmediatamente, para permitir que el componente permanezca montado
           }
         }
       } else {
@@ -1472,15 +1484,30 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
 
   // Función para manejar el intento de cierre con confirmación si hay progreso
   const handleCloseAttempt = () => {
+    // Verificar si estamos en medio de una operación de guardado o inicialización
+    if (isSaving) {
+      toast({
+        title: "Proceso en progreso",
+        description: "Por favor espera a que termine el proceso actual antes de cerrar.",
+        variant: "default",
+        duration: 3000
+      });
+      return; // No permitir cerrar durante un guardado
+    }
+    
     // Si estamos en la etapa de preguntas y hay respuestas, pedimos confirmación
     if (stage === "questions") {
       const answeredQuestions = questions.filter(q => q.response !== null).length;
       if (answeredQuestions > 0) {
-        if (!window.confirm(`You have answered ${answeredQuestions} out of ${questions.length} questions. If you close now, your progress will be saved, but you'll have to start over next time. Are you sure you want to close?`)) {
+        if (!window.confirm(`Has respondido ${answeredQuestions} de ${questions.length} preguntas. Si cierras ahora, tu progreso se guardará, pero tendrás que comenzar de nuevo la próxima vez. ¿Estás seguro de que quieres cerrar?`)) {
           return; // Usuario canceló, no cerramos
         }
       }
     }
+    
+    // Limpiar el estado antes de cerrar para evitar problemas en la próxima apertura
+    setIsInitialized(false);
+    console.log("Cerrando modal VAXO manualmente");
     
     // Si llegamos aquí, es porque el usuario confirmó o no hay progreso que perder
     onClose();
