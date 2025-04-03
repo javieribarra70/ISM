@@ -26,12 +26,17 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
   // Estado para las ideas seleccionadas por el administrador para el proceso de conexión
   const [connectionIdeas, setConnectionIdeas] = useState<number[]>([]);
 
-  // Determine if user is admin of this project
-  const isUserProjectAdmin = () => {
-    if (!user) return false;
-    // Fetch project users separately would be better, but for simplicity:
-    return user.role === "admin";
-  };
+  // Determine if user is admin of this project (user.role === "admin" check)
+  // We don't need to query project users here as isUserAdmin is sufficient for our purposes
+  const isUserAdmin = user && user.role === "admin";
+  
+  // Create a memoized value to prevent infinite render loops
+  const [isUserProjectAdmin, setIsUserProjectAdmin] = useState(false);
+  
+  // Update the admin status only when user changes
+  useEffect(() => {
+    setIsUserProjectAdmin(user?.role === "admin" || false);
+  }, [user]);
 
   // Fetch project ideas
   const { 
@@ -61,7 +66,7 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
     isError: isAllVotesError
   } = useQuery<(IdeaVote & { user: {id: number, username: string}})[]>({
     queryKey: [`/api/projects/${projectId}/votes`],
-    enabled: !!projectId && !!user && (user.role === "admin" || isUserProjectAdmin()),
+    enabled: !!projectId && !!user && (user.role === "admin" || isUserProjectAdmin),
   });
 
   // Fetch voting limit for this project
@@ -167,7 +172,7 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
     refetch: refetchSelectedIdeas
   } = useQuery({
     queryKey: [`/api/projects/${projectId}/selected-ideas`],
-    enabled: !!projectId && !!user && (user.role === "admin" || isUserProjectAdmin()),
+    enabled: !!projectId && !!user && (user.role === "admin" || isUserProjectAdmin),
   });
 
   // Toggle selected idea mutation
@@ -309,7 +314,7 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
       </div>
 
       {/* Admin view showing all users' votes */}
-      {isUserProjectAdmin() && (
+      {isUserProjectAdmin && (
         <div className="mb-6">
           <h3 className="text-xl font-semibold mb-2">Vote Summary (Admin View)</h3>
           <div className="flex justify-between items-center">
