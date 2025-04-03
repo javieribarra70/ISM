@@ -913,7 +913,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             {stage === "ssim" && "SSIM Matrix"}
             {stage === "reachability" && "Reachability Matrix"}
             {stage === "levels" && "Level Partitioning"}
-            {stage === "diagram" && "Final ISM Diagram"}
+            {stage === "diagram" && "ISM Diagram"}
           </DialogTitle>
           <DialogDescription>
             {stage === "intro" && "Build a structural model of relationships between selected ideas."}
@@ -921,7 +921,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             {stage === "ssim" && "View the structural self-interaction matrix."}
             {stage === "reachability" && "Analyze the initial reachability matrix."}
             {stage === "levels" && "Explore the identified level hierarchy."}
-            {stage === "diagram" && "View the complete structural model."}
+            {stage === "diagram" && ""}
           </DialogDescription>
         </DialogHeader>
         
