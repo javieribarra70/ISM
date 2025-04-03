@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Idea } from "@shared/schema";
+import { Idea, Relationship } from "@shared/schema";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -9,6 +9,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info, ArrowRight, ArrowLeft, ArrowLeftRight, Circle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import ISMDiagram from "./ism-diagram-fixed";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 interface ISMProcessProps {
   isOpen: boolean;
@@ -161,6 +165,11 @@ function areSetEqual(a: Set<number>, b: Set<number>): boolean {
 }
 
 export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectContext }: ISMProcessProps) {
+  // Get current user from auth context
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
   // State to store the current stage of the ISM process
   const [stage, setStage] = useState<
     "intro" | "questions" | "ssim" | "reachability" | "levels" | "diagram"
@@ -178,9 +187,64 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const [finalReachabilityMatrix, setFinalReachabilityMatrix] = useState<boolean[][]>([]);
   // Element levels
   const [levels, setLevels] = useState<number[][]>([]);
-
-  // Generate all necessary questions for the ISM when the dialog opens
+  // State to track saving progress
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Get existing relationships to check if we need to load previous VAXO responses
+  const { data: existingRelationships, isLoading: isLoadingRelationships, error: relationshipsError } = useQuery({
+    queryKey: ['/api/projects', selectedIdeas[0]?.projectId, 'relationships'],
+    enabled: isOpen && selectedIdeas.length > 0
+  });
+  
+  // Display error if there is a problem loading relationships
   useEffect(() => {
+    if (relationshipsError) {
+      toast({
+        title: "Error loading relationships",
+        description: "Could not load existing VAXO relationships. Starting a new process.",
+        variant: "destructive"
+      });
+      console.error("Error loading relationships:", relationshipsError);
+    }
+  }, [relationshipsError, toast]);
+
+  // Load existing relationships from the database if available
+  useEffect(() => {
+    if (isOpen && selectedIdeas.length > 0 && existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
+      // Convert existing relationships to SSIM cells
+      const existingSSIM: SSIMCell[] = [];
+      
+      (existingRelationships as Relationship[]).forEach(rel => {
+        // Find the ideas in the selectedIdeas array
+        const fromIdea = selectedIdeas.find(idea => idea.id === rel.fromIdeaId);
+        const toIdea = selectedIdeas.find(idea => idea.id === rel.toIdeaId);
+        
+        if (fromIdea && toIdea) {
+          // Add the relationship to the SSIM matrix
+          existingSSIM.push({
+            ideaI: fromIdea.id,
+            ideaJ: toIdea.id,
+            relation: rel.relationType as RelationType
+          });
+        }
+      });
+      
+      // If we have enough relationships to populate the SSIM matrix, 
+      // jump directly to the SSIM stage
+      if (existingSSIM.length > 0) {
+        setSSIMMatrix(existingSSIM);
+        setStage("ssim");
+        toast({
+          title: "Existing relationships loaded",
+          description: "Previous VAXO relationships were found and loaded.",
+          variant: "default"
+        });
+        return;
+      }
+    }
+    
+    // If there are no existing relationships or we couldn't load them,
+    // proceed with generating new questions
     if (isOpen && selectedIdeas.length > 0) {
       const newQuestions: ISMQuestion[] = [];
       
@@ -203,7 +267,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       setFinalReachabilityMatrix([]);
       setLevels([]);
     }
-  }, [isOpen, selectedIdeas]);
+  }, [isOpen, selectedIdeas, existingRelationships, toast]);
 
   // Function to answer a question
   const answerQuestion = (response: RelationType) => {
@@ -351,6 +415,60 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     return updatedQuestions;
   };
 
+  // Save VAXO relationships to the database
+  const saveVAXORelationshipsToDatabase = async (relationships: SSIMCell[]) => {
+    if (!user || !selectedIdeas[0]?.projectId) return;
+    
+    try {
+      setIsSaving(true);
+      
+      // Delete any existing relationships first (to avoid duplicates)
+      if (existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
+        // Use Promise.all to delete all existing relationships
+        await Promise.all(
+          existingRelationships.map(rel => 
+            apiRequest(`/api/relationships/${rel.id}`, 'DELETE')
+          )
+        );
+      }
+      
+      // Create the new VAXO relationships
+      const savePromises = relationships
+        .filter(rel => rel.relation !== RelationType.O) // Typically we don't store "no relationship"
+        .map(rel => {
+          return apiRequest('/api/relationships', 'POST', {
+            fromIdeaId: rel.ideaI,
+            toIdeaId: rel.ideaJ,
+            projectId: selectedIdeas[0].projectId,
+            createdBy: user.id,
+            relationType: rel.relation
+          });
+        });
+      
+      await Promise.all(savePromises);
+      
+      // Invalidate the relationships query to refresh the data
+      queryClient.invalidateQueries({
+        queryKey: ['/api/projects', selectedIdeas[0].projectId, 'relationships']
+      });
+      
+      toast({
+        title: "Relationships saved",
+        description: "The VAXO relationships have been saved to the database.",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error("Error saving VAXO relationships:", error);
+      toast({
+        title: "Error saving relationships",
+        description: "There was a problem saving the VAXO relationships.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Build the SSIM matrix from the answered questions
   const buildSSIMMatrix = (answeredQuestions: ISMQuestion[]) => {
     const matrix: SSIMCell[] = [];
@@ -394,6 +512,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     });
     
     setSSIMMatrix(matrix);
+    
+    // Save the relationships to the database
+    saveVAXORelationshipsToDatabase(matrix);
+    
     setStage("ssim");
   };
 
@@ -448,6 +570,16 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       case "intro":
         return (
           <div className="space-y-4">
+            {isLoadingRelationships && (
+              <Alert className="bg-yellow-50 mb-4">
+                <Info className="h-5 w-5" />
+                <AlertTitle>Loading...</AlertTitle>
+                <AlertDescription>
+                  Checking for existing VAXO relationships. Please wait...
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <Alert className="bg-blue-50">
               <Info className="h-5 w-5" />
               <AlertTitle>Interpretive Structural Modeling (ISM) Process</AlertTitle>
@@ -653,6 +785,16 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       case "ssim":
         return (
           <div className="space-y-4">
+            {isSaving && (
+              <Alert className="bg-yellow-50 mb-4">
+                <Info className="h-5 w-5" />
+                <AlertTitle>Saving relationships</AlertTitle>
+                <AlertDescription>
+                  Saving VAXO relationships to the database. Please wait...
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <h3 className="text-lg font-semibold">Structural Self-Interaction Matrix (SSIM)</h3>
             
             <p className="text-sm text-muted-foreground mb-4">
@@ -928,6 +1070,12 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         </div>
         
         <DialogFooter>
+          {isSaving && (
+            <div className="flex items-center justify-center w-full mb-2">
+              <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-t-transparent"></div>
+              <p className="text-sm text-muted-foreground">Saving relationships...</p>
+            </div>
+          )}
           {renderNavigationButtons()}
         </DialogFooter>
       </DialogContent>

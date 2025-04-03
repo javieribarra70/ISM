@@ -1371,16 +1371,34 @@ export class DatabaseStorage implements IStorage {
   
   async createRelationship(relationshipData: InsertRelationship): Promise<Relationship> {
     try {
-      const result = await sql`
-        INSERT INTO relationships (project_id, from_idea_id, to_idea_id, created_by)
-        VALUES (
-          ${relationshipData.projectId}, 
-          ${relationshipData.fromIdeaId}, 
-          ${relationshipData.toIdeaId}, 
-          ${relationshipData.createdBy}
-        )
-        RETURNING *
-      `;
+      // Include relationType if it exists in the relationshipData
+      const hasRelationType = 'relationType' in relationshipData && relationshipData.relationType;
+      
+      let result;
+      if (hasRelationType) {
+        result = await sql`
+          INSERT INTO relationships (project_id, from_idea_id, to_idea_id, created_by, relation_type)
+          VALUES (
+            ${relationshipData.projectId}, 
+            ${relationshipData.fromIdeaId}, 
+            ${relationshipData.toIdeaId}, 
+            ${relationshipData.createdBy},
+            ${relationshipData.relationType}
+          )
+          RETURNING *
+        `;
+      } else {
+        result = await sql`
+          INSERT INTO relationships (project_id, from_idea_id, to_idea_id, created_by)
+          VALUES (
+            ${relationshipData.projectId}, 
+            ${relationshipData.fromIdeaId}, 
+            ${relationshipData.toIdeaId}, 
+            ${relationshipData.createdBy}
+          )
+          RETURNING *
+        `;
+      }
       
       const newRelationship = result[0];
       return {
@@ -1388,6 +1406,7 @@ export class DatabaseStorage implements IStorage {
         projectId: newRelationship.project_id,
         fromIdeaId: newRelationship.from_idea_id,
         toIdeaId: newRelationship.to_idea_id,
+        relationType: newRelationship.relation_type,
         createdBy: newRelationship.created_by
       };
     } catch (error) {

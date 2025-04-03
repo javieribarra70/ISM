@@ -81,6 +81,7 @@ export const relationships = pgTable("relationships", {
   toIdeaId: integer("to_idea_id").notNull().references(() => ideas.id),
   projectId: integer("project_id").notNull().references(() => projects.id),
   createdBy: integer("created_by").notNull().references(() => users.id),
+  relationType: text("relation_type"), // For storing VAXO relationship type: "V", "A", "X", "O"
 });
 
 // Invitations model
@@ -183,6 +184,9 @@ export const insertRelationshipSchema = createInsertSchema(relationships)
     toIdeaId: true,
     projectId: true,
     createdBy: true,
+  })
+  .extend({
+    relationType: z.string().optional(), // "V", "A", "X", "O"
   });
 
 export const insertInvitationSchema = createInsertSchema(invitations)
