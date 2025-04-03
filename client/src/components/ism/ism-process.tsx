@@ -809,8 +809,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       case "diagram":
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Final ISM Diagram Model</h3>
-            
             <p className="text-sm text-muted-foreground mb-4">
               The result of the ISM process is a hierarchical model that shows
               the influence relationships between ideas. This model will help you
