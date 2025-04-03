@@ -809,7 +809,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       case "diagram":
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">ISM Model</h3>
+            <h3 className="text-lg font-semibold">Final ISM Diagram Model</h3>
             
             <p className="text-sm text-muted-foreground mb-4">
               The result of the ISM process is a hierarchical model that shows
@@ -884,7 +884,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
               Back
             </Button>
             <Button onClick={proceedToDiagram}>
-              View Final Diagram
+              View Final ISM Diagram Model
             </Button>
           </div>
         );
@@ -913,7 +913,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             {stage === "ssim" && "SSIM Matrix"}
             {stage === "reachability" && "Reachability Matrix"}
             {stage === "levels" && "Level Partitioning"}
-            {stage === "diagram" && "ISM Diagram Model"}
+            {stage === "diagram" && "Final ISM Diagram Model"}
           </DialogTitle>
           <DialogDescription>
             {stage === "intro" && "Build a structural model of relationships between selected ideas."}
