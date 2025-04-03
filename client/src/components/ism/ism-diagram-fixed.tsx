@@ -117,18 +117,24 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
           let imgWidth = pdfWidth - 20; // margins
           let imgHeight = imgWidth / imgAspectRatio;
           
-          // Ensure the image fits in the page
-          if (imgHeight > pdfHeight - 20) {
-            imgHeight = pdfHeight - 20;
+          // Ensure the image fits in the page, leaving space for title
+          if (imgHeight > pdfHeight - 30) { // Extra space for title
+            imgHeight = pdfHeight - 30;
             imgWidth = imgHeight * imgAspectRatio;
           }
+          
+          // Add a title "Final ISM Diagram Model" at the top center
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(16);
+          pdf.setTextColor(0, 0, 0); // Black
+          pdf.text('Final ISM Diagram Model', pdfWidth / 2, 15, { align: 'center' });
           
           // Add the image to the PDF
           pdf.addImage(
             imgData, 
             'PNG', 
             (pdfWidth - imgWidth) / 2, // center horizontally
-            (pdfHeight - imgHeight) / 2, // center vertically
+            (pdfHeight - imgHeight) / 2 + 5, // center vertically, move down a bit for title
             imgWidth, 
             imgHeight
           );
