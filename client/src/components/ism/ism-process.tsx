@@ -436,7 +436,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       const savePromises = relationships
         .filter(rel => rel.relation !== RelationType.O) // Typically we don't store "no relationship"
         .map(rel => {
-          return apiRequest('POST', '/api/relationships', {
+          return apiRequest('POST', `/api/projects/${selectedIdeas[0].projectId}/relationships`, {
             fromIdeaId: rel.ideaI,
             toIdeaId: rel.ideaJ,
             projectId: selectedIdeas[0].projectId,
