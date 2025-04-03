@@ -427,7 +427,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         // Use Promise.all to delete all existing relationships
         await Promise.all(
           existingRelationships.map(rel => 
-            apiRequest('/api/relationships/' + rel.id, 'DELETE')
+            apiRequest('DELETE', '/api/relationships/' + rel.id)
           )
         );
       }
@@ -436,7 +436,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       const savePromises = relationships
         .filter(rel => rel.relation !== RelationType.O) // Typically we don't store "no relationship"
         .map(rel => {
-          return apiRequest('/api/relationships', 'POST', {
+          return apiRequest('POST', '/api/relationships', {
             fromIdeaId: rel.ideaI,
             toIdeaId: rel.ideaJ,
             projectId: selectedIdeas[0].projectId,
