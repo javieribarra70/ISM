@@ -123,7 +123,9 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
 
   // Handle ISM dialog close
   const handleISMDialogClose = () => {
-    setIsISMDialogOpen(false);
+    console.log("ISM Dialog close requested - keeping it open for debugging");
+    // NO cerramos el diálogo automáticamente para evitar problemas con el proceso VAXO
+    // setIsISMDialogOpen(false);
   };
 
   // Prepare project context information for ISM process

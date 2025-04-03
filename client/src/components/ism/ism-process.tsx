@@ -1207,22 +1207,27 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      console.log(`Dialog onOpenChange triggered: ${open ? 'opening' : 'closing'}, stage: ${stage}, isSaving: ${isSaving}`);
-      
-      // IMPORTANTE: Si el diálogo está intentando cerrarse y estamos en la fase de preguntas
-      // o estamos guardando, NO permitimos que se cierre
-      if (!open && (stage === "questions" || isSaving)) {
-        console.log("Evitando cierre automático del diálogo durante el proceso VAXO");
-        return;
-      }
-      
-      // Solo llamamos a onClose cuando el diálogo se cierra explícitamente por el usuario
-      // y no estamos en la fase de preguntas ni guardando
-      if (!open) {
-        onClose();
-      }
-    }}>
+    <Dialog 
+      open={isOpen} 
+      // Disabled completamente la funcionalidad onOpenChange para evitar cierres inesperados
+      // Solo cerrará cuando explícitamente llamemos a setIsOpen(false) en ConnectionTab
+      //onOpenChange={(open) => {
+      //  console.log(`Dialog onOpenChange triggered: ${open ? 'opening' : 'closing'}, stage: ${stage}, isSaving: ${isSaving}`);
+      //  
+      //  // IMPORTANTE: Si el diálogo está intentando cerrarse y estamos en la fase de preguntas
+      //  // o estamos guardando, NO permitimos que se cierre
+      //  if (!open && (stage === "questions" || isSaving)) {
+      //    console.log("Evitando cierre automático del diálogo durante el proceso VAXO");
+      //    return;
+      //  }
+      //  
+      //  // Solo llamamos a onClose cuando el diálogo se cierra explícitamente por el usuario
+      //  // y no estamos en la fase de preguntas ni guardando
+      //  if (!open) {
+      //    onClose();
+      //  }
+      //}}
+    >
       <DialogContent className="max-w-4xl max-h-[95vh] h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
