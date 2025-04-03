@@ -381,8 +381,17 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         const pendingQuestions = inferredQuestions.filter(q => q.response === null);
         
         if (pendingQuestions.length > 0) {
-          // Select the next most informative question
-          selectNextMostInformativeQuestion(inferredQuestions);
+          // En lugar de utilizar selectNextMostInformativeQuestion, buscar directamente
+          // el índice de la siguiente pregunta sin responder
+          const nextIndex = inferredQuestions.findIndex(q => q.response === null);
+          if (nextIndex !== -1) {
+            console.log(`Pasando a la siguiente pregunta #${nextIndex + 1}: ${inferredQuestions[nextIndex].ideaI.title} -> ${inferredQuestions[nextIndex].ideaJ.title}`);
+            setCurrentQuestionIndex(nextIndex);
+          } else {
+            console.error("Error: No se encontró la siguiente pregunta sin responder");
+            // Como respaldo, usar el método anterior
+            selectNextMostInformativeQuestion(inferredQuestions);
+          }
         } else {
           // All questions have been answered, build the SSIM matrix (without saving again)
           const matrix: SSIMCell[] = [];
