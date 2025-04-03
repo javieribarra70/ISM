@@ -36,6 +36,10 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
   const [isDownloading, setIsDownloading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   
+  // States for legend positions (make them draggable)
+  const [projectInfoPosition, setProjectInfoPosition] = useState({ x: 4, y: 4 });
+  const [categoriesPosition, setCategoriesPosition] = useState({ x: 'right', y: 4 });
+  
   // Get the project categories
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: projectId ? [`/api/projects/${projectId}/categories`] : ['no-categories'],
@@ -658,13 +662,48 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
         {/* Cytoscape container */}
         <div ref={containerRef} className="w-full h-[570px]" />
         
-        {/* Project Info Legend */}
+        {/* Project Info Legend - Draggable */}
         {projectInfo && (
           <div 
-            className="absolute top-4 left-4 bg-white border border-slate-200 rounded-md p-3 shadow-sm"
-            style={{ maxWidth: '300px', zIndex: 10 }}
+            className="absolute bg-white border border-slate-200 rounded-md p-3 shadow-sm cursor-move"
+            style={{ 
+              maxWidth: '300px', 
+              zIndex: 10,
+              top: projectInfoPosition.y,
+              left: projectInfoPosition.x,
+            }}
+            onMouseDown={(startEvent) => {
+              // Only handle left mouse button
+              if (startEvent.button !== 0) return;
+              
+              startEvent.preventDefault();
+              const initialX = startEvent.clientX;
+              const initialY = startEvent.clientY;
+              const initialPosX = projectInfoPosition.x;
+              const initialPosY = projectInfoPosition.y;
+              
+              const handleMouseMove = (moveEvent: MouseEvent) => {
+                const deltaX = moveEvent.clientX - initialX;
+                const deltaY = moveEvent.clientY - initialY;
+                setProjectInfoPosition({
+                  x: initialPosX + deltaX,
+                  y: initialPosY + deltaY
+                });
+              };
+              
+              const handleMouseUp = () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+              
+              document.addEventListener('mousemove', handleMouseMove);
+              document.addEventListener('mouseup', handleMouseUp);
+            }}
           >
-            <div className="text-sm font-semibold text-gray-600 mb-2">Project Information</div>
+            <div className="text-sm font-semibold text-gray-600 mb-2 flex justify-between items-center">
+              <span>Project Information</span>
+              <span className="text-xs text-gray-400 italic">(Drag)</span>
+            </div>
             <div className="flex flex-col gap-1">
               <div className="flex flex-col">
                 <span className="text-xs font-semibold text-gray-600">Name:</span>
@@ -686,13 +725,61 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
           </div>
         )}
         
-        {/* Categories legend */}
+        {/* Categories legend - Draggable */}
         {visibleCategories.length > 0 && (
           <div 
-            className="absolute top-4 right-4 bg-white border border-slate-200 rounded-md p-3 shadow-sm"
-            style={{ minWidth: '180px', zIndex: 10 }}
+            className="absolute bg-white border border-slate-200 rounded-md p-3 shadow-sm cursor-move"
+            style={{ 
+              minWidth: '180px', 
+              zIndex: 10,
+              top: categoriesPosition.y,
+              right: categoriesPosition.x === 'right' ? 4 : undefined,
+              left: categoriesPosition.x !== 'right' ? categoriesPosition.x : undefined
+            }}
+            onMouseDown={(startEvent) => {
+              // Only handle left mouse button
+              if (startEvent.button !== 0) return;
+              
+              startEvent.preventDefault();
+              const initialX = startEvent.clientX;
+              const initialY = startEvent.clientY;
+              const elem = startEvent.currentTarget;
+              const rect = elem.getBoundingClientRect();
+              const initialRight = window.innerWidth - (rect.x + rect.width);
+              const initialPosY = categoriesPosition.y;
+              const wasOnRight = categoriesPosition.x === 'right';
+              
+              const handleMouseMove = (moveEvent: MouseEvent) => {
+                const deltaX = moveEvent.clientX - initialX;
+                const deltaY = moveEvent.clientY - initialY;
+                
+                // Initial movement - switch from right edge to absolute positioning
+                if (wasOnRight && deltaX !== 0) {
+                  setCategoriesPosition({
+                    x: window.innerWidth - initialRight - rect.width - deltaX,
+                    y: initialPosY + deltaY
+                  });
+                } else if (typeof categoriesPosition.x === 'number') {
+                  setCategoriesPosition({
+                    x: categoriesPosition.x + deltaX,
+                    y: initialPosY + deltaY
+                  });
+                }
+              };
+              
+              const handleMouseUp = () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+              
+              document.addEventListener('mousemove', handleMouseMove);
+              document.addEventListener('mouseup', handleMouseUp);
+            }}
           >
-            <div className="text-sm font-semibold text-gray-600 mb-2">Categories</div>
+            <div className="text-sm font-semibold text-gray-600 mb-2 flex justify-between items-center">
+              <span>Categories</span>
+              <span className="text-xs text-gray-400 italic">(Drag)</span>
+            </div>
             <div className="flex flex-col gap-2">
               {visibleCategories.map((category) => (
                 <div key={category.id} className="flex items-center gap-2">
