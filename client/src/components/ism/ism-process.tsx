@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Idea, Relationship } from "@shared/schema";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Info, ArrowRight, ArrowLeft, ArrowLeftRight, Circle } from "lucide-react";
+import { Info, ArrowRight, ArrowLeft, ArrowLeftRight, Circle, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import ISMDiagram from "./ism-diagram-fixed";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1156,7 +1155,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       case "intro":
         return (
           <div className="flex justify-between">
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={handleCloseAttempt}>
               Cancel
             </Button>
             <Button onClick={() => setStage("questions")}>
@@ -1204,7 +1203,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       case "diagram":
         return (
           <div className="flex justify-end">
-            <Button onClick={onClose}>
+            <Button onClick={handleCloseAttempt}>
               Finish
             </Button>
           </div>
@@ -1215,32 +1214,53 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     }
   };
 
+  // Función para manejar el intento de cierre con confirmación si hay progreso
+  const handleCloseAttempt = () => {
+    // Si estamos en la etapa de preguntas y hay respuestas, pedimos confirmación
+    if (stage === "questions") {
+      const answeredQuestions = questions.filter(q => q.response !== null).length;
+      if (answeredQuestions > 0) {
+        if (!window.confirm(`You have answered ${answeredQuestions} out of ${questions.length} questions. If you close now, your progress will be saved, but you'll have to start over next time. Are you sure you want to close?`)) {
+          return; // Usuario canceló, no cerramos
+        }
+      }
+    }
+    
+    // Si llegamos aquí, es porque el usuario confirmó o no hay progreso que perder
+    onClose();
+  };
+
   // Si no está abierto, no renderizamos nada
   if (!isOpen) return null;
   
-  // Modal personalizado que no se puede cerrar bajo ninguna circunstancia
+  // Modal personalizado
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white rounded-lg shadow-lg max-w-4xl max-h-[95vh] h-[95vh] overflow-y-auto w-full">
         <div className="p-6">
-          {/* Header personalizado */}
-          <div className="flex flex-col space-y-1.5 mb-6">
-            <h2 className="font-semibold leading-none tracking-tight text-lg">
-              {stage === "intro" && "Interpretive Structural Modeling (ISM)"}
-              {stage === "questions" && "Relationship Identification"}
-              {stage === "ssim" && "SSIM Matrix"}
-              {stage === "reachability" && "Reachability Matrix"}
-              {stage === "levels" && "Level Partitioning"}
-              {stage === "diagram" && "Final ISM Diagram Model"}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {stage === "intro" && "Build a structural model of relationships between selected ideas."}
-              {stage === "questions" && "Determine the type of relationship between each pair of ideas."}
-              {stage === "ssim" && "View the structural self-interaction matrix."}
-              {stage === "reachability" && "Analyze the initial reachability matrix."}
-              {stage === "levels" && "Explore the identified level hierarchy."}
-              {stage === "diagram" && ""}
-            </p>
+          {/* Header personalizado con botón de cerrar */}
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex flex-col space-y-1.5">
+              <h2 className="font-semibold leading-none tracking-tight text-lg">
+                {stage === "intro" && "Interpretive Structural Modeling (ISM)"}
+                {stage === "questions" && "Relationship Identification"}
+                {stage === "ssim" && "SSIM Matrix"}
+                {stage === "reachability" && "Reachability Matrix"}
+                {stage === "levels" && "Level Partitioning"}
+                {stage === "diagram" && "Final ISM Diagram Model"}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {stage === "intro" && "Build a structural model of relationships between selected ideas."}
+                {stage === "questions" && "Determine the type of relationship between each pair of ideas."}
+                {stage === "ssim" && "View the structural self-interaction matrix."}
+                {stage === "reachability" && "Analyze the initial reachability matrix."}
+                {stage === "levels" && "Explore the identified level hierarchy."}
+                {stage === "diagram" && ""}
+              </p>
+            </div>
+            <Button variant="ghost" size="icon" onClick={handleCloseAttempt} className="h-8 w-8 rounded-full" title="Close">
+              <X className="h-4 w-4" />
+            </Button>
           </div>
           
           <div className="my-4">
