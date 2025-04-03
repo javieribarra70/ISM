@@ -179,6 +179,16 @@ export default function Workspace({
             </Button>
           </div>
           
+          {/* Triggering Question */}
+          {project.triggeringQuestion && (
+            <div className="flex-1 mx-4">
+              <div className="bg-white/90 rounded-md px-4 py-2 border">
+                <div className="text-xs font-medium text-muted-foreground mb-1">Triggering question:</div>
+                <div className="text-sm font-medium text-primary">{project.triggeringQuestion}</div>
+              </div>
+            </div>
+          )}
+          
           <div className="flex items-center space-x-3">
             {isDrawingLine && (
               <div className="inline-flex items-center bg-primary/10 rounded-md px-2 py-1 text-xs text-primary animate-pulse">
