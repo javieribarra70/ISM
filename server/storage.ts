@@ -1361,7 +1361,8 @@ export class DatabaseStorage implements IStorage {
         projectId: row.project_id,
         fromIdeaId: row.from_idea_id,
         toIdeaId: row.to_idea_id,
-        createdBy: row.created_by
+        createdBy: row.created_by,
+        relationType: row.relation_type
       }));
     } catch (error) {
       console.error('Error getting project relationships:', error);
