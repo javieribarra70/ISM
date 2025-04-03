@@ -442,8 +442,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       // Create the new VAXO relationships one by one to better track errors
       const filteredRelationships = relationships.filter(rel => rel.relation !== RelationType.O);
       
-      for (const rel of filteredRelationships) {
-        try {
+      try {
+        // Realizar solicitudes de a 1 para evitar problemas
+        for (const rel of filteredRelationships) {
           console.log(`Creando relación: ${rel.ideaI} -> ${rel.ideaJ} (${rel.relation})`);
           
           await apiRequest('POST', `/api/projects/${selectedIdeas[0].projectId}/relationships`, {
@@ -455,33 +456,33 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           });
           
           console.log(`Relación creada correctamente`);
-        } catch (error) {
-          console.error(`Error al crear relación:`, error);
-          console.error(`Datos enviados:`, {
-            fromIdeaId: rel.ideaI,
-            toIdeaId: rel.ideaJ, 
-            projectId: selectedIdeas[0].projectId,
-            createdBy: user.id,
-            relationType: rel.relation
-          });
+          
+          // Pequeña pausa para asegurar que las solicitudes no se sobrecarguen
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
+      
+        // Invalidate the relationships query to refresh the data
+        queryClient.invalidateQueries({
+          queryKey: ['/api/projects', selectedIdeas[0].projectId, 'relationships']
+        });
+        
+        toast({
+          title: "Relationships saved",
+          description: "The VAXO relationships have been saved to the database.",
+          variant: "default"
+        });
+        
+        // Importante: No cerrar el modal después de guardar
+        // Avanzar al siguiente paso automáticamente
+        setStage("ssim");
+      } catch (error) {
+        console.error(`Error al crear relaciones:`, error);
+        toast({
+          title: "Error saving relationships",
+          description: "There was a problem saving some VAXO relationships. Please try again.",
+          variant: "destructive"
+        });
       }
-      
-      // Ya no usamos Promise.all porque ahora procesamos las relaciones una por una
-      
-      // Invalidate the relationships query to refresh the data
-      queryClient.invalidateQueries({
-        queryKey: ['/api/projects', selectedIdeas[0].projectId, 'relationships']
-      });
-      
-      toast({
-        title: "Relationships saved",
-        description: "The VAXO relationships have been saved to the database.",
-        variant: "default"
-      });
-      
-      // Importante: No cerrar el modal después de guardar
-      // Solo cambiar el estado a "ssim" para continuar el proceso
     } catch (error) {
       console.error("Error saving VAXO relationships:", error);
       toast({
@@ -539,9 +540,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     setSSIMMatrix(matrix);
     
     // Save the relationships to the database
+    // Ya no pasamos al siguiente paso aquí, lo hacemos en saveVAXORelationshipsToDatabase
     saveVAXORelationshipsToDatabase(matrix);
-    
-    setStage("ssim");
   };
 
   // Proceed to the reachability matrix stage
