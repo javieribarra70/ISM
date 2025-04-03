@@ -479,6 +479,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         description: "The VAXO relationships have been saved to the database.",
         variant: "default"
       });
+      
+      // Importante: No cerrar el modal después de guardar
+      // Solo cambiar el estado a "ssim" para continuar el proceso
     } catch (error) {
       console.error("Error saving VAXO relationships:", error);
       toast({
