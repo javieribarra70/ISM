@@ -225,42 +225,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     // Marcamos como inicializado para evitar reiniciar el proceso
     setIsInitialized(true);
     
-    if (selectedIdeas.length > 0 && existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
-      // Convert existing relationships to SSIM cells
-      const existingSSIM: SSIMCell[] = [];
-      
-      (existingRelationships as Relationship[]).forEach(rel => {
-        // Find the ideas in the selectedIdeas array
-        const fromIdea = selectedIdeas.find(idea => idea.id === rel.fromIdeaId);
-        const toIdea = selectedIdeas.find(idea => idea.id === rel.toIdeaId);
-        
-        if (fromIdea && toIdea) {
-          // Add the relationship to the SSIM matrix
-          existingSSIM.push({
-            ideaI: fromIdea.id,
-            ideaJ: toIdea.id,
-            relation: rel.relationType as RelationType
-          });
-        }
-      });
-      
-      // If we have enough relationships to populate the SSIM matrix, 
-      // jump directly to the SSIM stage
-      if (existingSSIM.length > 0) {
-        setSSIMMatrix(existingSSIM);
-        setStage("ssim");
-        toast({
-          title: "Existing relationships loaded",
-          description: "Previous VAXO relationships were found and loaded.",
-          variant: "default"
-        });
-        return;
-      }
-    }
-    
-    // Si no hay relaciones existentes o no se pudieron cargar,
-    // procedemos a generar nuevas preguntas
     if (selectedIdeas.length > 0) {
+      // Generamos todas las preguntas posibles
       const newQuestions: ISMQuestion[] = [];
       
       // Generate questions for each pair (i,j) where i < j
@@ -274,10 +240,94 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         }
       }
       
+      let processStarted = false;
+      
+      // Si hay relaciones existentes, marcar las preguntas como ya respondidas
+      if (existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
+        const existingSSIM: SSIMCell[] = [];
+        let answeredCount = 0;
+        
+        // Por cada relación existente, actualizamos la respuesta en las preguntas correspondientes
+        (existingRelationships as Relationship[]).forEach(rel => {
+          const fromIdea = selectedIdeas.find(idea => idea.id === rel.fromIdeaId);
+          const toIdea = selectedIdeas.find(idea => idea.id === rel.toIdeaId);
+          
+          if (fromIdea && toIdea) {
+            // Añadir a la matriz SSIM para visualización
+            existingSSIM.push({
+              ideaI: fromIdea.id,
+              ideaJ: toIdea.id,
+              relation: rel.relationType as RelationType
+            });
+            
+            // Buscar preguntas correspondientes a esta relación y marcarlas como respondidas
+            const questionIndex = newQuestions.findIndex(
+              q => (q.ideaI.id === fromIdea.id && q.ideaJ.id === toIdea.id) || 
+                  (q.ideaI.id === toIdea.id && q.ideaJ.id === fromIdea.id)
+            );
+            
+            if (questionIndex !== -1) {
+              // Establecer la respuesta
+              let response = rel.relationType as RelationType;
+              
+              // Si la dirección está invertida, también hay que invertir el tipo de relación
+              if (newQuestions[questionIndex].ideaI.id === toIdea.id && newQuestions[questionIndex].ideaJ.id === fromIdea.id) {
+                if (response === RelationType.V) response = RelationType.A;
+                else if (response === RelationType.A) response = RelationType.V;
+                // X y O se quedan igual en ambas direcciones
+              }
+              
+              newQuestions[questionIndex].response = response;
+              answeredCount++;
+              processStarted = true;
+            }
+          }
+        });
+        
+        setSSIMMatrix(existingSSIM);
+        
+        // Si todas las preguntas han sido respondidas, ir a la matriz SSIM
+        if (answeredCount === newQuestions.length) {
+          setQuestions(newQuestions);
+          setStage("ssim");
+          toast({
+            title: "Proceso completado",
+            description: "Todas las relaciones VAXO ya están definidas. Mostrando la matriz SSIM.",
+            variant: "default"
+          });
+          return;
+        }
+        
+        // Si hay algunas preguntas respondidas pero no todas, encontrar la primera sin responder
+        if (answeredCount > 0) {
+          const nextUnansweredIndex = newQuestions.findIndex(q => q.response === null);
+          
+          if (nextUnansweredIndex !== -1) {
+            setQuestions(newQuestions);
+            setCurrentQuestionIndex(nextUnansweredIndex);
+            setStage("questions");
+            toast({
+              title: "Continuando proceso",
+              description: `Se encontraron ${answeredCount} relaciones existentes. Continuando desde donde se quedó.`,
+              variant: "default"
+            });
+            return;
+          }
+        }
+      }
+      
+      // Si no hay relaciones o no se pudo continuar desde un punto específico, iniciar desde cero
       setQuestions(newQuestions);
       setCurrentQuestionIndex(0);
-      setStage("intro");
-      setSSIMMatrix([]);
+      
+      // Si no se había iniciado el proceso, mostrar la introducción
+      if (!processStarted) {
+        setStage("intro");
+      } else {
+        // Si ya se había iniciado, ir directo a las preguntas
+        setStage("questions");
+      }
+      
       setReachabilityMatrix([]);
       setFinalReachabilityMatrix([]);
       setLevels([]);
