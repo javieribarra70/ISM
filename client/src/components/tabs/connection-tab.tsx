@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { Idea, SelectedIdea, Project } from "@shared/schema";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,15 +11,49 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import ISMProcess from "@/components/ism/ism-process";
 
+// Interface for ProjectUser
+interface ProjectUser {
+  id: number;
+  projectId: number;
+  userId: number;
+  role: string;
+}
+
 interface ConnectionTabProps {
   projectId: number;
 }
 
 export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isStarting, setIsStarting] = useState(false);
   const [isISMDialogOpen, setIsISMDialogOpen] = useState(false);
   const [isStartingAlternative, setIsStartingAlternative] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Fetch project users to determine user role
+  const {
+    data: projectUsers = [],
+    isLoading: isProjectUsersLoading
+  } = useQuery<ProjectUser[]>({
+    queryKey: [`/api/projects/${projectId}/users`],
+    enabled: !!projectId && !!user,
+  });
+
+  // Determine if the current user is an admin (global or project)
+  useEffect(() => {
+    if (user && projectUsers) {
+      // Global admin check
+      if (user.role === "admin") {
+        setIsAdmin(true);
+        return;
+      }
+      
+      // Project admin check
+      const userProjectRole = projectUsers.find(pu => pu.userId === user.id)?.role;
+      setIsAdmin(userProjectRole === "admin");
+    }
+  }, [user, projectUsers]);
 
   // Fetch project details to get context information
   const {
@@ -149,14 +184,18 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
             </p>
           </div>
           <div className="flex space-x-3">
-            <Button 
-              onClick={handleStartProcess}
-              className="gap-2"
-              disabled={isStarting || isStartingAlternative || selectedIdeas.length < 2}
-            >
-              <PlayCircle className="h-5 w-5" />
-              {isStarting ? "Starting..." : "Start VAXO Process"}
-            </Button>
+            {/* Solo mostrar el botón VAXO para administradores */}
+            {isAdmin && (
+              <Button 
+                onClick={handleStartProcess}
+                className="gap-2"
+                disabled={isStarting || isStartingAlternative || selectedIdeas.length < 2}
+              >
+                <PlayCircle className="h-5 w-5" />
+                {isStarting ? "Starting..." : "Start VAXO Process"}
+              </Button>
+            )}
+            {/* Mostrar el botón de votación para todos */}
             <Button 
               onClick={handleStartAlternativeProcess}
               className="gap-2"
