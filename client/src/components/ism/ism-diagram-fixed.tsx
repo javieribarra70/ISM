@@ -38,7 +38,8 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
   
   // States for legend positions (make them draggable)
   const [projectInfoPosition, setProjectInfoPosition] = useState({ x: 4, y: 4 });
-  const [categoriesPosition, setCategoriesPosition] = useState({ x: 'right', y: 4 });
+  // We use a union type for x, it can be 'right' (anchored to right) or a number (absolute position)
+  const [categoriesPosition, setCategoriesPosition] = useState<{ x: 'right' | number, y: number }>({ x: 'right', y: 4 });
   
   // Get the project categories
   const { data: categories = [] } = useQuery<Category[]>({
@@ -137,10 +138,17 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
           const titleHeight = 5;
           const itemHeight = 5;
           
-          // 1. Project Info Legend (Left Side)
+          // 1. Project Info Legend - Use the current position from UI
           if (projectInfo) {
-            const projectLegendX = margin;
-            const projectLegendY = margin;
+            // Calculate relative position for PDF based on current UI position
+            // First convert from pixels to PDF units (mm)
+            // Assuming 72 DPI conversion (approximate)
+            const pxToMm = 0.352778; // Conversion factor from pixels to mm
+            
+            // Calculate the relative position in PDF coordinates
+            // projectInfoPosition is in screen pixels
+            const projectLegendX = Math.max(margin, projectInfoPosition.x * pxToMm);
+            const projectLegendY = Math.max(margin, projectInfoPosition.y * pxToMm);
             const projectLegendWidth = 100; // Adjusted width to fit text without excesive space
             
             // Calculate project legend height
@@ -199,10 +207,24 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
             pdf.text(date, projectLegendX + 8, currentY);
           }
           
-          // 2. Categories Legend (Right Side)
+          // 2. Categories Legend - Use position from UI
           const categoriesLegendWidth = 60; // Optimal width for category names
-          const categoriesLegendX = pdfWidth - categoriesLegendWidth - margin;
-          const categoriesLegendY = margin;
+          
+          // Calculate position based on UI position (convert from pixels to PDF units)
+          const pxToMm = 0.352778; // Conversion factor from pixels to mm
+          
+          // Determine X position based on categoriesPosition
+          let categoriesLegendX: number;
+          if (categoriesPosition.x === 'right') {
+            // If anchored to right side
+            categoriesLegendX = pdfWidth - categoriesLegendWidth - margin;
+          } else {
+            // If absolute position
+            categoriesLegendX = Math.max(margin, categoriesPosition.x * pxToMm);
+          }
+          
+          // Y position is always a number
+          const categoriesLegendY = Math.max(margin, categoriesPosition.y * pxToMm);
           
           // Filter the categories that are used
           const usedCategoryNames = new Set<string>();
@@ -755,11 +777,13 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
                 
                 // Initial movement - switch from right edge to absolute positioning
                 if (wasOnRight && deltaX !== 0) {
+                  // Convert from right-anchored to absolute position
                   setCategoriesPosition({
                     x: window.innerWidth - initialRight - rect.width - deltaX,
                     y: initialPosY + deltaY
                   });
                 } else if (typeof categoriesPosition.x === 'number') {
+                  // Already using absolute position, just update it
                   setCategoriesPosition({
                     x: categoriesPosition.x + deltaX,
                     y: initialPosY + deltaY
