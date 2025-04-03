@@ -76,7 +76,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     
     // Por ahora simplemente muestra un mensaje toast, pero se puede extender
     toast({
-      title: "Start Vote Process",
+      title: "Start Voting Process",
       description: "Iniciando el proceso de votación...",
     });
     
@@ -164,7 +164,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
               disabled={isStarting || isStartingAlternative || selectedIdeas.length < 2}
             >
               <PlayCircle className="h-5 w-5" />
-              {isStartingAlternative ? "Starting..." : "Start Vote Process"}
+              {isStartingAlternative ? "Starting..." : "Start Voting Process"}
             </Button>
           </div>
         </div>
