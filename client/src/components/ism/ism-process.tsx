@@ -1069,7 +1069,16 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      // Prevent automatic closing of the dialog when data is being saved
+      if (!open && isSaving) {
+        return;
+      }
+      // Only call onClose when the dialog is explicitly closed by the user
+      if (!open) {
+        onClose();
+      }
+    }}>
       <DialogContent className="max-w-4xl max-h-[95vh] h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
