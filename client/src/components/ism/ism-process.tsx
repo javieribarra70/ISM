@@ -207,9 +207,25 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     }
   }, [relationshipsError, toast]);
 
-  // Load existing relationships from the database if available
+  // Estado para controlar la inicialización del proceso
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Manejador para reiniciar el estado al cerrar el modal
   useEffect(() => {
-    if (isOpen && selectedIdeas.length > 0 && existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
+    if (!isOpen) {
+      setIsInitialized(false);
+    }
+  }, [isOpen]);
+  
+  // Load existing relationships from the database if available - solo en la inicialización
+  useEffect(() => {
+    // Si ya está inicializado o no está abierto, no hacer nada
+    if (!isOpen || isInitialized) return;
+    
+    // Marcamos como inicializado para evitar reiniciar el proceso
+    setIsInitialized(true);
+    
+    if (selectedIdeas.length > 0 && existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
       // Convert existing relationships to SSIM cells
       const existingSSIM: SSIMCell[] = [];
       
@@ -242,9 +258,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       }
     }
     
-    // If there are no existing relationships or we couldn't load them,
-    // proceed with generating new questions
-    if (isOpen && selectedIdeas.length > 0) {
+    // Si no hay relaciones existentes o no se pudieron cargar,
+    // procedemos a generar nuevas preguntas
+    if (selectedIdeas.length > 0) {
       const newQuestions: ISMQuestion[] = [];
       
       // Generate questions for each pair (i,j) where i < j
@@ -266,7 +282,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       setFinalReachabilityMatrix([]);
       setLevels([]);
     }
-  }, [isOpen, selectedIdeas, existingRelationships, toast]);
+  }, [isOpen, selectedIdeas, existingRelationships, toast, isInitialized]);
 
   // Function to save individual VAXO relationship to the database
   const saveIndividualRelationship = async (ideaI: number, ideaJ: number, relation: RelationType) => {
