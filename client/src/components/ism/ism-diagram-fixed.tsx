@@ -688,7 +688,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
       {/* Diagram container */}
       <div className="relative">
         {/* Cytoscape container */}
-        <div ref={containerRef} className="w-full h-[570px]" />
+        <div ref={containerRef} className="w-full h-[680px]" />
         
         {/* Project Info Legend - Draggable */}
         {projectInfo && (

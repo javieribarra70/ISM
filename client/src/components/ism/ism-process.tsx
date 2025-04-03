@@ -903,7 +903,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[95vh] h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {stage === "intro" && "Interpretive Structural Modeling (ISM)"}
