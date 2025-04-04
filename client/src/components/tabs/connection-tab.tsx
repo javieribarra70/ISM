@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { PlayCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import ISMProcess from "@/components/ism/ism-process-fixed";
+import ISMProcess from "@/components/ism/ism-process";
 
 // Interface for ProjectUser
 interface ProjectUser {
@@ -124,13 +124,13 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   // Handle ISM dialog close
   const handleISMDialogClose = () => {
     console.log("ISM Dialog close requested - closing the dialog");
-    // SOLUCIÓN DEFINITIVA: Aumentamos el retraso considerablemente para asegurar
-    // que toda la lógica interna del componente ISM tenga tiempo de ejecutarse 
-    // antes de que el padre lo desmonte. Este cambio es crucial.
+    // CORRECCIÓN DE BUG: Añadimos un retraso deliberado para asegurar que el componente
+    // interno pueda hacer su limpieza antes de que el padre lo desmonte.
+    // Este cambio es crucial para resolver el problema de cierre prematuro.
     setTimeout(() => {
       setIsISMDialogOpen(false);
-      console.log("Dialog closed after substantial delay to prevent premature unmounting");
-    }, 1000); // Aumentado a 1 segundo
+      console.log("Dialog closed after deliberate delay to prevent premature unmounting");
+    }, 100);
   };
 
   // Prepare project context information for ISM process
