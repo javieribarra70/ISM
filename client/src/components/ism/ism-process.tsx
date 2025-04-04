@@ -478,15 +478,29 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         
         // Si todas las preguntas han sido respondidas, ir a la matriz SSIM
         if (answeredCount === newQuestions.length) {
+          // Update questions state
           setQuestions(newQuestions);
+          
+          // Important: Calculate the initial reachability matrix before advancing
+          const initialMatrix = buildInitialReachabilityMatrix(selectedIdeas, existingSSIM);
+          setReachabilityMatrix(initialMatrix);
+          
+          // Calculate the final reachability matrix (with transitivity)
+          const transitiveMatrix = applyTransitiveClosure(initialMatrix);
+          setFinalReachabilityMatrix(transitiveMatrix);
+          
+          // Identify element levels
+          identifyLevels(transitiveMatrix);
+          
+          // Set stage to SSIM - this will show the complete matrix
           setStage("ssim");
+          
           toast({
             title: "Proceso completado",
             description: "Todas las relaciones VAXO ya están definidas. Mostrando la matriz SSIM.",
             variant: "default",
             duration: 5000 // Duración de 5 segundos para que el usuario pueda leer la notificación
           });
-          // No devolvemos inmediatamente para evitar el cierre del modal
         }
         
         // Si hay algunas preguntas respondidas pero no todas, encontrar la primera sin responder
@@ -502,7 +516,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             // Establecer un retraso breve antes de continuar para permitir que el usuario vea la notificación
             toast({
               title: "Continuando proceso",
-              description: `Se encontraron ${answeredCount} relaciones (${answeredCount - inferredCount} directas, ${inferredCount} inferidas). Continuando desde donde se quedó.`,
+              description: `Se encontraron ${answeredCount} relaciones. Continuando desde donde se quedó.`,
               variant: "default",
               duration: 5000 // Duración de 5 segundos para que el usuario pueda leer la notificación
             });
@@ -515,20 +529,18 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       }
       
       // Si no hay relaciones o no se pudo continuar desde un punto específico, iniciar desde cero
-      setQuestions(newQuestions);
-      setCurrentQuestionIndex(0);
-      
-      // Si no se había iniciado el proceso, mostrar la introducción
       if (!processStarted) {
+        setQuestions(newQuestions);
+        setCurrentQuestionIndex(0);
+        
+        // Inicializar matrices vacías
+        setReachabilityMatrix([]);
+        setFinalReachabilityMatrix([]);
+        setLevels([]);
+        
+        // Mostrar la introducción
         setStage("intro");
-      } else {
-        // Si ya se había iniciado, ir directo a las preguntas
-        setStage("questions");
       }
-      
-      setReachabilityMatrix([]);
-      setFinalReachabilityMatrix([]);
-      setLevels([]);
     }
   }, [isOpen, selectedIdeas, existingRelationships, toast, isInitialized]);
 
