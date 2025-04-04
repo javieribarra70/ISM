@@ -245,8 +245,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const [finalReachabilityMatrix, setFinalReachabilityMatrix] = useState<boolean[][]>([]);
   // Element levels
   const [levels, setLevels] = useState<number[][]>([]);
-  // State to track saving progress
-  const [isSaving, setIsSaving] = useState(false);
+  // State to track saving progress - iniciamos con true para evitar cierres prematuros
+  const [isSaving, setIsSaving] = useState(true);
   
   // Get existing relationships to check if we need to load previous VAXO responses
   const { data: existingRelationships, isLoading: isLoadingRelationships, error: relationshipsError } = useQuery({
@@ -290,8 +290,19 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   // Manejador para reiniciar el estado al cerrar el modal
   useEffect(() => {
     if (!isOpen) {
+      // El modal se ha cerrado desde fuera, reiniciamos el estado
       console.log("Modal cerrado, reseteando estado de inicialización");
-      setIsInitialized(false);
+      // Usamos un timeout para asegurarnos de que este cambio no interfiera con otras operaciones en curso
+      setTimeout(() => {
+        setIsInitialized(false);
+        // Importante: también reseteamos isSaving para evitar un estado inconsistente en la próxima apertura
+        setIsSaving(false);
+      }, 100);
+    } else if (isOpen && !isInitialized) {
+      // El modal se acaba de abrir y no está inicializado, activamos isSaving 
+      // para bloquear posibles cierres automáticos durante la inicialización
+      console.log("Modal abierto, activando prevención de cierre durante inicialización");
+      setIsSaving(true);
     }
   }, [isOpen]);
   
@@ -637,20 +648,25 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       // Actualizar la matriz SSIM
       setSSIMMatrix(ssimMatrixFromQuestions);
       
-      // Definimos una función para desactivar la carga y cambiar la etapa
+      // Definimos una función para cambiar la etapa sin desactivar el indicador de carga
+      // IMPORTANTE: Este cambio es clave para evitar el cierre automático por usar setIsSaving(false) prematuramente
       const finishLoading = (targetStage: "intro" | "questions" | "ssim" | "reachability" | "levels" | "diagram") => {
         console.log(`Cambiando a etapa: ${targetStage}`);
         
-        // Usar un timeout para asegurar que todo se actualiza correctamente
+        // Usar un timeout más largo para asegurar que todo se actualiza correctamente
+        // y el usuario tiene tiempo de ver el modal antes de que se desactive el indicador de carga
         setTimeout(() => {
           setStage(targetStage);
           
-          // Desactivar indicador de carga después de un breve retraso
+          // IMPORTANTE: Mantenemos isSaving en true para evitar cierres automáticos
+          // Esto se desactivará manualmente después de 3 segundos para dar tiempo a la UI de estabilizarse
           setTimeout(() => {
+            // Desactivar el indicador de carga solo después de un retraso mucho más largo
+            // para asegurar que la UI se ha estabilizado completamente
             setIsSaving(false);
-            console.log("Indicador de carga desactivado");
-          }, 500);
-        }, 300);
+            console.log("Indicador de carga desactivado después de 3 segundos de estabilización");
+          }, 3000); // Aumentamos significativamente el tiempo para evitar cierres prematuros
+        }, 500); // Más tiempo para el primer cambio también
       };
       
       // Determinar la etapa a mostrar basada en el estado de las preguntas
@@ -1631,8 +1647,12 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
 
   // Función para manejar el intento de cierre con confirmación si hay progreso
   const handleCloseAttempt = () => {
+    // MEJORA: Agregamos logging para debug
+    console.log(`Intento de cierre. Estado actual: isSaving=${isSaving}, stage=${stage}`);
+    
     // Verificar si estamos en medio de una operación de guardado o inicialización
     if (isSaving) {
+      console.log("Bloqueando cierre por isSaving=true");
       toast({
         title: "Proceso en progreso",
         description: "Por favor espera a que termine el proceso actual antes de cerrar.",
@@ -1646,18 +1666,30 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     if (stage === "questions") {
       const answeredQuestions = questions.filter(q => q.response !== null).length;
       if (answeredQuestions > 0) {
-        if (!window.confirm(`Has respondido ${answeredQuestions} de ${questions.length} preguntas. Si cierras ahora, tu progreso se guardará, pero tendrás que comenzar de nuevo la próxima vez. ¿Estás seguro de que quieres cerrar?`)) {
+        const confirmMessage = `Has respondido ${answeredQuestions} de ${questions.length} preguntas. Si cierras ahora, tu progreso se guardará, pero tendrás que comenzar de nuevo la próxima vez. ¿Estás seguro de que quieres cerrar?`;
+        console.log(`Pidiendo confirmación: ${confirmMessage}`);
+        
+        if (!window.confirm(confirmMessage)) {
+          console.log("Usuario canceló el cierre en la confirmación");
           return; // Usuario canceló, no cerramos
         }
       }
     }
     
-    // Limpiar el estado antes de cerrar para evitar problemas en la próxima apertura
-    setIsInitialized(false);
-    console.log("Cerrando modal VAXO manualmente");
+    // IMPORTANTE: Antes de cerrar, asegurarnos de que no estamos en un estado inestable
+    // Al setear isSaving a true brevemente, nos protegemos contra cierres automáticos
+    setIsSaving(true);
     
-    // Si llegamos aquí, es porque el usuario confirmó o no hay progreso que perder
-    onClose();
+    // Limpiar el estado para evitar problemas en la próxima apertura
+    setIsInitialized(false);
+    console.log("Cerrando modal VAXO manualmente a petición del usuario");
+    
+    // Usar un pequeño retraso para asegurar que el estado se actualice correctamente
+    setTimeout(() => {
+      setIsSaving(false); // Desactivar solo justo antes de cerrar
+      onClose(); // Llamar a onClose después de que todo está listo
+      console.log("Modal VAXO cerrado correctamente");
+    }, 100);
   };
 
   // Si no está abierto, no renderizamos nada
