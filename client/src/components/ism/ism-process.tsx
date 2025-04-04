@@ -294,14 +294,14 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       // El modal se ha cerrado desde fuera, pero NO reiniciamos el estado inmediatamente
       console.log("Modal cerrado, pero manteniendo estado para evitar cierre prematuro");
       
-      // IMPORTANTE: Aumentamos el tiempo de espera a 1 segundo para dar más margen
+      // IMPORTANTE: Aumentamos el tiempo de espera considerablemente para dar más margen
       // Este cambio es crucial para resolver el problema de cierre prematuro
       setTimeout(() => {
-        console.log("Ahora sí, reiniciando estado con retraso de 1 segundo");
+        console.log("Ahora sí, reiniciando estado con retraso de 3 segundos");
         // Se hace la limpieza SOLO después de un retraso significativo
         setIsInitialized(false); 
         setIsSaving(false);
-      }, 1000); // Aumento significativo del tiempo de espera
+      }, 3000); // Aumento significativo del tiempo de espera a 3 segundos
     } 
     else if (isOpen) {
       // El modal está abierto - SIEMPRE activamos isSaving sin condición
@@ -1146,14 +1146,28 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
 
   // Proceed to the reachability matrix stage
   const proceedToReachabilityMatrix = () => {
-    // Activamos isSaving para evitar cierre automático del modal
+    // Activamos isSaving inmediatamente para asegurar que el modal no se cierre
     setIsSaving(true);
     
-    const initialMatrix = buildInitialReachabilityMatrix(selectedIdeas, ssimMatrix);
-    setReachabilityMatrix(initialMatrix);
+    console.log("Creando matriz de alcance inicial...");
     
-    // Usamos el método seguro para cambios de etapa
-    safeStageChange("reachability");
+    // Mostrar feedback al usuario
+    toast({
+      title: "Procesando matriz",
+      description: "Generando matriz de alcance inicial...",
+      duration: 3000,
+    });
+    
+    // Crear la matriz con un pequeño retraso para permitir que la UI se actualice
+    setTimeout(() => {
+      const initialMatrix = buildInitialReachabilityMatrix(selectedIdeas, ssimMatrix);
+      setReachabilityMatrix(initialMatrix);
+      
+      console.log("Matriz de alcance inicial creada, avanzando a vista de matriz...");
+      
+      // Usamos el método seguro para cambios de etapa - tiene sus propios mecanismos de seguridad
+      safeStageChange("reachability");
+    }, 500);
   };
 
   // Apply transitive closure and proceed to level determination
@@ -1161,14 +1175,26 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     // Activamos isSaving para evitar cierre automático del modal
     setIsSaving(true);
     
-    const transitiveMatrix = applyTransitiveClosure(reachabilityMatrix);
-    setFinalReachabilityMatrix(transitiveMatrix);
+    // Mostrar feedback al usuario
+    toast({
+      title: "Aplicando clausura transitiva",
+      description: "Procesando relaciones indirectas entre ideas...",
+      duration: 3000,
+    });
     
-    // La identificación de niveles se realizará cuando se muestre el diagrama 
-    // (No llamamos a identifyLevels aquí para evitar problemas)
-    
-    // Usamos el método seguro para cambios de etapa
-    safeStageChange("levels");
+    // Aplicar clausura transitiva después de un retraso para que la UI se actualice
+    setTimeout(() => {
+      const transitiveMatrix = applyTransitiveClosure(reachabilityMatrix);
+      setFinalReachabilityMatrix(transitiveMatrix);
+      
+      console.log("Matriz transitiva creada, avanzando a identificación de niveles...");
+      
+      // La identificación de niveles se realizará cuando se muestre el diagrama 
+      // (No llamamos a identifyLevels aquí para evitar problemas)
+      
+      // Usamos el método seguro para cambios de etapa
+      safeStageChange("levels");
+    }, 500);
   };
 
   // Identify levels in the hierarchy
@@ -1201,10 +1227,30 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     // Activamos isSaving para evitar cierre automático del modal
     setIsSaving(true);
     
-    // Preparamos datos necesarios para el diagrama si es necesario
+    // Mostrar feedback al usuario
+    toast({
+      title: "Generando diagrama ISM",
+      description: "Preparando visualización del modelo estructural...",
+      duration: 3000,
+    });
     
-    // Usamos el método seguro para cambios de etapa
-    safeStageChange("diagram");
+    // Retrasamos el cambio para que la UI tenga tiempo de actualizarse
+    setTimeout(() => {
+      console.log("Generando diagrama final ISM...");
+      
+      // Preparamos datos necesarios para el diagrama
+      if (finalReachabilityMatrix.length > 0 && levels.length === 0) {
+        // Si no se han calculado aún los niveles, calculamos
+        identifyLevels(finalReachabilityMatrix);
+        console.log("Niveles identificados para diagrama");
+      }
+      
+      // Usamos el método seguro para cambios de etapa con un retraso adicional
+      // para permitir que la identificación de niveles termine
+      setTimeout(() => {
+        safeStageChange("diagram");
+      }, 500);
+    }, 500);
   };
 
   // Render the current stage
@@ -1624,20 +1670,49 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   // Función para cambiar la etapa de forma segura
   const safeStageChange = (targetStage: "intro" | "questions" | "ssim" | "reachability" | "levels" | "diagram") => {
     console.log(`Solicitando cambio seguro a etapa: ${targetStage}`);
-    // Activamos isSaving para evitar cierres automáticos
+    
+    // Forzar isSaving a true - prioridad máxima
     setIsSaving(true);
+    
+    // Si estamos cargando preguntas, mostrar notificación para mejor feedback
+    if (targetStage === "questions" && questions.length > 0) {
+      toast({
+        title: "Cargando relaciones VAXO",
+        description: "Preparando preguntas existentes...",
+        duration: 5000,
+      });
+    }
+    
     // Cambiamos la etapa con un delay para estabilidad
     setTimeout(() => {
       console.log(`Cambiando a etapa ${targetStage}`);
+      
+      // Asegurarse de que isSaving sigue activo antes de cambiar etapa
+      setIsSaving(true);
+      
+      // Ahora cambiamos la etapa
       setStage(targetStage);
-      // Desactivamos el indicador después de un tiempo
+      
+      // Desactivamos el indicador después de un tiempo extenso
+      // Este tiempo debe ser suficiente para que el componente se estabilice
       setTimeout(() => {
-        if (isOpen) {
-          setIsSaving(false);
-          console.log(`Cambio a ${targetStage} completado y estabilizado`);
+        // Solo desactivamos si el modal sigue abierto
+        if (isOpen && isInitialized) {
+          console.log(`Cambio a ${targetStage} completado y estabilizado - Modal aún abierto`);
+          // Aún no desactivamos isSaving, verificamos una vez más después de un breve periodo
+          setTimeout(() => {
+            if (isOpen) {
+              console.log(`Verificación final para etapa ${targetStage} - Modal aún abierto`);
+              setIsSaving(false);
+            } else {
+              console.log(`Cancelada desactivación de isSaving - Modal ya no está abierto`);
+            }
+          }, 1000);
+        } else {
+          console.log(`Cancelada desactivación de isSaving - Modal ya no está abierto o no inicializado`);
         }
-      }, 3000);
-    }, 500);
+      }, 5000); // Tiempo aumentado considerablemente
+    }, 1000); // Retraso inicial aumentado
   };
 
   // Navigation buttons according to the stage
