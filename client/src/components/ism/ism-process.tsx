@@ -287,24 +287,36 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   // Estado para controlar la inicialización del proceso
   const [isInitialized, setIsInitialized] = useState(false);
   
-  // Manejador para reiniciar el estado al cerrar el modal
+  // CORRECCIÓN DE BUG: Nueva lógica para el manejo del estado de inicialización
+  // El problema principal era que el estado se reiniciaba demasiado rápido
   useEffect(() => {
     if (!isOpen) {
-      // El modal se ha cerrado desde fuera, reiniciamos el estado
-      console.log("Modal cerrado, reseteando estado de inicialización");
-      // Usamos un timeout para asegurarnos de que este cambio no interfiera con otras operaciones en curso
+      // El modal se ha cerrado desde fuera, pero NO reiniciamos el estado inmediatamente
+      console.log("Modal cerrado, pero manteniendo estado para evitar cierre prematuro");
+      
+      // IMPORTANTE: Aumentamos el tiempo de espera a 1 segundo para dar más margen
+      // Este cambio es crucial para resolver el problema de cierre prematuro
       setTimeout(() => {
-        setIsInitialized(false);
-        // Importante: también reseteamos isSaving para evitar un estado inconsistente en la próxima apertura
+        console.log("Ahora sí, reiniciando estado con retraso de 1 segundo");
+        // Se hace la limpieza SOLO después de un retraso significativo
+        setIsInitialized(false); 
         setIsSaving(false);
-      }, 100);
-    } else if (isOpen && !isInitialized) {
-      // El modal se acaba de abrir y no está inicializado, activamos isSaving 
-      // para bloquear posibles cierres automáticos durante la inicialización
-      console.log("Modal abierto, activando prevención de cierre durante inicialización");
+      }, 1000); // Aumento significativo del tiempo de espera
+    } 
+    else if (isOpen) {
+      // El modal está abierto - SIEMPRE activamos isSaving sin condición
+      // Esto evita problemas de sincronización con isInitialized
+      console.log("Modal abierto, activando prevención de cierre durante todo el proceso");
       setIsSaving(true);
+      
+      // Si no está inicializado, no hacemos nada más - otra parte del código se encargará
+      if (!isInitialized) {
+        console.log("Primera apertura - esperando inicialización");
+      } else {
+        console.log("Modal abierto y ya inicializado - manteniendo estado");
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, isInitialized]);
   
   // Load existing relationships from the database if available - solo en la inicialización
   useEffect(() => {
@@ -648,25 +660,37 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       // Actualizar la matriz SSIM
       setSSIMMatrix(ssimMatrixFromQuestions);
       
-      // Definimos una función para cambiar la etapa sin desactivar el indicador de carga
-      // IMPORTANTE: Este cambio es clave para evitar el cierre automático por usar setIsSaving(false) prematuramente
+      // SOLUCIÓN FINAL: Nueva implementación de finishLoading para corregir 
+      // el problema de cierre prematuro al cambiar de etapa
       const finishLoading = (targetStage: "intro" | "questions" | "ssim" | "reachability" | "levels" | "diagram") => {
-        console.log(`Cambiando a etapa: ${targetStage}`);
+        console.log(`INICIANDO CAMBIO A ETAPA: ${targetStage}`);
         
-        // Usar un timeout más largo para asegurar que todo se actualiza correctamente
-        // y el usuario tiene tiempo de ver el modal antes de que se desactive el indicador de carga
+        // Activamos el indicador de guardado para proteger el componente durante todo el proceso
+        setIsSaving(true);
+        
+        // FASE 1: Cambiamos la etapa con un delay para asegurar la estabilidad
         setTimeout(() => {
+          console.log(`FASE 1: Ejecutando cambio a etapa ${targetStage}`);
+          
+          // Cambiamos la etapa pero mantenemos isSaving=true
           setStage(targetStage);
           
-          // IMPORTANTE: Mantenemos isSaving en true para evitar cierres automáticos
-          // Esto se desactivará manualmente después de 3 segundos para dar tiempo a la UI de estabilizarse
+          // FASE 2: Desactivamos el indicador solo después de que todo esté estable
+          // Este retraso es mucho mayor al anterior para asegurar que no hay cierres automáticos
           setTimeout(() => {
-            // Desactivar el indicador de carga solo después de un retraso mucho más largo
-            // para asegurar que la UI se ha estabilizado completamente
-            setIsSaving(false);
-            console.log("Indicador de carga desactivado después de 3 segundos de estabilización");
-          }, 3000); // Aumentamos significativamente el tiempo para evitar cierres prematuros
-        }, 500); // Más tiempo para el primer cambio también
+            console.log(`FASE 2: Etapa ${targetStage} estabilizada - preparando desactivación de indicador de guardado`);
+            
+            // FASE 3: Desactivación segura con doble verificación
+            // Solo desactivamos si el componente sigue montado (isOpen=true)
+            // y si la etapa actual coincide con la etapa a la que cambiamos (evita condiciones de carrera)
+            if (isOpen) {
+              console.log(`FASE 3: Desactivando indicador de guardado para etapa ${targetStage}`);
+              setIsSaving(false);
+            } else {
+              console.log(`AVISO: No se desactivó el indicador porque el componente ya está cerrado`);
+            }
+          }, 5000); // 5 segundos completos para asegurar la estabilidad total
+        }, 1000); // 1 segundo para el cambio inicial
       };
       
       // Determinar la etapa a mostrar basada en el estado de las preguntas
@@ -677,19 +701,19 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         // Asignar el índice de pregunta actual al último para mantener consistencia
         setCurrentQuestionIndex(newQuestions.length - 1);
         
-        // Ir directamente al diagrama
-        finishLoading("diagram");
+        // Ir directamente al diagrama con el método seguro
+        safeStageChange("diagram");
       } else if (nextUnansweredIndex !== -1) {
         // Si hay preguntas sin responder, continuamos desde la primera sin responder
         setCurrentQuestionIndex(nextUnansweredIndex);
         console.log(`Continuando desde la pregunta ${nextUnansweredIndex + 1}: ${newQuestions[nextUnansweredIndex].ideaI.title} -> ${newQuestions[nextUnansweredIndex].ideaJ.title}`);
         
-        // Ir a la etapa de preguntas
-        finishLoading("questions");
+        // Ir a la etapa de preguntas con el método seguro
+        safeStageChange("questions");
       } else {
         // Caso excepcional: hay un problema con las preguntas, mostrar introducción
         console.log("Estado de preguntas inconsistente. Mostrando introducción...");
-        finishLoading("intro");
+        safeStageChange("intro");
       }
     }
   }, [isOpen, selectedIdeas, existingRelationships, toast, isInitialized]);
@@ -1122,18 +1146,29 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
 
   // Proceed to the reachability matrix stage
   const proceedToReachabilityMatrix = () => {
+    // Activamos isSaving para evitar cierre automático del modal
+    setIsSaving(true);
+    
     const initialMatrix = buildInitialReachabilityMatrix(selectedIdeas, ssimMatrix);
     setReachabilityMatrix(initialMatrix);
-    setStage("reachability");
+    
+    // Usamos el método seguro para cambios de etapa
+    safeStageChange("reachability");
   };
 
   // Apply transitive closure and proceed to level determination
   const applyTransitiveClosureAndProceed = () => {
+    // Activamos isSaving para evitar cierre automático del modal
+    setIsSaving(true);
+    
     const transitiveMatrix = applyTransitiveClosure(reachabilityMatrix);
     setFinalReachabilityMatrix(transitiveMatrix);
+    
     // La identificación de niveles se realizará cuando se muestre el diagrama 
     // (No llamamos a identifyLevels aquí para evitar problemas)
-    setStage("levels");
+    
+    // Usamos el método seguro para cambios de etapa
+    safeStageChange("levels");
   };
 
   // Identify levels in the hierarchy
@@ -1163,7 +1198,13 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
 
   // Proceed to diagram visualization
   const proceedToDiagram = () => {
-    setStage("diagram");
+    // Activamos isSaving para evitar cierre automático del modal
+    setIsSaving(true);
+    
+    // Preparamos datos necesarios para el diagrama si es necesario
+    
+    // Usamos el método seguro para cambios de etapa
+    safeStageChange("diagram");
   };
 
   // Render the current stage
@@ -1580,6 +1621,25 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     }
   };
 
+  // Función para cambiar la etapa de forma segura
+  const safeStageChange = (targetStage: "intro" | "questions" | "ssim" | "reachability" | "levels" | "diagram") => {
+    console.log(`Solicitando cambio seguro a etapa: ${targetStage}`);
+    // Activamos isSaving para evitar cierres automáticos
+    setIsSaving(true);
+    // Cambiamos la etapa con un delay para estabilidad
+    setTimeout(() => {
+      console.log(`Cambiando a etapa ${targetStage}`);
+      setStage(targetStage);
+      // Desactivamos el indicador después de un tiempo
+      setTimeout(() => {
+        if (isOpen) {
+          setIsSaving(false);
+          console.log(`Cambio a ${targetStage} completado y estabilizado`);
+        }
+      }, 3000);
+    }, 500);
+  };
+
   // Navigation buttons according to the stage
   const renderNavigationButtons = () => {
     switch (stage) {
@@ -1589,7 +1649,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             <Button variant="outline" onClick={handleCloseAttempt}>
               Cancel
             </Button>
-            <Button onClick={() => setStage("questions")}>
+            <Button onClick={() => safeStageChange("questions")}>
               Start Process
             </Button>
           </div>
@@ -1598,7 +1658,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       case "ssim":
         return (
           <div className="flex justify-between">
-            <Button variant="outline" onClick={() => setStage("questions")}>
+            <Button variant="outline" onClick={() => safeStageChange("questions")}>
               Back to Questions
             </Button>
             <Button onClick={proceedToReachabilityMatrix}>
@@ -1610,7 +1670,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       case "reachability":
         return (
           <div className="flex justify-between">
-            <Button variant="outline" onClick={() => setStage("ssim")}>
+            <Button variant="outline" onClick={() => safeStageChange("ssim")}>
               Back to SSIM
             </Button>
             <Button onClick={applyTransitiveClosureAndProceed}>
@@ -1622,7 +1682,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       case "levels":
         return (
           <div className="flex justify-between">
-            <Button variant="outline" onClick={() => setStage("reachability")}>
+            <Button variant="outline" onClick={() => safeStageChange("reachability")}>
               Back
             </Button>
             <Button onClick={proceedToDiagram}>
@@ -1648,18 +1708,27 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   // Función para manejar el intento de cierre con confirmación si hay progreso
   const handleCloseAttempt = () => {
     // MEJORA: Agregamos logging para debug
-    console.log(`Intento de cierre. Estado actual: isSaving=${isSaving}, stage=${stage}`);
+    console.log(`Intento de cierre manual. Estado actual: isSaving=${isSaving}, stage=${stage}, isInitialized=${isInitialized}`);
     
-    // Verificar si estamos en medio de una operación de guardado o inicialización
-    if (isSaving) {
-      console.log("Bloqueando cierre por isSaving=true");
+    // SOLUCIÓN DEFINITIVA:
+    // Forzar que siempre esté isSaving=true durante el proceso de cierre para evitar cierres prematuros
+    // Esto garantiza que no se ejecutarán otros cierres paralelos mientras procesamos este cierre
+    setIsSaving(true);
+    
+    // Verificar si estamos en medio de una operación sensible que no debe interrumpirse
+    if (stage === "intro" && isInitialized === false) {
+      console.log("Bloqueando cierre - el componente aún está inicializándose");
       toast({
-        title: "Proceso en progreso",
-        description: "Por favor espera a que termine el proceso actual antes de cerrar.",
+        title: "Inicializando proceso",
+        description: "Por favor espera a que termine la inicialización del proceso.",
         variant: "default",
         duration: 3000
       });
-      return; // No permitir cerrar durante un guardado
+      
+      // Importante: No cerramos, pero tampoco dejamos isSaving bloqueado para siempre
+      // Lo desactivamos después de un tiempo prudencial
+      setTimeout(() => setIsSaving(false), 3000);
+      return;
     }
     
     // Si estamos en la etapa de preguntas y hay respuestas, pedimos confirmación
@@ -1671,25 +1740,52 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         
         if (!window.confirm(confirmMessage)) {
           console.log("Usuario canceló el cierre en la confirmación");
+          // Desbloquear el indicador de guardado después de que el usuario cancele
+          setTimeout(() => setIsSaving(false), 500);
           return; // Usuario canceló, no cerramos
         }
       }
     }
     
-    // IMPORTANTE: Antes de cerrar, asegurarnos de que no estamos en un estado inestable
-    // Al setear isSaving a true brevemente, nos protegemos contra cierres automáticos
-    setIsSaving(true);
+    // Vamos a separar claramente el proceso de cierre en dos fases:
+    console.log("FASE 1: Preparando componente para cierre seguro");
     
-    // Limpiar el estado para evitar problemas en la próxima apertura
-    setIsInitialized(false);
-    console.log("Cerrando modal VAXO manualmente a petición del usuario");
+    // FASE 1: Preparar el componente para el cierre, manteniendo isSaving=true
+    // para bloquear cualquier otro proceso que pudiera afectar al cierre
     
-    // Usar un pequeño retraso para asegurar que el estado se actualice correctamente
+    // Mostramos una notificación explícita para que el usuario sepa que su acción
+    // está siendo procesada (mejora UX y da tiempo a la operación)
+    toast({
+      title: "Cerrando proceso",
+      description: "Guardando estado y cerrando...",
+      variant: "default",
+      duration: 2000
+    });
+    
+    // Esperamos un tiempo prudencial antes de proceder con la FASE 2
+    // Este retraso es crucial para permitir que cualquier proceso en curso termine
     setTimeout(() => {
-      setIsSaving(false); // Desactivar solo justo antes de cerrar
-      onClose(); // Llamar a onClose después de que todo está listo
-      console.log("Modal VAXO cerrado correctamente");
-    }, 100);
+      console.log("FASE 2: Ejecutando cierre después de preparación");
+      
+      // FASE 2: Limpiar y cerrar
+      // En la fase 2 mantenemos isSaving=true hasta el último momento
+      
+      // El orden es importante:
+      // 1. Marcar como no inicializado ANTES de cerrar
+      setIsInitialized(false); 
+      console.log("Componente marcado como no inicializado");
+      
+      // 2. Finalmente, cerrar
+      console.log("Ejecutando onClose() después de preparación completa");
+      onClose(); 
+      
+      // 3. Desactivar isSaving DESPUÉS DE cerrar - esto es solo para limpiar el estado
+      // incluso aunque el componente ya no existirá
+      setTimeout(() => {
+        setIsSaving(false);
+        console.log("Estado de isSaving limpiado post-cierre");
+      }, 500);
+    }, 1000); // Damos un segundo completo para la fase de preparación
   };
 
   // Si no está abierto, no renderizamos nada

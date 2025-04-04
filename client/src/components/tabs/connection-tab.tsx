@@ -124,8 +124,13 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   // Handle ISM dialog close
   const handleISMDialogClose = () => {
     console.log("ISM Dialog close requested - closing the dialog");
-    // Cerramos el diálogo porque ya implementamos la confirmación internamente en el componente
-    setIsISMDialogOpen(false);
+    // CORRECCIÓN DE BUG: Añadimos un retraso deliberado para asegurar que el componente
+    // interno pueda hacer su limpieza antes de que el padre lo desmonte.
+    // Este cambio es crucial para resolver el problema de cierre prematuro.
+    setTimeout(() => {
+      setIsISMDialogOpen(false);
+      console.log("Dialog closed after deliberate delay to prevent premature unmounting");
+    }, 100);
   };
 
   // Prepare project context information for ISM process
