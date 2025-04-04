@@ -104,6 +104,65 @@ function applyTransitiveClosure(matrix: boolean[][]): boolean[][] {
   return result;
 }
 
+// Construir matriz de alcance inicial (para inferencia lógica)
+// Esta función no está duplicada y tiene un nombre único
+function buildMatrixFromRelationships(ideas: Idea[], ssimCells: SSIMCell[]): boolean[][] {
+  const n = ideas.length;
+  const matrix: boolean[][] = Array(n).fill(null).map(() => Array(n).fill(false));
+  
+  // Llenar la diagonal con true (cada elemento se alcanza a sí mismo)
+  for (let i = 0; i < n; i++) {
+    matrix[i][i] = true;
+  }
+  
+  // Llenar la matriz según las relaciones VAXO
+  ssimCells.forEach(cell => {
+    const indexI = ideas.findIndex(idea => idea.id === cell.ideaI);
+    const indexJ = ideas.findIndex(idea => idea.id === cell.ideaJ);
+    
+    if (indexI !== -1 && indexJ !== -1) {
+      // Si hay influencia de I a J (V o X)
+      if (cell.relation === RelationType.V || cell.relation === RelationType.X) {
+        matrix[indexI][indexJ] = true;
+      }
+    }
+  });
+  
+  return matrix;
+}
+
+// Calcular niveles de jerarquía
+function calculateLevels(reachabilityMatrix: boolean[][], ideas: Idea[]): number[][] {
+  if (!reachabilityMatrix.length) return [];
+  
+  // Crear una lista de índices de elementos restantes (0 a n-1)
+  const n = reachabilityMatrix.length;
+  let remainingElements = Array.from({ length: n }, (_, i) => i);
+  const levels: number[][] = [];
+  
+  // Repetir hasta que todos los elementos hayan sido asignados a un nivel
+  while (remainingElements.length > 0) {
+    // Identificar elementos del nivel actual
+    const currentLevel = determineLevel(remainingElements, reachabilityMatrix, ideas);
+    
+    if (currentLevel.length === 0) {
+      // Si no se puede identificar un nivel, es posible que haya un ciclo
+      // En este caso, colocamos todos los elementos restantes en el mismo nivel
+      levels.push([...remainingElements]);
+      console.log("No se pudieron separar más niveles. Posible ciclo encontrado.");
+      break;
+    }
+    
+    // Agregar el nivel actual a la lista de niveles
+    levels.push(currentLevel);
+    
+    // Eliminar los elementos del nivel actual de la lista de elementos restantes
+    remainingElements = remainingElements.filter(el => !currentLevel.includes(el));
+  }
+  
+  return levels;
+}
+
 // Función para determinar el nivel de un conjunto de elementos
 function determineLevel(
   remainingElements: number[],
@@ -485,7 +544,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           setFinalReachabilityMatrix(transitiveMatrix);
           
           // Identify element levels
-          identifyLevels(transitiveMatrix);
+          // identifyLevels se llamará automáticamente cuando avancemos a la etapa de diagrama
           
           // Set stage to SSIM - this will show the complete matrix
           setStage("ssim");
@@ -538,10 +597,84 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       }
       
       // Desactivar el indicador de carga después de completar la inicialización
-      // Colocamos esto al final para asegurar que todo el proceso haya terminado
-      setTimeout(() => {
-        setIsSaving(false);
-      }, 1000); // Un poco más de tiempo para asegurar que el estado se actualiza correctamente
+      // Solo después de que se complete todo el proceso de inicialización
+      // IMPORTANTE: En lugar de un gran setTimeout, usamos un enfoque diferente
+      // que no depende de existingSSIM, buildReachabilityMatrix, ni identifyLevels
+      
+      // Cargamos las preguntas independientemente del estado
+      setQuestions(newQuestions);
+      
+      // Si no hay un proceso iniciado, simplemente mostramos la introducción y terminamos
+      if (!processStarted) {
+        setStage("intro");
+        setIsSaving(false); // Desactivamos el indicador de carga inmediatamente
+        return;
+      }
+      
+      // Comprobamos si todas las preguntas tienen respuesta
+      const allQuestionsAnswered = newQuestions.every(q => q.response !== null);
+      const questionsAnsweredCount = newQuestions.filter(q => q.response !== null).length;
+      
+      // Encontrar índice de primera pregunta sin responder (si hay alguna)
+      const nextUnansweredIndex = newQuestions.findIndex(q => q.response === null);
+      
+      // Para debugging
+      console.log(`Estado de carga: ${questionsAnsweredCount}/${newQuestions.length} preguntas respondidas`);
+      console.log(`¿Todas respondidas? ${allQuestionsAnswered ? 'Sí' : 'No'}`);
+      
+      // Construir matriz SSIM para visualización
+      const ssimMatrixFromQuestions: SSIMCell[] = [];
+      newQuestions.forEach(q => {
+        if (q.response) {
+          ssimMatrixFromQuestions.push({
+            ideaI: q.ideaI.id,
+            ideaJ: q.ideaJ.id,
+            relation: q.response
+          });
+        }
+      });
+      
+      // Actualizar la matriz SSIM
+      setSSIMMatrix(ssimMatrixFromQuestions);
+      
+      // Definimos una función para desactivar la carga y cambiar la etapa
+      const finishLoading = (targetStage: "intro" | "questions" | "ssim" | "reachability" | "levels" | "diagram") => {
+        console.log(`Cambiando a etapa: ${targetStage}`);
+        
+        // Usar un timeout para asegurar que todo se actualiza correctamente
+        setTimeout(() => {
+          setStage(targetStage);
+          
+          // Desactivar indicador de carga después de un breve retraso
+          setTimeout(() => {
+            setIsSaving(false);
+            console.log("Indicador de carga desactivado");
+          }, 500);
+        }, 300);
+      };
+      
+      // Determinar la etapa a mostrar basada en el estado de las preguntas
+      if (allQuestionsAnswered && questionsAnsweredCount > 0) {
+        // Si todas las preguntas están respondidas, ir directamente al diagrama
+        console.log("Todas las preguntas ya respondidas. Avanzando a etapa de diagrama...");
+        
+        // Asignar el índice de pregunta actual al último para mantener consistencia
+        setCurrentQuestionIndex(newQuestions.length - 1);
+        
+        // Ir directamente al diagrama
+        finishLoading("diagram");
+      } else if (nextUnansweredIndex !== -1) {
+        // Si hay preguntas sin responder, continuamos desde la primera sin responder
+        setCurrentQuestionIndex(nextUnansweredIndex);
+        console.log(`Continuando desde la pregunta ${nextUnansweredIndex + 1}: ${newQuestions[nextUnansweredIndex].ideaI.title} -> ${newQuestions[nextUnansweredIndex].ideaJ.title}`);
+        
+        // Ir a la etapa de preguntas
+        finishLoading("questions");
+      } else {
+        // Caso excepcional: hay un problema con las preguntas, mostrar introducción
+        console.log("Estado de preguntas inconsistente. Mostrando introducción...");
+        finishLoading("intro");
+      }
     }
   }, [isOpen, selectedIdeas, existingRelationships, toast, isInitialized]);
 
@@ -982,7 +1115,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const applyTransitiveClosureAndProceed = () => {
     const transitiveMatrix = applyTransitiveClosure(reachabilityMatrix);
     setFinalReachabilityMatrix(transitiveMatrix);
-    identifyLevels(transitiveMatrix);
+    // La identificación de niveles se realizará cuando se muestre el diagrama 
+    // (No llamamos a identifyLevels aquí para evitar problemas)
     setStage("levels");
   };
 
