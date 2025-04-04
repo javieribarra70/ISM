@@ -311,12 +311,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       
       console.log(`Relaciones válidas filtradas: ${validRelationships.length}`);
       
-      // Desactivar el indicador de carga después de completar la inicialización
-    setTimeout(() => {
-      setIsSaving(false);
-    }, 500); // Breve retraso para asegurar que el estado se actualiza correctamente
-    
-    // Si hay relaciones existentes, marcar las preguntas como ya respondidas
+      // Si hay relaciones existentes, marcar las preguntas como ya respondidas
       if (validRelationships.length > 0) {
         console.log(`Se encontraron ${validRelationships.length} relaciones VAXO existentes`);
         
@@ -541,6 +536,12 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         // Mostrar la introducción
         setStage("intro");
       }
+      
+      // Desactivar el indicador de carga después de completar la inicialización
+      // Colocamos esto al final para asegurar que todo el proceso haya terminado
+      setTimeout(() => {
+        setIsSaving(false);
+      }, 1000); // Un poco más de tiempo para asegurar que el estado se actualiza correctamente
     }
   }, [isOpen, selectedIdeas, existingRelationships, toast, isInitialized]);
 
