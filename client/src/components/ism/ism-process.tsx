@@ -627,10 +627,22 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       // Cargamos las preguntas independientemente del estado
       setQuestions(newQuestions);
       
-      // Si no hay un proceso iniciado, simplemente mostramos la introducción y terminamos
+      // Si no hay un proceso iniciado, verificamos primero si hay preguntas que necesitan respuesta
       if (!processStarted) {
+        // CORRECCIÓN CRÍTICA: No desactivamos isSaving si existen preguntas sin responder
+        // Primero verificamos si hay alguna pregunta sin responder
+        const hasUnansweredQuestions = newQuestions.some(q => q.response === null);
+        
+        // Solo si NO hay preguntas sin responder, desactivamos isSaving
+        if (!hasUnansweredQuestions) {
+          console.log("No hay proceso iniciado ni preguntas pendientes, desactivando isSaving");
+          setIsSaving(false);
+        } else {
+          console.log("AVISO: No hay proceso iniciado pero hay preguntas sin responder, MANTENIENDO isSaving activo");
+          // CRUCIAL: Mantener isSaving activo cuando hay preguntas pendientes
+        }
+        
         setStage("intro");
-        setIsSaving(false); // Desactivamos el indicador de carga inmediatamente
         return;
       }
       
@@ -798,7 +810,15 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     } catch (error) {
       console.error("Error saving relationship:", error);
     } finally {
-      setIsSaving(false);
+      // CORRECCIÓN CRÍTICA: Verificamos si hay preguntas sin responder antes de desactivar isSaving
+      const hasUnansweredQuestions = questions.some(q => q.response === null);
+      
+      if (!hasUnansweredQuestions) {
+        console.log("Método saveIndividualRelationship: Todas las preguntas respondidas, ahora sí podemos desactivar isSaving");
+        setIsSaving(false);
+      } else {
+        console.log(`PROTECCIÓN CRÍTICA en saveIndividualRelationship: Manteniendo isSaving=true porque aún quedan ${questions.filter(q => q.response === null).length} preguntas sin responder`);
+      }
     }
     
     // Importante: NO cerrar el modal después de guardar
@@ -872,8 +892,16 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         variant: "destructive"
       });
     } finally {
-      // Solo desactivamos isSaving cuando terminamos completamente
-      setIsSaving(false);
+      // CORRECCIÓN CRÍTICA: Solo desactivamos isSaving cuando terminamos completamente Y NO quedan preguntas sin responder
+      const stillHasUnansweredQuestions = questions.some(q => q.response === null);
+      
+      if (!stillHasUnansweredQuestions) {
+        console.log("Todas las preguntas respondidas, ahora sí podemos desactivar isSaving");
+        setIsSaving(false);
+      } else {
+        console.log(`PROTECCIÓN CRÍTICA: Manteniendo isSaving=true porque aún quedan ${questions.filter(q => q.response === null).length} preguntas sin responder`);
+        // Mantener isSaving=true para prevenir cierre prematuro del modal
+      }
     }
   };
   
@@ -1091,7 +1119,16 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         variant: "destructive"
       });
     } finally {
-      setIsSaving(false);
+      // CORRECCIÓN CRÍTICA: Verificamos si hay preguntas sin responder antes de desactivar isSaving
+      const hasUnansweredQuestions = questions.some(q => q.response === null);
+      
+      if (!hasUnansweredQuestions) {
+        console.log("Todas las relaciones guardadas correctamente, no hay preguntas pendientes");
+        setIsSaving(false);
+      } else {
+        console.log(`PROTECCIÓN EN saveVAXORelationshipsToDatabase: Manteniendo isSaving=true porque aún quedan ${questions.filter(q => q.response === null).length} preguntas sin responder`);
+        // Mantener isSaving=true para evitar cierre prematuro
+      }
     }
   };
 
@@ -1671,16 +1708,50 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const safeStageChange = (targetStage: "intro" | "questions" | "ssim" | "reachability" | "levels" | "diagram") => {
     console.log(`Solicitando cambio seguro a etapa: ${targetStage}`);
     
-    // Forzar isSaving a true - prioridad máxima
-    setIsSaving(true);
+    // CORRECCIÓN CRÍTICA: Verificamos si hay preguntas sin responder ANTES de cualquier cambio de etapa
+    const hasUnansweredQuestions = questions.some(q => q.response === null);
+    console.log(`Verificación de preguntas sin responder: ${hasUnansweredQuestions ? 'Hay preguntas pendientes' : 'Todas respondidas'}`);
     
-    // Si estamos cargando preguntas, mostrar notificación para mejor feedback
-    if (targetStage === "questions" && questions.length > 0) {
+    // PROTECCIÓN CRÍTICA: Si hay preguntas sin responder, solo permitimos cambios a la etapa "questions"
+    // Excepción: siempre permitimos regresar a "intro" (para reiniciar) o avanzar a "questions"
+    if (hasUnansweredQuestions && targetStage !== "intro" && targetStage !== "questions") {
+      console.log(`BLOQUEO DE SEGURIDAD: No se permite cambiar a ${targetStage} mientras haya preguntas sin responder`);
       toast({
-        title: "Cargando relaciones VAXO",
-        description: "Preparando preguntas existentes...",
+        title: "Acción no permitida",
+        description: "Debe completar todas las preguntas VAXO pendientes antes de continuar",
+        variant: "destructive",
         duration: 5000,
       });
+      
+      // Forzar el cambio a la etapa de preguntas para continuar el proceso
+      setTimeout(() => {
+        console.log("Redirigiendo a la etapa de preguntas para completar el proceso VAXO");
+        setStage("questions");
+      }, 500);
+      
+      return; // Importante: no seguir con el cambio de etapa solicitado
+    }
+    
+    // Siempre mantenemos isSaving activo durante todo el proceso si hay preguntas sin responder
+    if (hasUnansweredQuestions) {
+      setIsSaving(true);
+    }
+    
+    // Mostrar notificación específica según el estado
+    if (targetStage === "questions") {
+      if (hasUnansweredQuestions) {
+        toast({
+          title: "Continuando proceso ISM",
+          description: "Hay preguntas pendientes por responder. Continuando desde donde quedó.",
+          duration: 5000,
+        });
+      } else {
+        toast({
+          title: "Cargando relaciones VAXO",
+          description: "Preparando preguntas existentes...",
+          duration: 5000,
+        });
+      }
     }
     
     // Cambiamos la etapa con un delay para estabilidad
@@ -1693,21 +1764,38 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       // Ahora cambiamos la etapa
       setStage(targetStage);
       
-      // Desactivamos el indicador después de un tiempo extenso
+      // CORRECCIÓN CRÍTICA: Si hay preguntas sin responder y estamos en etapa questions, 
+      // NUNCA desactivamos isSaving para evitar el cierre automático del modal
+      if (hasUnansweredQuestions && (targetStage === "questions" || targetStage === "intro")) {
+        console.log(`PROTECCIÓN CRÍTICA: Manteniendo isSaving=true porque hay ${hasUnansweredQuestions ? 'preguntas sin responder' : 'condiciones que requieren mantener el modal abierto'}`);
+        return; // No desactivar isSaving bajo ninguna circunstancia
+      }
+      
+      // Desactivamos el indicador después de un tiempo extenso SOLO si no hay preguntas por responder
       // Este tiempo debe ser suficiente para que el componente se estabilice
       setTimeout(() => {
-        // Solo desactivamos si el modal sigue abierto
-        if (isOpen && isInitialized) {
+        // Verificamos nuevamente si hay preguntas sin responder
+        const stillHasUnansweredQuestions = questions.some(q => q.response === null);
+        
+        // Solo desactivamos si el modal sigue abierto Y no hay preguntas sin responder
+        if (isOpen && isInitialized && !stillHasUnansweredQuestions) {
           console.log(`Cambio a ${targetStage} completado y estabilizado - Modal aún abierto`);
           // Aún no desactivamos isSaving, verificamos una vez más después de un breve periodo
           setTimeout(() => {
-            if (isOpen) {
-              console.log(`Verificación final para etapa ${targetStage} - Modal aún abierto`);
+            // Triple verificación para máxima seguridad
+            const finalCheckUnanswered = questions.some(q => q.response === null);
+            
+            if (isOpen && !finalCheckUnanswered) {
+              console.log(`Verificación final para etapa ${targetStage} - Modal aún abierto y todas las preguntas respondidas`);
               setIsSaving(false);
+            } else if (finalCheckUnanswered) {
+              console.log(`NO se desactiva isSaving - Aún hay preguntas sin responder`);
             } else {
               console.log(`Cancelada desactivación de isSaving - Modal ya no está abierto`);
             }
-          }, 1000);
+          }, 2000);
+        } else if (stillHasUnansweredQuestions) {
+          console.log(`PROTECCIÓN: NO se desactiva isSaving porque aún hay preguntas sin responder`);
         } else {
           console.log(`Cancelada desactivación de isSaving - Modal ya no está abierto o no inicializado`);
         }
