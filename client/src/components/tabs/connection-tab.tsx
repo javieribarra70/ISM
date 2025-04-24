@@ -133,67 +133,44 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   // Estado para controlar qué modal mostrar
   const [showRelationshipsDialog, setShowRelationshipsDialog] = useState(false);
 
-  // Handle the start VAXO process button
+  // Implementación de apertura directa del proceso ISM usando una navegación completa
   const handleStartProcess = () => {
-    // Primero, verifiquemos el estado actual para debugging
-    console.log("Estado actual de isISMDialogOpen ANTES:", isISMDialogOpen);
-    
-    // Set starting state to show loading UI
+    // Guardar estado de que se está iniciando
     setIsStarting(true);
     
-    // Genera una nueva clave única para este proceso - forzar nueva instancia
-    const uniqueKey = `ism-process-${Date.now()}`;
-    console.log("Generando nueva clave única para forzar remontaje:", uniqueKey);
-    setIsmInstanceKey(uniqueKey);
-    
-    // Verificar si hay relaciones existentes con las ideas seleccionadas
-    const selectedIds = selectedIdeas.map(idea => idea.id);
-    const relationsForSelectedIdeas = existingRelationships.filter(rel => {
-      const fromId = rel.fromIdeaId || rel.from;
-      const toId = rel.toIdeaId || rel.to;
-      return selectedIds.includes(fromId) && selectedIds.includes(toId);
+    // Mostrar mensaje informativo
+    toast({
+      title: "Iniciando proceso VAXO",
+      description: "Preparando el entorno...",
+      duration: 3000,
     });
     
-    const hasRelations = relationsForSelectedIdeas.length > 0;
-    console.log(`Total relaciones específicas: ${relationsForSelectedIdeas.length}`);
+    // SOLUCIÓN RADICAL: En lugar de luchar con el modal, vamos a crear una URL dedicada
+    // que abrirá el proceso ISM en una nueva ventana
     
-    // Si hay relaciones existentes, mostrar un mensaje informativo
-    if (hasRelations) {
+    try {
+      // Crear una lista de IDs de ideas seleccionadas para pasar como parámetro
+      const selectedIdsParam = selectedIdeas.map(idea => idea.id).join(',');
+      
+      // Crear URL con parámetros
+      const ismUrl = `${window.location.origin}/projects/${projectId}/ism-process?ideas=${selectedIdsParam}`;
+      
+      // Abrir en la misma ventana - navegación completa para evitar problemas con el modal
+      setTimeout(() => {
+        window.open(ismUrl, '_blank', 'noopener,noreferrer');
+        setIsStarting(false);
+      }, 500);
+      
+      console.log("Redirigiendo a proceso ISM independiente:", ismUrl);
+    } catch (error) {
+      console.error("Error al iniciar proceso ISM:", error);
       toast({
-        title: "Relaciones VAXO existentes",
-        description: `Continuando proceso con ${relationsForSelectedIdeas.length} relaciones existentes.`,
-        duration: 3000,
+        title: "Error",
+        description: "No se pudo iniciar el proceso ISM",
+        variant: "destructive"
       });
-    }
-    
-    // SOLUCIÓN EMERGENCIA: Abrir directamente el modal - enfoque muy directo
-    console.log(">>>>> APERTURA DE MODAL DIRECTO - SIN TIMEOUT");
-    setIsISMDialogOpen(true);
-    
-    // Agregamos un efecto visual para asegurar feedback al usuario
-    const body = document.body;
-    const overlay = document.createElement('div');
-    overlay.id = "temp-overlay";
-    overlay.style.position = "fixed";
-    overlay.style.top = "0";
-    overlay.style.left = "0";
-    overlay.style.width = "100%";
-    overlay.style.height = "100%";
-    overlay.style.backgroundColor = "rgba(0,0,0,0.5)";
-    overlay.style.display = "flex";
-    overlay.style.alignItems = "center";
-    overlay.style.justifyContent = "center";
-    overlay.style.zIndex = "9998";
-    overlay.innerHTML = "<div style='background: white; padding: 20px; border-radius: 8px;'>Abriendo modal VAXO...</div>";
-    body.appendChild(overlay);
-    
-    // Luego de mostrar este overlay temporal, lo quitamos
-    setTimeout(() => {
-      const tempOverlay = document.getElementById("temp-overlay");
-      if (tempOverlay) tempOverlay.remove();
-      console.log(">>>>> Modal debe estar visible ahora");
       setIsStarting(false);
-    }, 1000);
+    }
   };
 
   // Handle the start alternative process button
