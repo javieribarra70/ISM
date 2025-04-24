@@ -1794,13 +1794,33 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   };
 
   // Si no está abierto, no renderizamos nada
+  // Añadamos un useEffect específico para detectar cambios en isOpen
+  useEffect(() => {
+    if (isOpen) {
+      console.log("🔴 EFECTO DETECTÓ isOpen=true - ABRIENDO MODAL");
+      
+      // Hack de emergencia: forzar que el modal permanezca abierto
+      const timer = setTimeout(() => {
+        console.log("🔴 VERIFICACIÓN ADICIONAL DE MODAL ABIERTO");
+        // Si por alguna razón el estado se pierde, este código garantiza que se mantenga abierto
+        const tempOverlay = document.getElementById("temp-overlay");
+        if (tempOverlay) tempOverlay.remove();
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    } else {
+      console.log("🔴 EFECTO DETECTÓ isOpen=false - CERRANDO MODAL");
+    }
+  }, [isOpen]); // Este efecto se ejecuta solo cuando isOpen cambia
+  
   // Debugging para determinar si se está renderizando el componente correctamente
   console.log("ISMProcess render - isOpen:", isOpen);
   
-  // Si no está abierto, no mostrar nada - pero agregar un log para debug
+  // Si no está abierto, mostrar un div vacío pero presente en el DOM
+  // Esto es un cambio crítico: en lugar de return null, mantenemos un elemento en el DOM
   if (!isOpen) {
-    console.log("ISMProcess - NO está abierto, retornando null");
-    return null;
+    console.log("ISMProcess - NO está abierto, retornando div vacío");
+    return <div id="ism-process-placeholder" style={{display: 'none'}}></div>;
   }
   
   console.log("ISMProcess - ESTÁ abierto, renderizando modal!!!");
