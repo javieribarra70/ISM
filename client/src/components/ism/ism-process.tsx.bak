@@ -609,10 +609,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const answerQuestion = async (response: RelationType) => {
     try {
       if (currentQuestionIndex < questions.length) {
-        // CRUCIAL: Establecemos isSaving para evitar cierres automáticos
-        // y lo mantenemos así durante todo el proceso
+        // Establecemos isSaving para evitar cierres automáticos
         setIsSaving(true);
-        console.log("PROTECCIÓN: Estableciendo isSaving=true durante answerQuestion");
         
         const updatedQuestions = [...questions];
         const currentQuestion = updatedQuestions[currentQuestionIndex];
@@ -635,10 +633,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         const pendingQuestions = inferredQuestions.filter(q => q.response === null);
         
         if (pendingQuestions.length > 0) {
-          // PROTECCIÓN ADICIONAL: Asegurarse de que isSaving permanezca true mientras hay preguntas pendientes
-          console.log(`Manteniendo isSaving=true: ${pendingQuestions.length} preguntas pendientes`);
-          setIsSaving(true);
-          
           // En lugar de utilizar selectNextMostInformativeQuestion, buscar directamente
           // el índice de la siguiente pregunta sin responder
           const nextIndex = inferredQuestions.findIndex(q => q.response === null);
@@ -912,8 +906,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         setIsSaving(false);
       } else {
         console.log(`PROTECCIÓN EN saveVAXORelationshipsToDatabase: Manteniendo isSaving=true porque aún quedan ${questions.filter(q => q.response === null).length} preguntas sin responder`);
-        // CRUCIAL: Mantener isSaving=true para evitar cierre prematuro
-        setIsSaving(true);
+        // Mantener isSaving=true para evitar cierre prematuro
       }
     }
   };
