@@ -133,110 +133,43 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   // Estado para controlar qué modal mostrar
   const [showRelationshipsDialog, setShowRelationshipsDialog] = useState(false);
 
-  // Función para eliminar relaciones VAXO existentes
-  const deleteExistingRelationships = async (selectedIds: number[]) => {
-    try {
-      // Obtener las relaciones para las ideas seleccionadas
-      const relationsToDelete = existingRelationships.filter(rel => {
-        const fromId = rel.fromIdeaId || rel.from;
-        const toId = rel.toIdeaId || rel.to;
-        return selectedIds.includes(fromId) && selectedIds.includes(toId);
-      });
-      
-      console.log(`Se eliminarán ${relationsToDelete.length} relaciones VAXO`);
-      
-      // Eliminar cada relación una por una
-      for (const relation of relationsToDelete) {
-        try {
-          const response = await fetch(`/api/relationships/${relation.id}`, {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include'
-          });
-          
-          if (response.ok) {
-            console.log(`Relación ${relation.id} eliminada correctamente`);
-          } else {
-            console.error(`Error al eliminar relación ${relation.id}: ${response.statusText}`);
-          }
-        } catch (error) {
-          console.error(`Error al eliminar relación ${relation.id}:`, error);
-        }
-      }
-      
-      // Actualizar el estado local
-      queryClient.invalidateQueries({
-        queryKey: [`/api/projects/${projectId}/relationships`]
-      });
-      
-      return relationsToDelete.length;
-    } catch (error) {
-      console.error("Error al eliminar relaciones:", error);
-      throw error;
-    }
-  };
-
-  // Handle the start VAXO process button - Solución RADICAL para el problema
-  const handleStartProcess = async () => {
+  // Handle the start VAXO process button - versión que conserva las relaciones existentes
+  const handleStartProcess = () => {
     // Set starting state to show loading UI
     setIsStarting(true);
     
-    try {
-      // Genera una nueva clave única para este proceso
-      const uniqueKey = `ism-process-${Date.now()}`;
-      setIsmInstanceKey(uniqueKey);
-      
-      // Log para diagnóstico
-      console.log("Iniciando proceso VAXO con clave única:", uniqueKey);
-      
-      // Verificar si hay relaciones existentes con las ideas seleccionadas
-      const selectedIds = selectedIdeas.map(idea => idea.id);
-      const relationsForSelectedIdeas = existingRelationships.filter(rel => {
-        const fromId = rel.fromIdeaId || rel.from;
-        const toId = rel.toIdeaId || rel.to;
-        return selectedIds.includes(fromId) && selectedIds.includes(toId);
-      });
-      
-      const hasRelations = relationsForSelectedIdeas.length > 0;
-      console.log(`Total relaciones específicas: ${relationsForSelectedIdeas.length}`);
-      
-      // SOLUCIÓN RADICAL: Si hay relaciones existentes, eliminarlas automáticamente
-      if (hasRelations) {
-        toast({
-          title: "Preparando proceso VAXO",
-          description: "Limpiando relaciones anteriores para iniciar un proceso fresco...",
-          duration: 3000,
-        });
-        
-        // Eliminar relaciones existentes
-        const deletedCount = await deleteExistingRelationships(selectedIds);
-        
-        toast({
-          title: "Relaciones limpiadas",
-          description: `Se han eliminado ${deletedCount} relaciones previas.`,
-          duration: 2000,
-        });
-      }
-      
-      // Siempre abrir el proceso ISM normal después de limpiar o verificar
-      setTimeout(() => {
-        setIsISMDialogOpen(true);
-        setShowRelationshipsDialog(false);
-        setIsStarting(false);
-      }, 1000);
-      
-    } catch (error) {
-      console.error("Error en el proceso de inicio VAXO:", error);
+    // Genera una nueva clave única para este proceso
+    const uniqueKey = `ism-process-${Date.now()}`;
+    setIsmInstanceKey(uniqueKey);
+    
+    // Log para diagnóstico
+    console.log("Iniciando proceso VAXO con clave única:", uniqueKey);
+    
+    // Verificar si hay relaciones existentes con las ideas seleccionadas
+    const selectedIds = selectedIdeas.map(idea => idea.id);
+    const relationsForSelectedIdeas = existingRelationships.filter(rel => {
+      const fromId = rel.fromIdeaId || rel.from;
+      const toId = rel.toIdeaId || rel.to;
+      return selectedIds.includes(fromId) && selectedIds.includes(toId);
+    });
+    
+    const hasRelations = relationsForSelectedIdeas.length > 0;
+    console.log(`Total relaciones específicas: ${relationsForSelectedIdeas.length}`);
+    
+    // Si hay relaciones existentes, mostrar un mensaje informativo
+    if (hasRelations) {
       toast({
-        title: "Error",
-        description: "Ocurrió un error al iniciar el proceso VAXO.",
-        variant: "destructive",
-        duration: 5000,
+        title: "Relaciones VAXO existentes",
+        description: `Continuando proceso con ${relationsForSelectedIdeas.length} relaciones existentes.`,
+        duration: 3000,
       });
-      setIsStarting(false);
     }
+    
+    // En cualquier caso, mostrar el diálogo del proceso ISM
+    setTimeout(() => {
+      setIsISMDialogOpen(true);
+      setIsStarting(false);
+    }, 1000);
   };
 
   // Handle the start alternative process button
