@@ -1775,21 +1775,29 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       // FASE 2: Limpiar y cerrar
       // En la fase 2 mantenemos isSaving=true hasta el último momento
       
-      // El orden es importante:
-      // 1. Marcar como no inicializado ANTES de cerrar
-      setIsInitialized(false); 
-      console.log("Componente marcado como no inicializado");
+      // SOLUCIÓN CRÍTICA: No cerrar automáticamente
+      // Solo actualizar estados sin cerrar
       
-      // 2. Finalmente, cerrar
-      console.log("Ejecutando onClose() después de preparación completa");
-      onClose(); 
+      // Actualizar el estado para indicar que el proceso ha terminado pero mantener abierto
+      setIsInitialized(true); // Marcar como inicializado para indicar que está listo
+      console.log("Componente listo para continuar - NO SE CIERRA AUTOMÁTICAMENTE");
       
-      // 3. Desactivar isSaving DESPUÉS DE cerrar - esto es solo para limpiar el estado
-      // incluso aunque el componente ya no existirá
+      // Eliminar cualquier overlay temporal que pueda estar mostrándose
+      const tempOverlay = document.getElementById("temp-overlay");
+      if (tempOverlay) tempOverlay.remove();
+      
+      // Mostrar mensaje de finalización
+      toast({
+        title: "Proceso completado",
+        description: "Las relaciones VAXO han sido cargadas. Puede continuar trabajando o cerrar manualmente.",
+        duration: 5000,
+      });
+      
+      // Desactivar el indicador de guardado después de un tiempo prudencial
       setTimeout(() => {
         setIsSaving(false);
-        console.log("Estado de isSaving limpiado post-cierre");
-      }, 500);
+        console.log("Proceso listo para interacción del usuario");
+      }, 1000);
     }, 1000); // Damos un segundo completo para la fase de preparación
   };
 
