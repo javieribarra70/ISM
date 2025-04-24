@@ -1632,7 +1632,17 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             <Button variant="outline" onClick={handleCloseAttempt}>
               Cancel
             </Button>
-            <Button onClick={() => safeStageChange("questions")}>
+            <Button 
+              onClick={() => {
+                console.log("Botón Start Process clickeado, cambiando a etapa de preguntas");
+                // Activar isSaving para evitar cierre prematuro
+                setIsSaving(true);
+                // Usar setTimeout para asegurar que el cambio ocurra después de la activación
+                setTimeout(() => {
+                  setStage("questions");
+                }, 500);
+              }}
+            >
               Start Process
             </Button>
           </div>
