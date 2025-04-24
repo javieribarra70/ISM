@@ -450,16 +450,28 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 const nextUnansweredIndex = newQuestions.findIndex(q => q.response === null);
                 
                 if (nextUnansweredIndex !== -1) {
+                  // CRÍTICO: Primero establecemos todas las variables de estado
                   setQuestions(newQuestions);
                   setCurrentQuestionIndex(nextUnansweredIndex);
-                  setStage("questions");
                   
+                  // Activa explícitamente el modo de guardado para prevenir el cierre automático
+                  setIsSaving(true);
+                  
+                  // Notificación con aumento de duración
                   toast({
                     title: "Continuando proceso",
                     description: `Se encontraron ${answeredCount} relaciones. Continuando desde donde se quedó.`,
                     variant: "default",
-                    duration: 3000
+                    duration: 5000
                   });
+                  
+                  // IMPORTANTE: Usamos un retraso para el cambio de etapa
+                  // Esto da tiempo a que los otros estados se establezcan primero
+                  console.log("Preparando cambio a etapa de preguntas con retraso...");
+                  setTimeout(() => {
+                    console.log("Cambiando a etapa de preguntas para continuar con relaciones pendientes");
+                    setStage("questions");
+                  }, 1000); // Retraso considerable para garantizar estabilidad
                 }
               }
             }
