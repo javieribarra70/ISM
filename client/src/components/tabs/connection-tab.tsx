@@ -242,13 +242,16 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
         </div>
       </div>
       
-      {/* ISM Process Dialog */}
-      <ISMProcess 
-        isOpen={isISMDialogOpen}
-        onClose={handleISMDialogClose}
-        selectedIdeas={selectedIdeas}
-        projectContext={projectContext}
-      />
+      {/* ISM Process Dialog - Con clave única para forzar remontaje completo */}
+      {isISMDialogOpen && (
+        <ISMProcess 
+          key={`ism-process-instance-${Date.now()}`} // Clave única para forzar remontaje completo
+          isOpen={isISMDialogOpen}
+          onClose={handleISMDialogClose}
+          selectedIdeas={selectedIdeas}
+          projectContext={projectContext}
+        />
+      )}
     </>
   );
 }
