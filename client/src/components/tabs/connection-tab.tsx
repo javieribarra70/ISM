@@ -103,20 +103,35 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
 
   // Verificar si hay relaciones VAXO existentes para estas ideas
   const hasExistingVaxoRelationships = useMemo(() => {
-    if (!existingRelationships || !selectedIdeas.length) return false;
+    if (!existingRelationships || !selectedIdeas.length) {
+      console.log("No hay relaciones o ideas seleccionadas");
+      return false;
+    }
     
     // Obtiene los IDs de las ideas seleccionadas
     const selectedIds = selectedIdeas.map(idea => idea.id);
+    console.log("IDs de ideas seleccionadas:", selectedIds);
     
     // Filtra las relaciones que involucran solo ideas seleccionadas
     const relationsForSelectedIdeas = existingRelationships.filter(rel => {
       const fromId = rel.fromIdeaId || rel.from;
       const toId = rel.toIdeaId || rel.to;
-      return selectedIds.includes(fromId) && selectedIds.includes(toId);
+      const matches = selectedIds.includes(fromId) && selectedIds.includes(toId);
+      if (matches) {
+        console.log(`Relación coincidente: ${fromId} -> ${toId}`);
+      }
+      return matches;
     });
     
-    return relationsForSelectedIdeas.length > 0;
+    const result = relationsForSelectedIdeas.length > 0;
+    console.log(`¿Hay relaciones para las ideas seleccionadas? ${result ? 'SÍ' : 'NO'}`);
+    console.log(`Total relaciones filtradas: ${relationsForSelectedIdeas.length}`);
+    
+    return result;
   }, [existingRelationships, selectedIdeas]);
+
+  // Estado para controlar qué modal mostrar
+  const [showRelationshipsDialog, setShowRelationshipsDialog] = useState(false);
 
   // Handle the start VAXO process button
   const handleStartProcess = () => {
@@ -130,25 +145,39 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     // Log para diagnóstico
     console.log("Iniciando proceso VAXO con clave única:", uniqueKey);
     console.log(`Hay ${existingRelationships.length} relaciones VAXO en la base de datos`);
-    console.log(`¿Hay relaciones para las ideas seleccionadas? ${hasExistingVaxoRelationships ? 'SÍ' : 'NO'}`);
+    
+    // Verificar nuevamente si hay relaciones existentes con las ideas seleccionadas
+    const selectedIds = selectedIdeas.map(idea => idea.id);
+    const relationsForSelectedIdeas = existingRelationships.filter(rel => {
+      const fromId = rel.fromIdeaId || rel.from;
+      const toId = rel.toIdeaId || rel.to;
+      return selectedIds.includes(fromId) && selectedIds.includes(toId);
+    });
+    
+    const hasRelations = relationsForSelectedIdeas.length > 0;
+    console.log(`Total relaciones específicas: ${relationsForSelectedIdeas.length}`);
+    console.log(`¿Hay relaciones específicas? ${hasRelations ? 'SÍ' : 'NO'}`);
 
-    // Mostrar mensaje antes de abrir el diálogo
-    if (hasExistingVaxoRelationships) {
+    // Si hay relaciones existentes, mostrar el diálogo de confirmación
+    if (hasRelations) {
       toast({
         title: "Relaciones VAXO existentes",
-        description: "Se han encontrado relaciones VAXO guardadas previamente. Continuando desde donde quedó.",
+        description: "Se han encontrado relaciones VAXO guardadas previamente.",
         duration: 5000,
       });
-    }
-    
-    // Retraso deliberado para mostrar el mensaje antes de abrir el modal
-    setTimeout(() => {
-      // Open the ISM dialog
-      setIsISMDialogOpen(true);
       
-      // Reset the starting state
+      // Mostrar diálogo de confirmación directamente
+      setShowRelationshipsDialog(true);
+      setIsISMDialogOpen(false);
       setIsStarting(false);
-    }, 1000);
+    } else {
+      // No hay relaciones, mostrar diálogo normal
+      setTimeout(() => {
+        setIsISMDialogOpen(true);
+        setShowRelationshipsDialog(false);
+        setIsStarting(false);
+      }, 1000);
+    }
   };
 
   // Handle the start alternative process button
@@ -289,112 +318,142 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
         </div>
       </div>
       
-      {/* ISM Process Dialog - Con acercamiento completamente diferente para evitar problemas de estado */}
-      {isISMDialogOpen && (
-        <>
-          {hasExistingVaxoRelationships ? (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-              <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold">Retomando Proceso VAXO</h2>
-                  <Button variant="ghost" size="icon" onClick={handleISMDialogClose} className="h-8 w-8 rounded-full">
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                
-                <div className="space-y-4">
-                  <p>Se han encontrado {existingRelationships.filter(r => {
-                    const fromId = r.fromIdeaId || r.from;
-                    const toId = r.toIdeaId || r.to;
-                    const selectedIds = selectedIdeas.map(idea => idea.id);
-                    return selectedIds.includes(fromId) && selectedIds.includes(toId);
-                  }).length} relaciones VAXO existentes para las ideas seleccionadas.</p>
-                  
-                  <Alert>
-                    <AlertTitle>Recuperación de sesión</AlertTitle>
-                    <AlertDescription>
-                      Para solucionar el problema actual, primero debemos eliminar todas las relaciones existentes
-                      y luego comenzar un nuevo proceso. Esto es una solución temporal.
-                    </AlertDescription>
-                  </Alert>
-                  
-                  <div className="flex justify-end space-x-2 mt-4">
-                    <Button variant="outline" onClick={handleISMDialogClose}>
-                      Cancelar
-                    </Button>
-                    <Button 
-                      onClick={async () => {
-                        // Mensaje mientras se procesan las relaciones
-                        toast({
-                          title: "Eliminando relaciones existentes",
-                          description: "Preparando sistema para nueva sesión VAXO...",
-                          duration: 3000,
-                        });
-                        
+      {/* Diálogo de relaciones existentes */}
+      {showRelationshipsDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Recuperación de Sesión VAXO</h2>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => {
+                  setShowRelationshipsDialog(false);
+                  console.log("Dialog de relaciones cerrado por usuario");
+                }} 
+                className="h-8 w-8 rounded-full"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <p className="text-base">
+                Hay <strong>{existingRelationships.filter(r => {
+                  const fromId = r.fromIdeaId || r.from;
+                  const toId = r.toIdeaId || r.to;
+                  const selectedIds = selectedIdeas.map(idea => idea.id);
+                  return selectedIds.includes(fromId) && selectedIds.includes(toId);
+                }).length}</strong> relaciones VAXO guardadas para estas ideas.
+              </p>
+              
+              <Alert>
+                <AlertTitle>Sesión VAXO Interrumpida</AlertTitle>
+                <AlertDescription>
+                  El sistema ha detectado una sesión VAXO previa que no se completó. Para continuar,
+                  es necesario eliminar las relaciones existentes y comenzar un proceso nuevo.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="flex justify-end space-x-2 mt-6">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowRelationshipsDialog(false);
+                    console.log("Dialog de relaciones cancelado por usuario");
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={async () => {
+                    toast({
+                      title: "Limpiando relaciones VAXO",
+                      description: "Preparando sistema para comenzar de nuevo...",
+                      duration: 5000,
+                    });
+                    
+                    try {
+                      // Obtener los IDs de las ideas seleccionadas
+                      const selectedIds = selectedIdeas.map(idea => idea.id);
+                      
+                      // Obtener las relaciones para las ideas seleccionadas
+                      const relationsToDelete = existingRelationships.filter(rel => {
+                        const fromId = rel.fromIdeaId || rel.from;
+                        const toId = rel.toIdeaId || rel.to;
+                        return selectedIds.includes(fromId) && selectedIds.includes(toId);
+                      });
+                      
+                      console.log(`Se eliminarán ${relationsToDelete.length} relaciones VAXO`);
+                      
+                      // Eliminar cada relación una por una
+                      for (const relation of relationsToDelete) {
                         try {
-                          // Obtener los IDs de las ideas seleccionadas
-                          const selectedIds = selectedIdeas.map(idea => idea.id);
-                          
-                          // Obtener las relaciones para las ideas seleccionadas
-                          const relationsToDelete = existingRelationships.filter(rel => {
-                            const fromId = rel.fromIdeaId || rel.from;
-                            const toId = rel.toIdeaId || rel.to;
-                            return selectedIds.includes(fromId) && selectedIds.includes(toId);
+                          const response = await fetch(`/api/relationships/${relation.id}`, {
+                            method: 'DELETE',
+                            headers: {
+                              'Content-Type': 'application/json'
+                            },
+                            credentials: 'include'
                           });
                           
-                          // Eliminar cada relación una por una
-                          for (const relation of relationsToDelete) {
-                            try {
-                              await apiRequest('DELETE', `/api/relationships/${relation.id}`);
-                              console.log(`Relación ${relation.id} eliminada correctamente`);
-                            } catch (error) {
-                              console.error(`Error al eliminar relación ${relation.id}:`, error);
-                            }
+                          if (response.ok) {
+                            console.log(`Relación ${relation.id} eliminada correctamente`);
+                          } else {
+                            console.error(`Error al eliminar relación ${relation.id}: ${response.statusText}`);
                           }
-                          
-                          // Invalidar la consulta para actualizar los datos
-                          queryClient.invalidateQueries({
-                            queryKey: [`/api/projects/${projectId}/relationships`]
-                          });
-                          
-                          // Mostrar mensaje de éxito
-                          toast({
-                            title: "Relaciones eliminadas",
-                            description: `Se han eliminado ${relationsToDelete.length} relaciones VAXO. Puede iniciar un nuevo proceso.`,
-                            duration: 5000,
-                          });
                         } catch (error) {
-                          console.error("Error al eliminar relaciones:", error);
-                          toast({
-                            title: "Error",
-                            description: "Ocurrió un error al eliminar las relaciones.",
-                            variant: "destructive",
-                            duration: 5000,
-                          });
+                          console.error(`Error al eliminar relación ${relation.id}:`, error);
                         }
-                        
-                        // Cierra este diálogo después de un tiempo
-                        setTimeout(() => {
-                          handleISMDialogClose();
-                        }, 2000);
-                      }}
-                    >
-                      Eliminar y Reiniciar
-                    </Button>
-                  </div>
-                </div>
+                      }
+                      
+                      // Actualizar el estado local
+                      queryClient.invalidateQueries({
+                        queryKey: [`/api/projects/${projectId}/relationships`]
+                      });
+                      
+                      toast({
+                        title: "Relaciones eliminadas",
+                        description: `Se han eliminado ${relationsToDelete.length} relaciones. Ahora puede iniciar un nuevo proceso.`,
+                        duration: 5000,
+                      });
+                      
+                      // Cerrar este diálogo
+                      setShowRelationshipsDialog(false);
+                      
+                      // Después de un breve tiempo, abrir el diálogo de ISMProcess
+                      setTimeout(() => {
+                        setIsISMDialogOpen(true);
+                      }, 1000);
+                      
+                    } catch (error) {
+                      console.error("Error al eliminar relaciones:", error);
+                      toast({
+                        title: "Error",
+                        description: "Ocurrió un error al eliminar las relaciones VAXO.",
+                        variant: "destructive",
+                        duration: 5000,
+                      });
+                    }
+                  }}
+                >
+                  Eliminar y Comenzar Nuevo
+                </Button>
               </div>
             </div>
-          ) : (
-            <ISMProcess 
-              key={ismInstanceKey || `ism-process-${Date.now()}`}
-              isOpen={isISMDialogOpen}
-              onClose={handleISMDialogClose}
-              selectedIdeas={selectedIdeas}
-              projectContext={projectContext}
-            />
-          )}
-        </>
+          </div>
+        </div>
+      )}
+      
+      {/* ISM Process normal */}
+      {isISMDialogOpen && (
+        <ISMProcess 
+          key={ismInstanceKey || `ism-process-${Date.now()}`}
+          isOpen={isISMDialogOpen}
+          onClose={handleISMDialogClose}
+          selectedIdeas={selectedIdeas}
+          projectContext={projectContext}
+        />
       )}
     </>
   );
