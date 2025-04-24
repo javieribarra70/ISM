@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -6,7 +6,7 @@ import { Idea, SelectedIdea, Project } from "@shared/schema";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { PlayCircle } from "lucide-react";
+import { PlayCircle, X } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import ISMProcess from "@/components/ism/ism-process";
@@ -28,6 +28,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   const { user } = useAuth();
   const [isStarting, setIsStarting] = useState(false);
   const [isISMDialogOpen, setIsISMDialogOpen] = useState(false);
+  const [ismInstanceKey, setIsmInstanceKey] = useState<string>("");
   const [isStartingAlternative, setIsStartingAlternative] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -90,18 +91,63 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   // Filter ideas to only include those that were selected
   const selectedIdeas = ideas.filter(idea => selectedIdeaIds.includes(idea.id));
 
+  // Fetch existing relationship data
+  const { 
+    data: existingRelationships = [], 
+    isLoading: isRelationshipsLoading 
+  } = useQuery<any[]>({
+    queryKey: [`/api/projects/${projectId}/relationships`],
+    enabled: !!projectId
+  });
+
+  // Verificar si hay relaciones VAXO existentes para estas ideas
+  const hasExistingVaxoRelationships = useMemo(() => {
+    if (!existingRelationships || !selectedIdeas.length) return false;
+    
+    // Obtiene los IDs de las ideas seleccionadas
+    const selectedIds = selectedIdeas.map(idea => idea.id);
+    
+    // Filtra las relaciones que involucran solo ideas seleccionadas
+    const relationsForSelectedIdeas = existingRelationships.filter(rel => {
+      const fromId = rel.fromIdeaId || rel.from;
+      const toId = rel.toIdeaId || rel.to;
+      return selectedIds.includes(fromId) && selectedIds.includes(toId);
+    });
+    
+    return relationsForSelectedIdeas.length > 0;
+  }, [existingRelationships, selectedIdeas]);
+
   // Handle the start VAXO process button
   const handleStartProcess = () => {
     // Set starting state to show loading UI
     setIsStarting(true);
     
-    // Open the ISM dialog
-    setIsISMDialogOpen(true);
+    // Genera una nueva clave única para este proceso
+    const uniqueKey = `ism-process-${Date.now()}`;
+    setIsmInstanceKey(uniqueKey);
     
-    // Reset the starting state after a short delay
+    // Log para diagnóstico
+    console.log("Iniciando proceso VAXO con clave única:", uniqueKey);
+    console.log(`Hay ${existingRelationships.length} relaciones VAXO en la base de datos`);
+    console.log(`¿Hay relaciones para las ideas seleccionadas? ${hasExistingVaxoRelationships ? 'SÍ' : 'NO'}`);
+
+    // Mostrar mensaje antes de abrir el diálogo
+    if (hasExistingVaxoRelationships) {
+      toast({
+        title: "Relaciones VAXO existentes",
+        description: "Se han encontrado relaciones VAXO guardadas previamente. Continuando desde donde quedó.",
+        duration: 5000,
+      });
+    }
+    
+    // Retraso deliberado para mostrar el mensaje antes de abrir el modal
     setTimeout(() => {
+      // Open the ISM dialog
+      setIsISMDialogOpen(true);
+      
+      // Reset the starting state
       setIsStarting(false);
-    }, 500);
+    }, 1000);
   };
 
   // Handle the start alternative process button
@@ -242,15 +288,112 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
         </div>
       </div>
       
-      {/* ISM Process Dialog - Con clave única para forzar remontaje completo */}
+      {/* ISM Process Dialog - Con acercamiento completamente diferente para evitar problemas de estado */}
       {isISMDialogOpen && (
-        <ISMProcess 
-          key={`ism-process-instance-${Date.now()}`} // Clave única para forzar remontaje completo
-          isOpen={isISMDialogOpen}
-          onClose={handleISMDialogClose}
-          selectedIdeas={selectedIdeas}
-          projectContext={projectContext}
-        />
+        <>
+          {hasExistingVaxoRelationships ? (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+              <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold">Retomando Proceso VAXO</h2>
+                  <Button variant="ghost" size="icon" onClick={handleISMDialogClose} className="h-8 w-8 rounded-full">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <div className="space-y-4">
+                  <p>Se han encontrado {existingRelationships.filter(r => {
+                    const fromId = r.fromIdeaId || r.from;
+                    const toId = r.toIdeaId || r.to;
+                    const selectedIds = selectedIdeas.map(idea => idea.id);
+                    return selectedIds.includes(fromId) && selectedIds.includes(toId);
+                  }).length} relaciones VAXO existentes para las ideas seleccionadas.</p>
+                  
+                  <Alert>
+                    <AlertTitle>Recuperación de sesión</AlertTitle>
+                    <AlertDescription>
+                      Para solucionar el problema actual, primero debemos eliminar todas las relaciones existentes
+                      y luego comenzar un nuevo proceso. Esto es una solución temporal.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="flex justify-end space-x-2 mt-4">
+                    <Button variant="outline" onClick={handleISMDialogClose}>
+                      Cancelar
+                    </Button>
+                    <Button 
+                      onClick={async () => {
+                        // Mensaje mientras se procesan las relaciones
+                        toast({
+                          title: "Eliminando relaciones existentes",
+                          description: "Preparando sistema para nueva sesión VAXO...",
+                          duration: 3000,
+                        });
+                        
+                        try {
+                          // Obtener los IDs de las ideas seleccionadas
+                          const selectedIds = selectedIdeas.map(idea => idea.id);
+                          
+                          // Obtener las relaciones para las ideas seleccionadas
+                          const relationsToDelete = existingRelationships.filter(rel => {
+                            const fromId = rel.fromIdeaId || rel.from;
+                            const toId = rel.toIdeaId || rel.to;
+                            return selectedIds.includes(fromId) && selectedIds.includes(toId);
+                          });
+                          
+                          // Eliminar cada relación una por una
+                          for (const relation of relationsToDelete) {
+                            try {
+                              await apiRequest('DELETE', `/api/relationships/${relation.id}`);
+                              console.log(`Relación ${relation.id} eliminada correctamente`);
+                            } catch (error) {
+                              console.error(`Error al eliminar relación ${relation.id}:`, error);
+                            }
+                          }
+                          
+                          // Invalidar la consulta para actualizar los datos
+                          queryClient.invalidateQueries({
+                            queryKey: [`/api/projects/${projectId}/relationships`]
+                          });
+                          
+                          // Mostrar mensaje de éxito
+                          toast({
+                            title: "Relaciones eliminadas",
+                            description: `Se han eliminado ${relationsToDelete.length} relaciones VAXO. Puede iniciar un nuevo proceso.`,
+                            duration: 5000,
+                          });
+                        } catch (error) {
+                          console.error("Error al eliminar relaciones:", error);
+                          toast({
+                            title: "Error",
+                            description: "Ocurrió un error al eliminar las relaciones.",
+                            variant: "destructive",
+                            duration: 5000,
+                          });
+                        }
+                        
+                        // Cierra este diálogo después de un tiempo
+                        setTimeout(() => {
+                          handleISMDialogClose();
+                        }, 2000);
+                      }}
+                    >
+                      Eliminar y Reiniciar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <ISMProcess 
+              key={ismInstanceKey || `ism-process-${Date.now()}`}
+              isOpen={isISMDialogOpen}
+              onClose={handleISMDialogClose}
+              selectedIdeas={selectedIdeas}
+              projectContext={projectContext}
+            />
+          )}
+        </>
       )}
     </>
   );
