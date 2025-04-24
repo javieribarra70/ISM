@@ -441,16 +441,14 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
         </div>
       )}
       
-      {/* ISM Process normal */}
-      {isISMDialogOpen && (
-        <ISMProcess 
-          key={ismInstanceKey || `ism-process-${Date.now()}`}
-          isOpen={isISMDialogOpen}
-          onClose={handleISMDialogClose}
-          selectedIdeas={selectedIdeas}
-          projectContext={projectContext}
-        />
-      )}
+      {/* ISM Process siempre presente pero controlado por isOpen */}
+      <ISMProcess 
+        key={ismInstanceKey || `ism-process-${Date.now()}`}
+        isOpen={isISMDialogOpen}
+        onClose={handleISMDialogClose}
+        selectedIdeas={selectedIdeas}
+        projectContext={projectContext}
+      />
     </>
   );
 }
