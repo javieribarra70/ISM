@@ -166,23 +166,34 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
       });
     }
     
-    // SOLUCIÓN CRÍTICA: Abrir modal tras un retraso mínimo
-    // Esto permite que React actualice el estado primero
-    console.log(">>> APERTURA DE MODAL PROGRAMADA");
+    // SOLUCIÓN EMERGENCIA: Abrir directamente el modal - enfoque muy directo
+    console.log(">>>>> APERTURA DE MODAL DIRECTO - SIN TIMEOUT");
+    setIsISMDialogOpen(true);
     
-    // Primero, forzar actualización del estado a false para garantizar cambios
-    setIsISMDialogOpen(false);
+    // Agregamos un efecto visual para asegurar feedback al usuario
+    const body = document.body;
+    const overlay = document.createElement('div');
+    overlay.id = "temp-overlay";
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
+    overlay.style.backgroundColor = "rgba(0,0,0,0.5)";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    overlay.style.zIndex = "9998";
+    overlay.innerHTML = "<div style='background: white; padding: 20px; border-radius: 8px;'>Abriendo modal VAXO...</div>";
+    body.appendChild(overlay);
     
-    // Luego, tras un breve retraso, cambiar a true para forzar la actualización
+    // Luego de mostrar este overlay temporal, lo quitamos
     setTimeout(() => {
-      console.log(">>> APERTURA DE MODAL EJECUTADA");
-      setIsISMDialogOpen(true);
-      // Log de verificación para comprobar que el estado cambió correctamente
-      console.log("Estado actual de isISMDialogOpen DESPUÉS:", true);
-      
-      // Resetear estado de carga después de abrir el modal
+      const tempOverlay = document.getElementById("temp-overlay");
+      if (tempOverlay) tempOverlay.remove();
+      console.log(">>>>> Modal debe estar visible ahora");
       setIsStarting(false);
-    }, 50); // Un retraso mínimo, solo para asegurar la secuencia correcta
+    }, 1000);
   };
 
   // Handle the start alternative process button

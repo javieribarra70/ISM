@@ -1794,12 +1794,21 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   };
 
   // Si no está abierto, no renderizamos nada
-  if (!isOpen) return null;
+  // Debugging para determinar si se está renderizando el componente correctamente
+  console.log("ISMProcess render - isOpen:", isOpen);
   
-  // Modal personalizado
+  // Si no está abierto, no mostrar nada - pero agregar un log para debug
+  if (!isOpen) {
+    console.log("ISMProcess - NO está abierto, retornando null");
+    return null;
+  }
+  
+  console.log("ISMProcess - ESTÁ abierto, renderizando modal!!!");
+  
+  // Modal personalizado con z-index muy alto para asegurarnos que sea visible
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-lg shadow-lg max-w-4xl max-h-[95vh] h-[95vh] overflow-y-auto w-full">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80" style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999}}>
+      <div className="bg-white rounded-lg shadow-lg max-w-4xl max-h-[95vh] h-[95vh] overflow-y-auto w-full" style={{border: '5px solid red'}}>
         <div className="p-6">
           {/* Header personalizado con botón de cerrar */}
           <div className="flex justify-between items-start mb-6">
