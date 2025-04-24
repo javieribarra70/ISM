@@ -133,7 +133,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   // Estado para controlar qué modal mostrar
   const [showRelationshipsDialog, setShowRelationshipsDialog] = useState(false);
 
-  // Handle the start VAXO process button - versión que conserva las relaciones existentes
+  // Handle the start VAXO process button
   const handleStartProcess = () => {
     // Set starting state to show loading UI
     setIsStarting(true);
@@ -165,11 +165,15 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
       });
     }
     
-    // En cualquier caso, mostrar el diálogo del proceso ISM
+    // Importante: Asegurarse que el modal ISM se abra y sea visible
+    console.log("ABRIENDO MODAL ISM - INICIO DEL PROCESO");
+    setIsISMDialogOpen(true);
+    
+    // Resetear estado de carga después de abrir el modal
     setTimeout(() => {
-      setIsISMDialogOpen(true);
+      console.log("Reseteando estado de carga");
       setIsStarting(false);
-    }, 1000);
+    }, 500);
   };
 
   // Handle the start alternative process button
