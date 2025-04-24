@@ -848,19 +848,18 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       setIsSaving(true);
       console.log("Guardando relaciones VAXO...");
       
-      // MODIFICACIÓN CRÍTICA: Ya NO eliminamos las relaciones existentes
-      // En su lugar, identificamos qué relaciones nuevas tenemos que añadir
-      console.log(`Conservando relaciones VAXO existentes y añadiendo nuevas`);
-      
-      // Crear un mapa de relaciones existentes para búsqueda rápida
-      const existingRelationsMap = new Map();
-      if (existingRelationships && Array.isArray(existingRelationships)) {
-        existingRelationships.forEach(rel => {
-          const fromId = rel.fromIdeaId || rel.from;
-          const toId = rel.toIdeaId || rel.to;
-          const key = `${fromId}-${toId}`;
-          existingRelationsMap.set(key, rel);
-        });
+      // Delete any existing relationships first (to avoid duplicates)
+      if (existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
+        console.log(`Eliminando ${existingRelationships.length} relaciones existentes`);
+        // Use Promise.all to delete all existing relationships
+        for (const rel of existingRelationships) {
+          try {
+            await apiRequest('DELETE', `/api/relationships/${rel.id}`);
+            console.log(`Relación ${rel.id} eliminada correctamente`);
+          } catch (error) {
+            console.error(`Error al eliminar relación ${rel.id}:`, error);
+          }
+        }
       }
       
       console.log(`Creando nuevas relaciones VAXO (${relationships.filter(rel => rel.relation !== RelationType.O).length})`);

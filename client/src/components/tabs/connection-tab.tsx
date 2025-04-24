@@ -133,60 +133,6 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   // Estado para controlar qué modal mostrar
   const [showRelationshipsDialog, setShowRelationshipsDialog] = useState(false);
 
-  // Función para verificar si un conjunto de relaciones VAXO está completo
-  const isVAXOProcessComplete = (relationsForSelectedIdeas: any[], selectedIdeas: Idea[]) => {
-    // Si no hay ideas seleccionadas, no hay proceso que completar
-    if (selectedIdeas.length <= 1) return true;
-    
-    // Calcular el número total de relaciones posibles entre las ideas seleccionadas (n*(n-1)/2)
-    const totalPossibleRelations = (selectedIdeas.length * (selectedIdeas.length - 1)) / 2;
-    
-    // Si el número de relaciones existentes es menor que el total posible, el proceso está incompleto
-    return relationsForSelectedIdeas.length >= totalPossibleRelations;
-  };
-
-  // Función para verificar si hay un proceso VAXO interrumpido y manejarlo
-  useEffect(() => {
-    // Solo ejecutar si tenemos ideas seleccionadas y relaciones cargadas
-    if (selectedIdeas.length < 2 || !existingRelationships || isSelectedIdeasLoading) return;
-    
-    // Verificar si hay relaciones existentes con las ideas seleccionadas
-    const selectedIds = selectedIdeas.map(idea => idea.id);
-    const relationsForSelectedIdeas = existingRelationships.filter(rel => {
-      const fromId = rel.fromIdeaId || rel.from;
-      const toId = rel.toIdeaId || rel.to;
-      return selectedIds.includes(fromId) && selectedIds.includes(toId);
-    });
-    
-    const hasRelations = relationsForSelectedIdeas.length > 0;
-    const isComplete = isVAXOProcessComplete(relationsForSelectedIdeas, selectedIdeas);
-    
-    console.log(`Verificación automática de proceso VAXO:`);
-    console.log(`- Ideas seleccionadas: ${selectedIds.length}`);
-    console.log(`- Relaciones encontradas: ${relationsForSelectedIdeas.length}`);
-    console.log(`- ¿Proceso completo?: ${isComplete ? 'SÍ' : 'NO'}`);
-    
-    // Si hay relaciones pero el proceso no está completo, abrimos automáticamente el proceso
-    if (hasRelations && !isComplete && !isISMDialogOpen) {
-      console.log("Detectado proceso VAXO interrumpido - reabriendo automáticamente");
-      // Mostrar notificación
-      toast({
-        title: "Proceso VAXO interrumpido detectado",
-        description: "Continuando con el proceso VAXO previamente guardado...",
-        duration: 3000,
-      });
-      
-      // Generar clave única y abrir el diálogo automáticamente
-      const uniqueKey = `ism-process-auto-${Date.now()}`;
-      setIsmInstanceKey(uniqueKey);
-      
-      // Pequeño retraso para dar tiempo a que la interfaz se actualice
-      setTimeout(() => {
-        setIsISMDialogOpen(true);
-      }, 1500);
-    }
-  }, [selectedIdeas, existingRelationships, isSelectedIdeasLoading, isISMDialogOpen]);
-
   // Handle the start VAXO process button - versión que conserva las relaciones existentes
   const handleStartProcess = () => {
     // Set starting state to show loading UI
