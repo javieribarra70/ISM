@@ -135,15 +135,16 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
 
   // Handle the start VAXO process button
   const handleStartProcess = () => {
+    // Primero, verifiquemos el estado actual para debugging
+    console.log("Estado actual de isISMDialogOpen ANTES:", isISMDialogOpen);
+    
     // Set starting state to show loading UI
     setIsStarting(true);
     
-    // Genera una nueva clave única para este proceso
+    // Genera una nueva clave única para este proceso - forzar nueva instancia
     const uniqueKey = `ism-process-${Date.now()}`;
+    console.log("Generando nueva clave única para forzar remontaje:", uniqueKey);
     setIsmInstanceKey(uniqueKey);
-    
-    // Log para diagnóstico
-    console.log("Iniciando proceso VAXO con clave única:", uniqueKey);
     
     // Verificar si hay relaciones existentes con las ideas seleccionadas
     const selectedIds = selectedIdeas.map(idea => idea.id);
@@ -165,15 +166,23 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
       });
     }
     
-    // Importante: Asegurarse que el modal ISM se abra y sea visible
-    console.log("ABRIENDO MODAL ISM - INICIO DEL PROCESO");
-    setIsISMDialogOpen(true);
+    // SOLUCIÓN CRÍTICA: Abrir modal tras un retraso mínimo
+    // Esto permite que React actualice el estado primero
+    console.log(">>> APERTURA DE MODAL PROGRAMADA");
     
-    // Resetear estado de carga después de abrir el modal
+    // Primero, forzar actualización del estado a false para garantizar cambios
+    setIsISMDialogOpen(false);
+    
+    // Luego, tras un breve retraso, cambiar a true para forzar la actualización
     setTimeout(() => {
-      console.log("Reseteando estado de carga");
+      console.log(">>> APERTURA DE MODAL EJECUTADA");
+      setIsISMDialogOpen(true);
+      // Log de verificación para comprobar que el estado cambió correctamente
+      console.log("Estado actual de isISMDialogOpen DESPUÉS:", true);
+      
+      // Resetear estado de carga después de abrir el modal
       setIsStarting(false);
-    }, 500);
+    }, 50); // Un retraso mínimo, solo para asegurar la secuencia correcta
   };
 
   // Handle the start alternative process button
