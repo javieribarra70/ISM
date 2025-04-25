@@ -173,29 +173,24 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     setIsmInstanceKey(uniqueKey);
     console.log("🆕 Nueva instancia VAXO con clave:", uniqueKey);
     
-    // 4. Cerrar el modal si ya estaba abierto (sin esperar)
-    setIsISMDialogOpen(false);
+    // Simplificamos la lógica para evitar cerrar y reabrir el modal
+    // que puede causar problemas con el estado constante isSaving
+    console.log("🔓 Abriendo modal VAXO directamente...");
+    setIsISMDialogOpen(true);
     
-    // 5. Dar tiempo al DOM para procesar el cierre antes de abrir de nuevo
+    // Quitar overlay y resetear estado de loading después de un tiempo
     setTimeout(() => {
-      // 6. Abrir el modal con la nueva instancia
-      console.log("🔓 Abriendo modal VAXO después del reset...");
-      setIsISMDialogOpen(true);
+      const tempOverlay = document.getElementById("temp-overlay");
+      if (tempOverlay) tempOverlay.remove();
+      setIsStarting(false);
       
-      // 7. Quitar overlay y resetear estado de loading
-      setTimeout(() => {
-        const tempOverlay = document.getElementById("temp-overlay");
-        if (tempOverlay) tempOverlay.remove();
-        setIsStarting(false);
-        
-        // 8. Hacer scroll al modal para asegurar visibilidad
-        const modal = document.getElementById("ism-modal-container");
-        if (modal) {
-          modal.scrollIntoView({ behavior: "smooth" });
-          console.log("✅ Modal VAXO ahora visible");
-        }
-      }, 1000);
-    }, 300); // Tiempo suficiente para que React procese el cambio de estado
+      // Hacer scroll al modal para asegurar visibilidad
+      const modal = document.getElementById("ism-modal-container");
+      if (modal) {
+        modal.scrollIntoView({ behavior: "smooth" });
+        console.log("✅ Modal VAXO ahora visible");
+      }
+    }, 1000);
 
     // Verificar si hay relaciones existentes con las ideas seleccionadas
     const selectedIds = selectedIdeas.map((idea) => idea.id);

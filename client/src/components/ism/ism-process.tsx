@@ -365,18 +365,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       // 2. MODAL CERRADO: No reseteamos el estado inmediatamente para evitar problemas de sincronización
       console.log("🟠 MODAL CERRADO - Pero manteniendo estado temporalmente");
       
-      // IMPORTANTE: Usamos un timeout muy largo (5 segundos) para asegurar que no haya reaperturas prematuras
-      timeoutId = setTimeout(() => {
-        // Solo reseteamos si realmente sigue cerrado después del timeout
-        // Esto evita que un intento de reapertura rápida sea interrumpido
-        if (!isOpen) {
-          console.log("🔴 EFECTO DETECTÓ isOpen=false - CERRANDO MODAL");
-          setIsInitialized(false); 
-          // Ya no necesitamos setIsSaving(false) porque ahora isSaving es una constante
-        } else {
-          console.log("⚠️ Cancelando cierre automático porque el modal fue reabierto");
-        }
-      }, 5000); // Tiempo muy extenso para garantizar que no interfiera con reaperturas
+      // IMPORTANTE: Ahora que isSaving es una constante, no debemos intentar reinicializar el componente
+      // ya que esto podría causar problemas. Simplemente reportamos el estado.
+      console.log("Estado del modal al cerrarse:", { isOpen, isInitialized, isSaving });
     }
     
     // Limpieza del timeout cuando el componente se desmonta o las dependencias cambian
@@ -390,24 +381,17 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   
   // Load existing relationships from the database if available - solo en la inicialización
   useEffect(() => {
-    // Si ya está inicializado o no está abierto, no hacer nada
+    // Si no está abierto, no hacer nada
     if (!isOpen) return;
     
     // Crear una bandera para evitar actualizaciones de estado después de desmontaje
     let isMounted = true;
     
+    // Ahora simplificamos la lógica y evitamos reiniciar el proceso si ya está inicializado
+    // Este enfoque evita ciclos innecesarios de setIsInitialized
     if (isInitialized) {
-      console.log("⚠️ Ya estaba inicializado. Reiniciando proceso VAXO.");
-      if (isMounted) setIsInitialized(false);
-      
-      // Usamos un timeout para espaciar estas llamadas de actualización de estado
-      const timeoutId = setTimeout(() => {
-        if (isMounted) setIsInitialized(true);
-      }, 100); // Aumentamos de 10ms a 100ms para dar más tiempo
-      
-      // Limpieza
+      console.log("⚠️ Proceso VAXO ya inicializado, continuando operación normal.");
       return () => {
-        clearTimeout(timeoutId);
         isMounted = false;
       };
     }
