@@ -147,10 +147,21 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     console.log("Generando nueva clave única para forzar remontaje:", uniqueKey);
     setIsmInstanceKey(uniqueKey);
     
-    // Agregamos pequeño retraso para garantizar que se monte con la nueva key
+    // Agregamos un retraso mayor para garantizar que se monte con la nueva key
     setTimeout(() => {
+      console.log("⏱️ Abriendo modal VAXO después del retraso...");
       setIsISMDialogOpen(true);
-    }, 50); // con 50ms basta para garantizar que se monte con el nuevo key
+      
+      // Scroll al modal después de que se abra
+      setTimeout(() => {
+        console.log("🌟 Asegurando que el modal VAXO sea visible...");
+        const modal = document.getElementById("ism-modal-container");
+        if (modal) {
+          modal.scrollIntoView({ behavior: 'smooth' });
+          console.log("✅ Modal VAXO ahora visible en la pantalla");
+        }
+      }, 200);
+    }, 200); // Aumentando a 200ms para dar más tiempo al montaje
     
     // Verificar si hay relaciones existentes con las ideas seleccionadas
     const selectedIds = selectedIdeas.map(idea => idea.id);

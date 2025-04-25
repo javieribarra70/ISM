@@ -1868,7 +1868,30 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   console.log("ISMProcess render - isOpen:", isOpen);
   
   // ELIMINADO el return condicional - SIEMPRE se renderiza el modal, pero se oculta con CSS
-  console.log(isOpen ? "ISMProcess - ESTÁ abierto, renderizando modal!!!" : "ISMProcess - NO está abierto, pero sigue montado");
+  console.log(isOpen ? "👁️👁️👁️ ISMProcess - ESTÁ abierto, renderizando modal!!!" : "ISMProcess - NO está abierto, pero sigue montado");
+  
+  // Intenta hacer scroll al modal cuando cambia de estado
+  useEffect(() => {
+    if (isOpen) {
+      // Espera un poco para asegurar que el DOM se actualice
+      setTimeout(() => {
+        console.log('🔍 Intentando hacer visible el modal VAXO con scroll...');
+        const modalElement = document.querySelector(".z-\\[9999\\]");
+        if (modalElement) {
+          modalElement.scrollIntoView({ behavior: 'smooth' });
+          console.log('✅ Modal VAXO desplazado a la vista');
+          
+          // Además, agregar clases de animación para llamar la atención
+          modalElement.classList.add('animate-pulse');
+          setTimeout(() => {
+            modalElement.classList.remove('animate-pulse');
+          }, 1000);
+        } else {
+          console.log('❌ No se encontró el elemento modal para desplazar');
+        }
+      }, 100);
+    }
+  }, [isOpen]);
   
   // Modal personalizado con z-index muy alto - utilizando CSS para controlar visibilidad
   return (
@@ -1877,8 +1900,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 ${
           !isOpen ? 'hidden' : ''
         }`}
+        id="ism-modal-container"
       >
-        <div className="bg-white rounded-lg shadow-lg max-w-4xl max-h-[95vh] h-[95vh] overflow-y-auto w-full" style={{border: '5px solid red'}}>
+        <div className="bg-white rounded-lg shadow-lg max-w-4xl max-h-[95vh] h-[95vh] overflow-y-auto w-full"
+             id="ism-modal-content">
           <div className="p-6">
             {/* Header personalizado con botón de cerrar */}
             <div className="flex justify-between items-start mb-6">
