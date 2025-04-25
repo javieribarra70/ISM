@@ -176,11 +176,13 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     
     // Si hay relaciones existentes, mostrar un mensaje informativo
     if (hasRelations) {
+      setShowRelationshipsDialog(true); // <- ESTO
       toast({
         title: "Relaciones VAXO existentes",
         description: `Continuando proceso con ${relationsForSelectedIdeas.length} relaciones existentes.`,
         duration: 3000,
       });
+      return; // <- PARA SALIR Y NO SEGUIR CON EL FLUJO NORMAL
     }
     
     // Ya no usamos esta apertura directa porque ahora lo hacemos con retraso
@@ -452,8 +454,11 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
                       
                       // Cerrar este diálogo
                       setShowRelationshipsDialog(false);
-                      
-                      // Después de un breve tiempo, abrir el diálogo de ISMProcess
+
+                      const newKey = `ism-process-${Date.now()}`;
+                      setIsmInstanceKey(newKey);
+                      console.log("Nuevo key generado tras limpieza de relaciones:", newKey);
+
                       setTimeout(() => {
                         setIsISMDialogOpen(true);
                       }, 1000);

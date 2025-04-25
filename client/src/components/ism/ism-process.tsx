@@ -325,24 +325,27 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   }, [isOpen]);
   
   // CORRECCIÓN DE BUG: Nueva lógica para el manejo del estado de inicialización
-  // El problema principal era que el estado se reiniciaba demasiado rápido
+  // El problema principal era que el estado se reiniciaba demasiado rápido y
+  // causaba un bucle infinito de actualizaciones
   useEffect(() => {
+    // Para evitar el bucle de actualizaciones, usamos un identificador de timeout
+    let timeoutId: NodeJS.Timeout | null = null;
+    
     if (!isOpen) {
       // El modal se ha cerrado desde fuera, pero NO reiniciamos el estado inmediatamente
       console.log("Modal cerrado, pero manteniendo estado para evitar cierre prematuro");
       
       // IMPORTANTE: Aumentamos el tiempo de espera considerablemente para dar más margen
       // Este cambio es crucial para resolver el problema de cierre prematuro
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         console.log("Ahora sí, reiniciando estado con retraso de 3 segundos");
         // Se hace la limpieza SOLO después de un retraso significativo
         setIsInitialized(false); 
         setIsSaving(false);
       }, 3000); // Aumento significativo del tiempo de espera a 3 segundos
     } 
-    else if (isOpen) {
-      // El modal está abierto - SIEMPRE activamos isSaving sin condición
-      // Esto evita problemas de sincronización con isInitialized
+    else if (isOpen && !isSaving) {
+      // Solo activamos isSaving si no está ya activado, para evitar un bucle infinito
       console.log("Modal abierto, activando prevención de cierre durante todo el proceso");
       setIsSaving(true);
       
@@ -353,22 +356,43 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         console.log("Modal abierto y ya inicializado - manteniendo estado");
       }
     }
-  }, [isOpen, isInitialized]);
+    
+    // Limpieza del timeout cuando el componente se desmonta o las dependencias cambian
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isOpen, isInitialized, isSaving]);
   
   // Load existing relationships from the database if available - solo en la inicialización
   useEffect(() => {
     // Si ya está inicializado o no está abierto, no hacer nada
     if (!isOpen) return;
+    
+    // Crear una bandera para evitar actualizaciones de estado después de desmontaje
+    let isMounted = true;
+    
     if (isInitialized) {
       console.log("⚠️ Ya estaba inicializado. Reiniciando proceso VAXO.");
-      setIsInitialized(false);
-      setTimeout(() => setIsInitialized(true), 10);
-      return;
+      if (isMounted) setIsInitialized(false);
+      
+      // Usamos un timeout para espaciar estas llamadas de actualización de estado
+      const timeoutId = setTimeout(() => {
+        if (isMounted) setIsInitialized(true);
+      }, 100); // Aumentamos de 10ms a 100ms para dar más tiempo
+      
+      // Limpieza
+      return () => {
+        clearTimeout(timeoutId);
+        isMounted = false;
+      };
     }
     
     // ACTIVACIÓN CRÍTICA: Inmediatamente activar isSaving para evitar cierre prematuro
-    setIsSaving(true);
-    console.log("PROTECCIÓN ACTIVADA: isSaving=true durante inicialización");
+    // Solo si el componente sigue montado
+    if (isMounted && !isSaving) {
+      setIsSaving(true);
+      console.log("PROTECCIÓN ACTIVADA: isSaving=true durante inicialización");
+    }
     
     // Marcamos como inicializado para evitar reiniciar el proceso
     setIsInitialized(true);
@@ -1870,26 +1894,33 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   // ELIMINADO el return condicional - SIEMPRE se renderiza el modal, pero se oculta con CSS
   console.log(isOpen ? "👁️👁️👁️ ISMProcess - ESTÁ abierto, renderizando modal!!!" : "ISMProcess - NO está abierto, pero sigue montado");
   
-  // Intenta hacer scroll al modal cuando cambia de estado
+  // Intenta hacer scroll al modal cuando cambia de estado - pero solo una vez
   useEffect(() => {
     if (isOpen) {
-      // Espera un poco para asegurar que el DOM se actualice
-      setTimeout(() => {
+      // Evitar actualizaciones infinitas usando un flag de referencia
+      const timeoutId = setTimeout(() => {
         console.log('🔍 Intentando hacer visible el modal VAXO con scroll...');
-        const modalElement = document.querySelector(".z-\\[9999\\]");
-        if (modalElement) {
-          modalElement.scrollIntoView({ behavior: 'smooth' });
-          console.log('✅ Modal VAXO desplazado a la vista');
-          
-          // Además, agregar clases de animación para llamar la atención
-          modalElement.classList.add('animate-pulse');
-          setTimeout(() => {
-            modalElement.classList.remove('animate-pulse');
-          }, 1000);
-        } else {
-          console.log('❌ No se encontró el elemento modal para desplazar');
+        try {
+          const modalElement = document.getElementById("ism-modal-container");
+          if (modalElement) {
+            modalElement.scrollIntoView({ behavior: 'smooth' });
+            console.log('✅ Modal VAXO desplazado a la vista');
+            
+            // Añadir animación pero sin modificar la clase para evitar re-renderizados
+            modalElement.style.animation = 'pulse 1s';
+            setTimeout(() => {
+              modalElement.style.animation = '';
+            }, 1000);
+          } else {
+            console.log('❌ No se encontró el elemento modal para desplazar');
+          }
+        } catch (error) {
+          console.error('Error al intentar hacer scroll al modal:', error);
         }
-      }, 100);
+      }, 300);
+      
+      // Limpiar timeout para evitar memory leaks
+      return () => clearTimeout(timeoutId);
     }
   }, [isOpen]);
   
@@ -1944,27 +1975,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
               {renderNavigationButtons()}
             </div>
           </div>
-        </div>
-      </div>
-      
-      {/* Elemento de fallback que se muestra si el modal principal falla */}
-      <div id="ism-process-fallback" style={{ display: 'none', position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10000 }}>
-        <div style={{ background: 'white', padding: '2rem', borderRadius: '0.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
-          <p style={{ fontWeight: 'bold', color: '#e11d48' }}>⚠️ No se pudo abrir el modal VAXO. Intenta recargar la página.</p>
-          <button 
-            style={{ 
-              marginTop: '1rem', 
-              padding: '0.5rem 1rem', 
-              backgroundColor: '#2563eb', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: '0.25rem', 
-              cursor: 'pointer' 
-            }}
-            onClick={() => window.location.reload()}
-          >
-            Recargar página
-          </button>
         </div>
       </div>
     </>
