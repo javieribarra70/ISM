@@ -1696,11 +1696,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     // MEJORA: Agregamos logging para debug
     console.log(`Intento de cierre manual. Estado actual: isSaving=${isSaving}, stage=${stage}, isInitialized=${isInitialized}`);
     
-    // SOLUCIÓN DEFINITIVA:
-    // Ya no necesitamos forzar isSaving=true porque ahora es una constante
-    // Esto garantiza que no se ejecutarán otros cierres paralelos mientras procesamos este cierre
-    // setIsSaving(true);
-    
     // Verificar si estamos en medio de una operación sensible que no debe interrumpirse
     if (stage === "intro" && isInitialized === false) {
       console.log("Bloqueando cierre - el componente aún está inicializándose");
@@ -1710,10 +1705,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         variant: "default",
         duration: 3000
       });
-      
-      // Importante: No cerramos, pero tampoco dejamos isSaving bloqueado para siempre
-      // Lo desactivamos después de un tiempo prudencial
-      setTimeout(() => setIsSaving(false), 3000);
       return;
     }
     
@@ -1726,18 +1717,13 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         
         if (!window.confirm(confirmMessage)) {
           console.log("Usuario canceló el cierre en la confirmación");
-          // Desbloquear el indicador de guardado después de que el usuario cancele
-          setTimeout(() => setIsSaving(false), 500);
           return; // Usuario canceló, no cerramos
         }
       }
     }
     
-    // Vamos a separar claramente el proceso de cierre en dos fases:
-    console.log("FASE 1: Preparando componente para cierre seguro");
-    
-    // FASE 1: Preparar el componente para el cierre, manteniendo isSaving=true
-    // para bloquear cualquier otro proceso que pudiera afectar al cierre
+    // Proceso de cierre
+    console.log("Iniciando proceso para cerrar el modal de forma segura");
     
     // Mostramos una notificación explícita para que el usuario sepa que su acción
     // está siendo procesada (mejora UX y da tiempo a la operación)
@@ -1748,38 +1734,13 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       duration: 2000
     });
     
-    // Esperamos un tiempo prudencial antes de proceder con la FASE 2
-    // Este retraso es crucial para permitir que cualquier proceso en curso termine
-    setTimeout(() => {
-      console.log("FASE 2: Ejecutando cierre después de preparación");
-      
-      // FASE 2: Limpiar y cerrar
-      // En la fase 2 mantenemos isSaving=true hasta el último momento
-      
-      // SOLUCIÓN CRÍTICA: No cerrar automáticamente
-      // Solo actualizar estados sin cerrar
-      
-      // Actualizar el estado para indicar que el proceso ha terminado pero mantener abierto
-      setIsInitialized(true); // Marcar como inicializado para indicar que está listo
-      console.log("Componente listo para continuar - NO SE CIERRA AUTOMÁTICAMENTE");
-      
-      // Eliminar cualquier overlay temporal que pueda estar mostrándose
-      const tempOverlay = document.getElementById("temp-overlay");
-      if (tempOverlay) tempOverlay.remove();
-      
-      // Mostrar mensaje de finalización
-      toast({
-        title: "Proceso completado",
-        description: "Las relaciones VAXO han sido cargadas. Puede continuar trabajando o cerrar manualmente.",
-        duration: 5000,
-      });
-      
-      // Desactivar el indicador de guardado después de un tiempo prudencial
-      setTimeout(() => {
-        setIsSaving(false);
-        console.log("Proceso listo para interacción del usuario");
-      }, 1000);
-    }, 1000); // Damos un segundo completo para la fase de preparación
+    // Eliminar cualquier overlay temporal que pueda estar mostrándose
+    const tempOverlay = document.getElementById("temp-overlay");
+    if (tempOverlay) tempOverlay.remove();
+    
+    // CRÍTICO: Llamamos a la función onClose para notificar al padre
+    console.log("Llamando a la función onClose proporcionada por el padre");
+    onClose();
   };
 
   // Si no está abierto, no renderizamos nada
