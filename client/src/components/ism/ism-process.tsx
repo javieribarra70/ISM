@@ -287,6 +287,13 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   // Estado para controlar la inicialización del proceso
   const [isInitialized, setIsInitialized] = useState(false);
   
+  // Fallback element para cuando el modal no se muestra correctamente
+  useEffect(() => {
+    const fallback = document.getElementById("ism-process-fallback");
+    if (!fallback) return;
+    fallback.style.display = isOpen ? "none" : "block";
+  }, [isOpen]);
+  
   // CORRECCIÓN DE BUG: Nueva lógica para el manejo del estado de inicialización
   // El problema principal era que el estado se reiniciaba demasiado rápido
   useEffect(() => {
