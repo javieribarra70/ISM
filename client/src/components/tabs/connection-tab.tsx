@@ -35,13 +35,11 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   // Fetch project users to determine user role
-  const {
-    data: projectUsers = [],
-    isLoading: isProjectUsersLoading
-  } = useQuery<ProjectUser[]>({
-    queryKey: [`/api/projects/${projectId}/users`],
-    enabled: !!projectId && !!user,
-  });
+  const { data: projectUsers = [], isLoading: isProjectUsersLoading } =
+    useQuery<ProjectUser[]>({
+      queryKey: [`/api/projects/${projectId}/users`],
+      enabled: !!projectId && !!user,
+    });
 
   // Determine if the current user is an admin (global or project)
   useEffect(() => {
@@ -51,55 +49,56 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
         setIsAdmin(true);
         return;
       }
-      
+
       // Project admin check
-      const userProjectRole = projectUsers.find(pu => pu.userId === user.id)?.role;
+      const userProjectRole = projectUsers.find(
+        (pu) => pu.userId === user.id,
+      )?.role;
       setIsAdmin(userProjectRole === "admin");
     }
   }, [user, projectUsers]);
 
   // Fetch project details to get context information
-  const {
-    data: project,
-    isLoading: isProjectLoading
-  } = useQuery<Project>({
+  const { data: project, isLoading: isProjectLoading } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
-    enabled: !!projectId
+    enabled: !!projectId,
   });
 
   // Fetch all project ideas
-  const { 
-    data: ideas = [], 
+  const {
+    data: ideas = [],
     isLoading: isIdeasLoading,
-    isError: isIdeasError
+    isError: isIdeasError,
   } = useQuery<Idea[]>({
     queryKey: [`/api/projects/${projectId}/ideas`],
     enabled: !!projectId,
   });
-  
+
   // Fetch selected ideas for connection process
   const {
     data: selectedIdeasData = [],
     isLoading: isSelectedIdeasLoading,
-    isError: isSelectedIdeasError
+    isError: isSelectedIdeasError,
   } = useQuery<SelectedIdea[]>({
     queryKey: [`/api/projects/${projectId}/selected-ideas`],
     enabled: !!projectId,
   });
-  
+
   // Extract idea IDs from selected ideas
-  const selectedIdeaIds = selectedIdeasData.map(item => item.ideaId);
-  
+  const selectedIdeaIds = selectedIdeasData.map((item) => item.ideaId);
+
   // Filter ideas to only include those that were selected
-  const selectedIdeas = ideas.filter(idea => selectedIdeaIds.includes(idea.id));
+  const selectedIdeas = ideas.filter((idea) =>
+    selectedIdeaIds.includes(idea.id),
+  );
 
   // Fetch existing relationship data
-  const { 
-    data: existingRelationships = [], 
-    isLoading: isRelationshipsLoading 
+  const {
+    data: existingRelationships = [],
+    isLoading: isRelationshipsLoading,
   } = useQuery<any[]>({
     queryKey: [`/api/projects/${projectId}/relationships`],
-    enabled: !!projectId
+    enabled: !!projectId,
   });
 
   // Verificar si hay relaciones VAXO existentes para estas ideas
@@ -108,26 +107,31 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
       console.log("No hay relaciones o ideas seleccionadas");
       return false;
     }
-    
+
     // Obtiene los IDs de las ideas seleccionadas
-    const selectedIds = selectedIdeas.map(idea => idea.id);
+    const selectedIds = selectedIdeas.map((idea) => idea.id);
     console.log("IDs de ideas seleccionadas:", selectedIds);
-    
+
     // Filtra las relaciones que involucran solo ideas seleccionadas
-    const relationsForSelectedIdeas = existingRelationships.filter(rel => {
+    const relationsForSelectedIdeas = existingRelationships.filter((rel) => {
       const fromId = rel.fromIdeaId || rel.from;
       const toId = rel.toIdeaId || rel.to;
-      const matches = selectedIds.includes(fromId) && selectedIds.includes(toId);
+      const matches =
+        selectedIds.includes(fromId) && selectedIds.includes(toId);
       if (matches) {
         console.log(`Relación coincidente: ${fromId} -> ${toId}`);
       }
       return matches;
     });
-    
+
     const result = relationsForSelectedIdeas.length > 0;
-    console.log(`¿Hay relaciones para las ideas seleccionadas? ${result ? 'SÍ' : 'NO'}`);
-    console.log(`Total relaciones filtradas: ${relationsForSelectedIdeas.length}`);
-    
+    console.log(
+      `¿Hay relaciones para las ideas seleccionadas? ${result ? "SÍ" : "NO"}`,
+    );
+    console.log(
+      `Total relaciones filtradas: ${relationsForSelectedIdeas.length}`,
+    );
+
     return result;
   }, [existingRelationships, selectedIdeas]);
 
@@ -138,42 +142,47 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   const handleStartProcess = () => {
     // Primero, verifiquemos el estado actual para debugging
     console.log("Estado actual de isISMDialogOpen ANTES:", isISMDialogOpen);
-    
+
     // Set starting state to show loading UI
     setIsStarting(true);
-    
+
     // Genera una nueva clave única para este proceso - forzar nueva instancia
     const uniqueKey = `ism-process-${Date.now()}`;
-    console.log("Generando nueva clave única para forzar remontaje:", uniqueKey);
+    console.log(
+      "Generando nueva clave única para forzar remontaje:",
+      uniqueKey,
+    );
     setIsmInstanceKey(uniqueKey);
-    
+
     // Agregamos un retraso mayor para garantizar que se monte con la nueva key
     setTimeout(() => {
       console.log("⏱️ Abriendo modal VAXO después del retraso...");
       setIsISMDialogOpen(true);
-      
+
       // Scroll al modal después de que se abra
       setTimeout(() => {
         console.log("🌟 Asegurando que el modal VAXO sea visible...");
         const modal = document.getElementById("ism-modal-container");
         if (modal) {
-          modal.scrollIntoView({ behavior: 'smooth' });
+          modal.scrollIntoView({ behavior: "smooth" });
           console.log("✅ Modal VAXO ahora visible en la pantalla");
         }
       }, 200);
     }, 200); // Aumentando a 200ms para dar más tiempo al montaje
-    
+
     // Verificar si hay relaciones existentes con las ideas seleccionadas
-    const selectedIds = selectedIdeas.map(idea => idea.id);
-    const relationsForSelectedIdeas = existingRelationships.filter(rel => {
+    const selectedIds = selectedIdeas.map((idea) => idea.id);
+    const relationsForSelectedIdeas = existingRelationships.filter((rel) => {
       const fromId = rel.fromIdeaId || rel.from;
       const toId = rel.toIdeaId || rel.to;
       return selectedIds.includes(fromId) && selectedIds.includes(toId);
     });
-    
+
     const hasRelations = relationsForSelectedIdeas.length > 0;
-    console.log(`Total relaciones específicas: ${relationsForSelectedIdeas.length}`);
-    
+    console.log(
+      `Total relaciones específicas: ${relationsForSelectedIdeas.length}`,
+    );
+
     // Si hay relaciones existentes, mostrar un mensaje informativo
     if (hasRelations) {
       setShowRelationshipsDialog(true); // <- ESTO
@@ -184,13 +193,15 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
       });
       return; // <- PARA SALIR Y NO SEGUIR CON EL FLUJO NORMAL
     }
-    
+
     // Ya no usamos esta apertura directa porque ahora lo hacemos con retraso
-    console.log(">>>>> APERTURA DE MODAL SE REALIZA CON TIMEOUT PARA EVITAR PROBLEMAS");
-    
+    console.log(
+      ">>>>> APERTURA DE MODAL SE REALIZA CON TIMEOUT PARA EVITAR PROBLEMAS",
+    );
+
     // Agregamos un efecto visual para asegurar feedback al usuario
     const body = document.body;
-    const overlay = document.createElement('div');
+    const overlay = document.createElement("div");
     overlay.id = "temp-overlay";
     overlay.style.position = "fixed";
     overlay.style.top = "0";
@@ -202,9 +213,10 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     overlay.style.alignItems = "center";
     overlay.style.justifyContent = "center";
     overlay.style.zIndex = "9998";
-    overlay.innerHTML = "<div style='background: white; padding: 20px; border-radius: 8px;'>Abriendo modal VAXO...</div>";
+    overlay.innerHTML =
+      "<div style='background: white; padding: 20px; border-radius: 8px;'>Abriendo modal VAXO...</div>";
     body.appendChild(overlay);
-    
+
     // Luego de mostrar este overlay temporal, lo quitamos
     setTimeout(() => {
       const tempOverlay = document.getElementById("temp-overlay");
@@ -218,13 +230,13 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   const handleStartAlternativeProcess = () => {
     // Set starting state to show loading UI
     setIsStartingAlternative(true);
-    
+
     // Por ahora simplemente muestra un mensaje toast, pero se puede extender
     toast({
       title: "Start Voting Process",
       description: "Iniciando el proceso de votación...",
     });
-    
+
     // Reset the starting state after a short delay
     setTimeout(() => {
       setIsStartingAlternative(false);
@@ -239,17 +251,26 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     // Este cambio es crucial para resolver el problema de cierre prematuro.
     setTimeout(() => {
       setIsISMDialogOpen(false);
-      console.log("Dialog closed after deliberate delay to prevent premature unmounting");
+      console.log(
+        "Dialog closed after deliberate delay to prevent premature unmounting",
+      );
     }, 100);
   };
 
   // Prepare project context information for ISM process
-  const projectContext = project ? {
-    context: project.context || "No context has been defined for this project.",
-    triggeringQuestion: project.triggeringQuestion || "No triggering question has been defined.",
-    relation: project.relation || "No specific relationship has been defined.",
-    restriction: project.restriction || "No restrictions have been defined."
-  } : null;
+  const projectContext = project
+    ? {
+        context:
+          project.context || "No context has been defined for this project.",
+        triggeringQuestion:
+          project.triggeringQuestion ||
+          "No triggering question has been defined.",
+        relation:
+          project.relation || "No specific relationship has been defined.",
+        restriction:
+          project.restriction || "No restrictions have been defined.",
+      }
+    : null;
 
   // Loading state
   if (isIdeasLoading || isSelectedIdeasLoading || isProjectLoading) {
@@ -265,11 +286,13 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     return (
       <Alert variant="destructive" className="mb-4">
         <AlertTitle>Error</AlertTitle>
-        <AlertDescription>Could not load selected ideas. Please try again later.</AlertDescription>
+        <AlertDescription>
+          Could not load selected ideas. Please try again later.
+        </AlertDescription>
       </Alert>
     );
   }
-  
+
   // No selected ideas state
   if (selectedIdeas.length === 0) {
     return (
@@ -278,12 +301,13 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
         <p className="text-muted-foreground mb-6">
           Manage connections between selected ideas.
         </p>
-        
+
         <Alert className="mb-4">
           <AlertTitle>No ideas selected</AlertTitle>
           <AlertDescription>
-            There are no ideas selected for the connection process. Please go to the 
-            &quot;Selector&quot; tab and select the ideas you want to connect.
+            There are no ideas selected for the connection process. Please go to
+            the &quot;Selector&quot; tab and select the ideas you want to
+            connect.
           </AlertDescription>
         </Alert>
       </div>
@@ -303,30 +327,36 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
           <div className="flex space-x-3">
             {/* Solo mostrar el botón VAXO para administradores */}
             {isAdmin && (
-              <Button 
+              <Button
                 onClick={handleStartProcess}
                 className="gap-2"
-                disabled={isStarting || isStartingAlternative || selectedIdeas.length < 2}
+                disabled={
+                  isStarting ||
+                  isStartingAlternative ||
+                  selectedIdeas.length < 2
+                }
               >
                 <PlayCircle className="h-5 w-5" />
                 {isStarting ? "Starting..." : "Start VAXO Process"}
               </Button>
             )}
             {/* Mostrar el botón de votación para todos */}
-            <Button 
+            <Button
               onClick={handleStartAlternativeProcess}
               className="gap-2"
               variant="outline"
-              disabled={isStarting || isStartingAlternative || selectedIdeas.length < 2}
+              disabled={
+                isStarting || isStartingAlternative || selectedIdeas.length < 2
+              }
             >
               <PlayCircle className="h-5 w-5" />
               {isStartingAlternative ? "Starting..." : "Start VAXO Process"}
             </Button>
           </div>
         </div>
-        
+
         <Separator className="mb-4" />
-        
+
         <div className="mb-4">
           <Badge variant="outline" className="mb-2">
             {selectedIdeas.length} selected ideas
@@ -335,9 +365,9 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
             The following ideas have been selected for the connection process:
           </p>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {selectedIdeas.map(idea => (
+          {selectedIdeas.map((idea) => (
             <Card key={idea.id} className="border-l-4 border-l-primary">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">{idea.title}</CardTitle>
@@ -351,47 +381,59 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
           ))}
         </div>
       </div>
-      
+
       {/* Diálogo de relaciones existentes */}
       {showRelationshipsDialog && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Recuperación de Sesión VAXO</h2>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <h2 className="text-xl font-semibold">
+                Recuperación de Sesión VAXO
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => {
                   setShowRelationshipsDialog(false);
                   console.log("Dialog de relaciones cerrado por usuario");
-                }} 
+                }}
                 className="h-8 w-8 rounded-full"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            
+
             <div className="space-y-4">
               <p className="text-base">
-                Hay <strong>{existingRelationships.filter(r => {
-                  const fromId = r.fromIdeaId || r.from;
-                  const toId = r.toIdeaId || r.to;
-                  const selectedIds = selectedIdeas.map(idea => idea.id);
-                  return selectedIds.includes(fromId) && selectedIds.includes(toId);
-                }).length}</strong> relaciones VAXO guardadas para estas ideas.
+                Hay{" "}
+                <strong>
+                  {
+                    existingRelationships.filter((r) => {
+                      const fromId = r.fromIdeaId || r.from;
+                      const toId = r.toIdeaId || r.to;
+                      const selectedIds = selectedIdeas.map((idea) => idea.id);
+                      return (
+                        selectedIds.includes(fromId) &&
+                        selectedIds.includes(toId)
+                      );
+                    }).length
+                  }
+                </strong>{" "}
+                relaciones VAXO guardadas para estas ideas.
               </p>
-              
+
               <Alert>
                 <AlertTitle>Sesión VAXO Interrumpida</AlertTitle>
                 <AlertDescription>
-                  El sistema ha detectado una sesión VAXO previa que no se completó. Para continuar,
-                  es necesario eliminar las relaciones existentes y comenzar un proceso nuevo.
+                  El sistema ha detectado una sesión VAXO previa que no se
+                  completó. Para continuar, es necesario eliminar las relaciones
+                  existentes y comenzar un proceso nuevo.
                 </AlertDescription>
               </Alert>
-              
+
               <div className="flex justify-end space-x-2 mt-6">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => {
                     setShowRelationshipsDialog(false);
                     console.log("Dialog de relaciones cancelado por usuario");
@@ -399,75 +441,101 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
                 >
                   Cancelar
                 </Button>
-                <Button 
+                <Button
                   onClick={async () => {
                     toast({
                       title: "Limpiando relaciones VAXO",
-                      description: "Preparando sistema para comenzar de nuevo...",
+                      description:
+                        "Preparando sistema para comenzar de nuevo...",
                       duration: 5000,
                     });
-                    
+
                     try {
                       // Obtener los IDs de las ideas seleccionadas
-                      const selectedIds = selectedIdeas.map(idea => idea.id);
-                      
+                      const selectedIds = selectedIdeas.map((idea) => idea.id);
+
                       // Obtener las relaciones para las ideas seleccionadas
-                      const relationsToDelete = existingRelationships.filter(rel => {
-                        const fromId = rel.fromIdeaId || rel.from;
-                        const toId = rel.toIdeaId || rel.to;
-                        return selectedIds.includes(fromId) && selectedIds.includes(toId);
-                      });
-                      
-                      console.log(`Se eliminarán ${relationsToDelete.length} relaciones VAXO`);
-                      
+                      const relationsToDelete = existingRelationships.filter(
+                        (rel) => {
+                          const fromId = rel.fromIdeaId || rel.from;
+                          const toId = rel.toIdeaId || rel.to;
+                          return (
+                            selectedIds.includes(fromId) &&
+                            selectedIds.includes(toId)
+                          );
+                        },
+                      );
+
+                      console.log(
+                        `Se eliminarán ${relationsToDelete.length} relaciones VAXO`,
+                      );
+
                       // Eliminar cada relación una por una
                       for (const relation of relationsToDelete) {
                         try {
-                          const response = await fetch(`/api/relationships/${relation.id}`, {
-                            method: 'DELETE',
-                            headers: {
-                              'Content-Type': 'application/json'
+                          const response = await fetch(
+                            `/api/relationships/${relation.id}`,
+                            {
+                              method: "DELETE",
+                              headers: {
+                                "Content-Type": "application/json",
+                              },
+                              credentials: "include",
                             },
-                            credentials: 'include'
-                          });
-                          
+                          );
+
                           if (response.ok) {
-                            console.log(`Relación ${relation.id} eliminada correctamente`);
+                            console.log(
+                              `Relación ${relation.id} eliminada correctamente`,
+                            );
                           } else {
-                            console.error(`Error al eliminar relación ${relation.id}: ${response.statusText}`);
+                            console.error(
+                              `Error al eliminar relación ${relation.id}: ${response.statusText}`,
+                            );
                           }
                         } catch (error) {
-                          console.error(`Error al eliminar relación ${relation.id}:`, error);
+                          console.error(
+                            `Error al eliminar relación ${relation.id}:`,
+                            error,
+                          );
                         }
                       }
-                      
+
                       // Actualizar el estado local
                       queryClient.invalidateQueries({
-                        queryKey: [`/api/projects/${projectId}/relationships`]
+                        queryKey: [`/api/projects/${projectId}/relationships`],
                       });
-                      
+
                       toast({
                         title: "Relaciones eliminadas",
                         description: `Se han eliminado ${relationsToDelete.length} relaciones. Ahora puede iniciar un nuevo proceso.`,
                         duration: 5000,
                       });
-                      
+
                       // Cerrar este diálogo
                       setShowRelationshipsDialog(false);
 
                       const newKey = `ism-process-${Date.now()}`;
                       setIsmInstanceKey(newKey);
-                      console.log("Nuevo key generado tras limpieza de relaciones:", newKey);
+                      console.log(
+                        "Nuevo key generado tras limpieza de relaciones:",
+                        newKey,
+                      );
 
-                      setTimeout(() => {
-                        setIsISMDialogOpen(true);
-                      }, 1000);
-                      
+                      console.log(
+                        "🔓 Forzando apertura del modal, estado actual:",
+                        {
+                          isISMDialogOpen,
+                          ismInstanceKey,
+                        },
+                      );
+                      setIsISMDialogOpen(true);
                     } catch (error) {
                       console.error("Error al eliminar relaciones:", error);
                       toast({
                         title: "Error",
-                        description: "Ocurrió un error al eliminar las relaciones VAXO.",
+                        description:
+                          "Ocurrió un error al eliminar las relaciones VAXO.",
                         variant: "destructive",
                         duration: 5000,
                       });
@@ -481,9 +549,9 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
           </div>
         </div>
       )}
-      
+
       {/* ISM Process siempre presente pero controlado por isOpen */}
-      <ISMProcess 
+      <ISMProcess
         key={ismInstanceKey || `ism-process-${Date.now()}`}
         isOpen={isISMDialogOpen}
         onClose={handleISMDialogClose}
