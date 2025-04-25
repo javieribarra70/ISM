@@ -146,6 +146,11 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     console.log("Generando nueva clave única para forzar remontaje:", uniqueKey);
     setIsmInstanceKey(uniqueKey);
     
+    // Agregamos pequeño retraso para garantizar que se monte con la nueva key
+    setTimeout(() => {
+      setIsISMDialogOpen(true);
+    }, 50); // con 50ms basta para garantizar que se monte con el nuevo key
+    
     // Verificar si hay relaciones existentes con las ideas seleccionadas
     const selectedIds = selectedIdeas.map(idea => idea.id);
     const relationsForSelectedIdeas = existingRelationships.filter(rel => {
@@ -166,9 +171,8 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
       });
     }
     
-    // SOLUCIÓN EMERGENCIA: Abrir directamente el modal - enfoque muy directo
-    console.log(">>>>> APERTURA DE MODAL DIRECTO - SIN TIMEOUT");
-    setIsISMDialogOpen(true);
+    // Ya no usamos esta apertura directa porque ahora lo hacemos con retraso
+    console.log(">>>>> APERTURA DE MODAL SE REALIZA CON TIMEOUT PARA EVITAR PROBLEMAS");
     
     // Agregamos un efecto visual para asegurar feedback al usuario
     const body = document.body;
