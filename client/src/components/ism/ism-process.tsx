@@ -1842,53 +1842,76 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   
   // Modal personalizado con z-index muy alto - utilizando CSS para controlar visibilidad
   return (
-    <div
-      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 ${
-        !isOpen ? 'hidden' : ''
-      }`}
-    >
-      <div className="bg-white rounded-lg shadow-lg max-w-4xl max-h-[95vh] h-[95vh] overflow-y-auto w-full" style={{border: '5px solid red'}}>
-        <div className="p-6">
-          {/* Header personalizado con botón de cerrar */}
-          <div className="flex justify-between items-start mb-6">
-            <div className="flex flex-col space-y-1.5">
-              <h2 className="font-semibold leading-none tracking-tight text-lg">
-                {stage === "intro" && "Interpretive Structural Modeling (ISM)"}
-                {stage === "questions" && "Relationship Identification"}
-                {stage === "ssim" && "SSIM Matrix"}
-                {stage === "reachability" && "Reachability Matrix"}
-                {stage === "levels" && "Level Partitioning"}
-                {stage === "diagram" && "Final ISM Diagram Model"}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {stage === "intro" && "Build a structural model of relationships between selected ideas."}
-                {stage === "questions" && "Determine the type of relationship between each pair of ideas."}
-                {stage === "ssim" && "View the structural self-interaction matrix."}
-                {stage === "reachability" && "Analyze the initial reachability matrix."}
-                {stage === "levels" && "Explore the identified level hierarchy."}
-                {stage === "diagram" && ""}
-              </p>
-            </div>
-            <Button variant="ghost" size="icon" onClick={handleCloseAttempt} className="h-8 w-8 rounded-full" title="Close">
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <div className="my-4">
-            {renderCurrentStage()}
-          </div>
-          
-          <div className="flex justify-end space-x-2 mt-6">
-            {isSaving && (
-              <div className="flex items-center justify-center w-full mb-2">
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-t-transparent"></div>
-                <p className="text-sm text-muted-foreground">Saving relationships...</p>
+    <>
+      <div
+        className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 ${
+          !isOpen ? 'hidden' : ''
+        }`}
+      >
+        <div className="bg-white rounded-lg shadow-lg max-w-4xl max-h-[95vh] h-[95vh] overflow-y-auto w-full" style={{border: '5px solid red'}}>
+          <div className="p-6">
+            {/* Header personalizado con botón de cerrar */}
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex flex-col space-y-1.5">
+                <h2 className="font-semibold leading-none tracking-tight text-lg">
+                  {stage === "intro" && "Interpretive Structural Modeling (ISM)"}
+                  {stage === "questions" && "Relationship Identification"}
+                  {stage === "ssim" && "SSIM Matrix"}
+                  {stage === "reachability" && "Reachability Matrix"}
+                  {stage === "levels" && "Level Partitioning"}
+                  {stage === "diagram" && "Final ISM Diagram Model"}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {stage === "intro" && "Build a structural model of relationships between selected ideas."}
+                  {stage === "questions" && "Determine the type of relationship between each pair of ideas."}
+                  {stage === "ssim" && "View the structural self-interaction matrix."}
+                  {stage === "reachability" && "Analyze the initial reachability matrix."}
+                  {stage === "levels" && "Explore the identified level hierarchy."}
+                  {stage === "diagram" && ""}
+                </p>
               </div>
-            )}
-            {renderNavigationButtons()}
+              <Button variant="ghost" size="icon" onClick={handleCloseAttempt} className="h-8 w-8 rounded-full" title="Close">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="my-4">
+              {renderCurrentStage()}
+            </div>
+            
+            <div className="flex justify-end space-x-2 mt-6">
+              {isSaving && (
+                <div className="flex items-center justify-center w-full mb-2">
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-t-transparent"></div>
+                  <p className="text-sm text-muted-foreground">Saving relationships...</p>
+                </div>
+              )}
+              {renderNavigationButtons()}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+      
+      {/* Elemento de fallback que se muestra si el modal principal falla */}
+      <div id="ism-process-fallback" style={{ display: 'none', position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10000 }}>
+        <div style={{ background: 'white', padding: '2rem', borderRadius: '0.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
+          <p style={{ fontWeight: 'bold', color: '#e11d48' }}>⚠️ No se pudo abrir el modal VAXO. Intenta recargar la página.</p>
+          <button 
+            style={{ 
+              marginTop: '1rem', 
+              padding: '0.5rem 1rem', 
+              backgroundColor: '#2563eb', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '0.25rem', 
+              cursor: 'pointer' 
+            }}
+            onClick={() => window.location.reload()}
+          >
+            Recargar página
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
