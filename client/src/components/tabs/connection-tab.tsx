@@ -138,37 +138,64 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   // Estado para controlar qué modal mostrar
   const [showRelationshipsDialog, setShowRelationshipsDialog] = useState(false);
 
-  // Handle the start VAXO process button
+  // Handle the start VAXO process button - Completamente refactorizado
   const handleStartProcess = () => {
-    // Primero, verifiquemos el estado actual para debugging
-    console.log("Estado actual de isISMDialogOpen ANTES:", isISMDialogOpen);
-
-    // Set starting state to show loading UI
+    console.log("=== INICIANDO PROCESO VAXO === (Versión simplificada)");
+    
+    // 1. Iniciar el estado de loading para feedback visual inmediato
     setIsStarting(true);
-
-    // Genera una nueva clave única para este proceso - forzar nueva instancia
+    
+    // 2. Mostrar overlay de carga inmediatamente
+    // Eliminar overlay existente si hay alguno
+    const existingOverlay = document.getElementById("temp-overlay");
+    if (existingOverlay) {
+      existingOverlay.remove();
+    }
+    
+    // Crear nuevo overlay
+    const overlayElement = document.createElement("div");
+    overlayElement.id = "temp-overlay";
+    overlayElement.style.position = "fixed";
+    overlayElement.style.top = "0";
+    overlayElement.style.left = "0";
+    overlayElement.style.width = "100%";
+    overlayElement.style.height = "100%";
+    overlayElement.style.backgroundColor = "rgba(0,0,0,0.5)";
+    overlayElement.style.display = "flex";
+    overlayElement.style.alignItems = "center";
+    overlayElement.style.justifyContent = "center";
+    overlayElement.style.zIndex = "9998";
+    overlayElement.innerHTML = "<div style='background: white; padding: 20px; border-radius: 8px;'>Abriendo proceso VAXO...</div>";
+    document.body.appendChild(overlayElement);
+    
+    // 3. Generar una clave única para forzar el remontaje del componente
     const uniqueKey = `ism-process-${Date.now()}`;
-    console.log(
-      "Generando nueva clave única para forzar remontaje:",
-      uniqueKey,
-    );
     setIsmInstanceKey(uniqueKey);
-
-    // Agregamos un retraso mayor para garantizar que se monte con la nueva key
+    console.log("🆕 Nueva instancia VAXO con clave:", uniqueKey);
+    
+    // 4. Cerrar el modal si ya estaba abierto (sin esperar)
+    setIsISMDialogOpen(false);
+    
+    // 5. Dar tiempo al DOM para procesar el cierre antes de abrir de nuevo
     setTimeout(() => {
-      console.log("⏱️ Abriendo modal VAXO después del retraso...");
+      // 6. Abrir el modal con la nueva instancia
+      console.log("🔓 Abriendo modal VAXO después del reset...");
       setIsISMDialogOpen(true);
-
-      // Scroll al modal después de que se abra
+      
+      // 7. Quitar overlay y resetear estado de loading
       setTimeout(() => {
-        console.log("🌟 Asegurando que el modal VAXO sea visible...");
+        const tempOverlay = document.getElementById("temp-overlay");
+        if (tempOverlay) tempOverlay.remove();
+        setIsStarting(false);
+        
+        // 8. Hacer scroll al modal para asegurar visibilidad
         const modal = document.getElementById("ism-modal-container");
         if (modal) {
           modal.scrollIntoView({ behavior: "smooth" });
-          console.log("✅ Modal VAXO ahora visible en la pantalla");
+          console.log("✅ Modal VAXO ahora visible");
         }
-      }, 200);
-    }, 200); // Aumentando a 200ms para dar más tiempo al montaje
+      }, 1000);
+    }, 300); // Tiempo suficiente para que React procese el cambio de estado
 
     // Verificar si hay relaciones existentes con las ideas seleccionadas
     const selectedIds = selectedIdeas.map((idea) => idea.id);
@@ -199,32 +226,6 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     console.log(
       ">>>>> APERTURA DE MODAL SE REALIZA CON TIMEOUT PARA EVITAR PROBLEMAS",
     );
-
-    // Agregamos un efecto visual para asegurar feedback al usuario
-    const body = document.body;
-    const overlay = document.createElement("div");
-    overlay.id = "temp-overlay";
-    overlay.style.position = "fixed";
-    overlay.style.top = "0";
-    overlay.style.left = "0";
-    overlay.style.width = "100%";
-    overlay.style.height = "100%";
-    overlay.style.backgroundColor = "rgba(0,0,0,0.5)";
-    overlay.style.display = "flex";
-    overlay.style.alignItems = "center";
-    overlay.style.justifyContent = "center";
-    overlay.style.zIndex = "9998";
-    overlay.innerHTML =
-      "<div style='background: white; padding: 20px; border-radius: 8px;'>Abriendo modal VAXO...</div>";
-    body.appendChild(overlay);
-
-    // Luego de mostrar este overlay temporal, lo quitamos
-    setTimeout(() => {
-      const tempOverlay = document.getElementById("temp-overlay");
-      if (tempOverlay) tempOverlay.remove();
-      console.log(">>>>> Modal debe estar visible ahora");
-      setIsStarting(false);
-    }, 1000);
   };
 
   // Handle the start alternative process button
