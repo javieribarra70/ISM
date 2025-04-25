@@ -133,14 +133,34 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   // Estado para controlar qué modal mostrar
   const [showRelationshipsDialog, setShowRelationshipsDialog] = useState(false);
 
-  // SOLUCIÓN REFACTORIZADA: Manejo simplificado del inicio del proceso VAXO
+  // VERSIÓN FINAL - Flujo directo y sincronizado para iniciar el proceso VAXO
   const handleStartProcess = () => {
-    console.log("=== INICIANDO PROCESO VAXO - VERSIÓN REFACTORIZADA ===");
+    console.log("=== INICIANDO PROCESO VAXO - VERSIÓN FINAL ===");
     
-    // 1. Activar el indicador de carga
+    // 1. Generar referencia persistente para este proceso
+    // (no usamos Date.now() para evitar problemas de sincronización)
+    const uniqueKey = "ism-process-stable-key";
+    setIsmInstanceKey(uniqueKey);
+    
+    // 2. PRIMER CAMBIO IMPORTANTE: Activar inmediatamente el indicador de diálogo
+    // Esto debe ocurrir antes de cualquier otro cambio de estado o proceso asíncrono
+    setIsISMDialogOpen(true);
+    
+    // 3. Actualizar UI para indicar carga
     setIsStarting(true);
     
-    // 2. Mostrar overlay de carga manual
+    // 4. Verificar relaciones existentes (esto es rápido y sincrónico)
+    const selectedIds = selectedIdeas.map(idea => idea.id);
+    const relationsForSelectedIdeas = existingRelationships.filter(rel => {
+      const fromId = rel.fromIdeaId || rel.from;
+      const toId = rel.toIdeaId || rel.to;
+      return selectedIds.includes(fromId) && selectedIds.includes(toId);
+    });
+    
+    const hasRelations = relationsForSelectedIdeas.length > 0;
+    console.log(`Total relaciones VAXO encontradas: ${relationsForSelectedIdeas.length}`);
+    
+    // 5. Agregar overlay visual solo como retroalimentación, no como lógica de control
     const body = document.body;
     const overlay = document.createElement('div');
     overlay.id = "temp-overlay";
@@ -153,55 +173,35 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     overlay.style.display = "flex";
     overlay.style.alignItems = "center";
     overlay.style.justifyContent = "center";
-    overlay.style.zIndex = "9998";
-    overlay.innerHTML = "<div style='background: white; padding: 20px; border-radius: 8px;'>Cargando proceso VAXO...</div>";
+    overlay.style.zIndex = "1000"; // Menor que el modal para no bloquearlo
+    
+    const mensaje = hasRelations 
+      ? `Cargando VAXO con ${relationsForSelectedIdeas.length} relaciones existentes...` 
+      : "Iniciando proceso VAXO...";
+      
+    overlay.innerHTML = `<div style='background: white; padding: 20px; border-radius: 8px;'>${mensaje}</div>`;
     body.appendChild(overlay);
     
-    // 3. Generar clave única para forzar remontaje del componente ISM
-    const uniqueKey = `ism-process-${Date.now()}`;
-    setIsmInstanceKey(uniqueKey);
-    
-    // 4. Verificar relaciones existentes
-    const selectedIds = selectedIdeas.map(idea => idea.id);
-    const relationsForSelectedIdeas = existingRelationships.filter(rel => {
-      const fromId = rel.fromIdeaId || rel.from;
-      const toId = rel.toIdeaId || rel.to;
-      return selectedIds.includes(fromId) && selectedIds.includes(toId);
-    });
-    
-    const hasRelations = relationsForSelectedIdeas.length > 0;
-    console.log(`Total relaciones específicas para VAXO: ${relationsForSelectedIdeas.length}`);
-    
-    // 5. Secuencia de apertura controlada
+    // 6. Quitar el overlay después de un tiempo, pero sin afectar al modal
+    // Este setTimeout no afecta a la lógica de montaje del ISMProcess
     setTimeout(() => {
-      // Primero, asegurar que isISMDialogOpen esté en false
-      setIsISMDialogOpen(false);
+      const tempOverlay = document.getElementById("temp-overlay");
+      if (tempOverlay) {
+        tempOverlay.remove();
+      }
       
-      // Luego, remover overlay temporal y actualizar UI
-      setTimeout(() => {
-        // Eliminar overlay de carga
-        const tempOverlay = document.getElementById("temp-overlay");
-        if (tempOverlay) {
-          tempOverlay.remove();
-        }
-        
-        // Mostrar toast informativo si hay relaciones existentes
-        if (hasRelations) {
-          toast({
-            title: "Relaciones VAXO existentes",
-            description: `Continuando proceso con ${relationsForSelectedIdeas.length} relaciones existentes.`,
-            duration: 3000,
-          });
-        }
-        
-        // Activar el modal ISM
-        console.log("APERTURA FINAL DE MODAL ISM");
-        setIsISMDialogOpen(true);
-        
-        // Desactivar indicador de carga
-        setIsStarting(false);
-      }, 500);
-    }, 500);
+      // Solo desactivamos indicador de carga UI
+      setIsStarting(false);
+    }, 1500); // Tiempo suficiente para que se vea el overlay, pero independiente del modal
+    
+    // Mostrar también un mensaje toast para confirmar
+    if (hasRelations) {
+      toast({
+        title: "Relaciones VAXO detectadas",
+        description: `Se han encontrado ${relationsForSelectedIdeas.length} relaciones existentes.`,
+        duration: 3000,
+      });
+    }
   };
 
   // Handle the start alternative process button
