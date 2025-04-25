@@ -341,11 +341,11 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       // 1. MODAL ABIERTO: Nos aseguramos que isSaving esté activo para prevenir cierre automático
       console.log("🟢 MODAL ABIERTO - Previniendo cierre automático");
       
-      // Este es el cambio fundamental: siempre garantizamos que isSaving sea true cuando isOpen es true
-      if (!isSaving) {
-        setIsSaving(true);
-        console.log("🔒 Activando bloqueo de cierre (isSaving=true)");
-      }
+      // Ya no necesitamos esto porque isSaving ahora es una constante siempre true
+      // if (!isSaving) {
+      //   setIsSaving(true);
+      //   console.log("🔒 Activando bloqueo de cierre (isSaving=true)");
+      // }
       
       // Si el modal está abierto pero no inicializado, mostramos un mensaje explícito
       if (!isInitialized) {
@@ -412,12 +412,11 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       };
     }
     
-    // ACTIVACIÓN CRÍTICA: Inmediatamente activar isSaving para evitar cierre prematuro
-    // Solo si el componente sigue montado
-    if (isMounted && !isSaving) {
-      setIsSaving(true);
-      console.log("PROTECCIÓN ACTIVADA: isSaving=true durante inicialización");
-    }
+    // Ya no necesitamos activar isSaving porque ahora es una constante true
+    // if (isMounted && !isSaving) {
+    //   setIsSaving(true);
+    //   console.log("PROTECCIÓN ACTIVADA: isSaving=true durante inicialización");
+    // }
     
     // Marcamos como inicializado para evitar reiniciar el proceso
     setIsInitialized(true);
@@ -546,8 +545,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                   setQuestions(newQuestions);
                   setCurrentQuestionIndex(nextUnansweredIndex);
                   
-                  // Activa explícitamente el modo de guardado para prevenir el cierre automático
-                  setIsSaving(true);
+                  // Ya no necesitamos activar isSaving porque ahora es una constante true
+                  // setIsSaving(true);
                   
                   // Notificación con aumento de duración
                   toast({
@@ -984,8 +983,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
 
   // Proceed to the reachability matrix stage
   const proceedToReachabilityMatrix = () => {
-    // Activamos isSaving inmediatamente para asegurar que el modal no se cierre
-    setIsSaving(true);
+    // Ya no necesitamos activar isSaving porque ahora es una constante true
+    // setIsSaving(true);
     
     console.log("Creando matriz de alcance inicial...");
     
@@ -1010,8 +1009,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
 
   // Apply transitive closure and proceed to level determination
   const applyTransitiveClosureAndProceed = () => {
-    // Activamos isSaving para evitar cierre automático del modal
-    setIsSaving(true);
+    // Ya no necesitamos activar isSaving porque ahora es una constante true
+    // setIsSaving(true);
     
     // Mostrar feedback al usuario
     toast({
@@ -1062,8 +1061,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
 
   // Proceed to diagram visualization
   const proceedToDiagram = () => {
-    // Activamos isSaving para evitar cierre automático del modal
-    setIsSaving(true);
+    // Ya no necesitamos activar isSaving porque ahora es una constante true
+    // setIsSaving(true);
     
     // Mostrar feedback al usuario
     toast({
@@ -1648,12 +1647,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             <Button 
               onClick={() => {
                 console.log("Botón Start Process clickeado, cambiando a etapa de preguntas");
-                // Activar isSaving para evitar cierre prematuro
-                setIsSaving(true);
-                // Usar setTimeout para asegurar que el cambio ocurra después de la activación
-                setTimeout(() => {
-                  setStage("questions");
-                }, 500);
+                // Ya no necesitamos activar isSaving porque siempre es true
+                // Usar safeStageChange en lugar de setTimeout para mayor seguridad
+                safeStageChange("questions");
               }}
             >
               Start Process
@@ -1717,9 +1713,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     console.log(`Intento de cierre manual. Estado actual: isSaving=${isSaving}, stage=${stage}, isInitialized=${isInitialized}`);
     
     // SOLUCIÓN DEFINITIVA:
-    // Forzar que siempre esté isSaving=true durante el proceso de cierre para evitar cierres prematuros
+    // Ya no necesitamos forzar isSaving=true porque ahora es una constante
     // Esto garantiza que no se ejecutarán otros cierres paralelos mientras procesamos este cierre
-    setIsSaving(true);
+    // setIsSaving(true);
     
     // Verificar si estamos en medio de una operación sensible que no debe interrumpirse
     if (stage === "intro" && isInitialized === false) {
