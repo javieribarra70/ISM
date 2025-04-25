@@ -140,7 +140,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
 
   // Handle the start VAXO process button - Completamente refactorizado
   const handleStartProcess = () => {
-    console.log("=== INICIANDO PROCESO VAXO === (Versión simplificada)");
+    console.log("=== INICIANDO PROCESO VAXO === (Versión directa a preguntas)");
     
     // 1. Iniciar el estado de loading para feedback visual inmediato
     setIsStarting(true);

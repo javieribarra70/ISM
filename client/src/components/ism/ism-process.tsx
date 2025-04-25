@@ -238,7 +238,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   // State to store the current stage of the ISM process
   const [stage, setStage] = useState<
     "intro" | "questions" | "ssim" | "reachability" | "levels" | "diagram"
-  >("intro");
+  >("questions"); // Iniciamos directamente en las preguntas VAXO
 
   // State for the VAXO questions to be asked
   const [questions, setQuestions] = useState<ISMQuestion[]>([]);
