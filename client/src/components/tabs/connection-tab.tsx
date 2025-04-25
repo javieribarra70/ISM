@@ -183,15 +183,16 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
       `Total relaciones específicas: ${relationsForSelectedIdeas.length}`,
     );
 
-    // Si hay relaciones existentes, mostrar un mensaje informativo
+    // Solo mostramos un diálogo de confirmación si hay relaciones existentes
+    // pero no bloqueamos el proceso - esto permite iniciar ISM siempre
     if (hasRelations) {
-      setShowRelationshipsDialog(true); // <- ESTO
       toast({
         title: "Relaciones VAXO existentes",
         description: `Continuando proceso con ${relationsForSelectedIdeas.length} relaciones existentes.`,
         duration: 3000,
       });
-      // Note: Do not return to ensure continuation to open ISMProcess modal
+      // Nota: ELIMINAMOS la apertura del diálogo para evitar bloquear el proceso
+      // setShowRelationshipsDialog(true); // COMENTADO para corregir bloqueo
     }
 
     // Ya no usamos esta apertura directa porque ahora lo hacemos con retraso
@@ -350,7 +351,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
               }
             >
               <PlayCircle className="h-5 w-5" />
-              {isStartingAlternative ? "Starting..." : "Start VAXO Process"}
+              {isStartingAlternative ? "Starting..." : "Start Voting Process"}
             </Button>
           </div>
         </div>
