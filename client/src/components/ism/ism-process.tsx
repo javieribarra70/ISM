@@ -610,82 +610,34 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     
   }, [isOpen, selectedIdeas, existingRelationships, toast, isInitialized]);
 
-  // Function to save individual VAXO relationship to the database
+  // Function to process individual VAXO relationship (in memory only)
   const saveIndividualRelationship = async (ideaI: number, ideaJ: number, relation: RelationType) => {
     if (!user || !selectedIdeas[0]?.projectId) return;
     
     try {
       setIsSaving(true);
       
-      // Find existing relationship for these ideas
-      const existingRel = existingRelationships && Array.isArray(existingRelationships) ?
-        (existingRelationships as any[]).find(rel => {
-          // Extraer los IDs correctos según el formato de los datos
-          const fromId = rel.fromIdeaId || rel.from_idea_id || rel.from;
-          const toId = rel.toIdeaId || rel.to_idea_id || rel.to;
-          
-          return (fromId === ideaI && toId === ideaJ) ||
-                (fromId === ideaJ && toId === ideaI && (relation === RelationType.X || relation === RelationType.O))
-        }) : null;
+      // Ya no buscamos ni eliminamos relaciones existentes
+      // Todo se mantiene solo en memoria
       
-      // Delete existing relationship if it exists
-      if (existingRel) {
-        try {
-          await apiRequest('DELETE', `/api/relationships/${existingRel.id}`);
-          console.log(`Relación existente ${existingRel.id} eliminada`);
-        } catch (error) {
-          console.error(`Error al eliminar relación ${existingRel.id}:`, error);
+      // Procesamos la relación solo en memoria
+      console.log(`Procesando relación en memoria: ${ideaI} -> ${ideaJ} (${relation})`);
+      
+      // Ya no creamos relaciones en la base de datos
+      if (relation !== RelationType.O) {
+        console.log(`Relación procesada en memoria: ${ideaI} -> ${ideaJ} (${relation})`);
+        
+        // Registramos también la relación inversa en consola (solo para depuración)
+        if (relation === RelationType.V || relation === RelationType.A || relation === RelationType.X) {
+          const inverseRelation = relation === RelationType.V ? RelationType.A :
+                                  relation === RelationType.A ? RelationType.V :
+                                  RelationType.X;
+          
+          console.log(`Relación inversa procesada en memoria: ${ideaJ} -> ${ideaI} (${inverseRelation})`);
         }
       }
       
-      // Create new relationship
-      if (relation !== RelationType.O) { // No need to save "O" relationships
-        try {
-          console.log(`Guardando relación: ${ideaI} -> ${ideaJ} (${relation})`);
-          
-          await apiRequest('POST', `/api/projects/${selectedIdeas[0].projectId}/relationships`, {
-            fromIdeaId: ideaI,
-            toIdeaId: ideaJ,
-            projectId: selectedIdeas[0].projectId,
-            createdBy: user.id,
-            relationType: relation
-          });
-          
-          console.log(`Relación guardada correctamente`);
-          
-          // Also create inverse relationship if needed
-          if (relation === RelationType.V || relation === RelationType.A || relation === RelationType.X) {
-            const inverseRelation = relation === RelationType.V ? RelationType.A :
-                                     relation === RelationType.A ? RelationType.V :
-                                     RelationType.X;
-            
-            console.log(`Guardando relación inversa: ${ideaJ} -> ${ideaI} (${inverseRelation})`);
-            
-            await apiRequest('POST', `/api/projects/${selectedIdeas[0].projectId}/relationships`, {
-              fromIdeaId: ideaJ,
-              toIdeaId: ideaI,
-              projectId: selectedIdeas[0].projectId,
-              createdBy: user.id,
-              relationType: inverseRelation
-            });
-            
-            console.log(`Relación inversa guardada correctamente`);
-          }
-          
-        } catch (error) {
-          console.error(`Error al guardar relación:`, error);
-          toast({
-            title: "Error saving relationship",
-            description: "There was a problem saving the VAXO relationship.",
-            variant: "destructive"
-          });
-        }
-      }
-      
-      // Invalidate relationships query to refresh data
-      queryClient.invalidateQueries({
-        queryKey: [`/api/projects/${selectedIdeas[0].projectId}/relationships`]
-      });
+      // Ya no invalidamos consultas porque no hay cambios en la base de datos
       
     } catch (error) {
       console.error("Error saving relationship:", error);
@@ -935,73 +887,32 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     
     try {
       setIsSaving(true);
-      console.log("Guardando relaciones VAXO...");
+      console.log("Procesando relaciones VAXO en memoria...");
       
-      // Delete any existing relationships first (to avoid duplicates)
-      if (existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
-        console.log(`Eliminando ${existingRelationships.length} relaciones existentes`);
-        // Use Promise.all to delete all existing relationships
-        for (const rel of existingRelationships) {
-          try {
-            await apiRequest('DELETE', `/api/relationships/${rel.id}`);
-            console.log(`Relación ${rel.id} eliminada correctamente`);
-          } catch (error) {
-            console.error(`Error al eliminar relación ${rel.id}:`, error);
-          }
-        }
-      }
+      // Ya no eliminamos relaciones existentes
+      // Ya no guardamos relaciones en la base de datos
       
-      console.log(`Creando nuevas relaciones VAXO (${relationships.filter(rel => rel.relation !== RelationType.O).length})`);
+      console.log(`Relaciones VAXO procesadas en memoria (${relationships.filter(rel => rel.relation !== RelationType.O).length})`);
       
-      // Create the new VAXO relationships one by one to better track errors
+      // Mostramos las relaciones en formato de registro para depuración
       const filteredRelationships = relationships.filter(rel => rel.relation !== RelationType.O);
+      filteredRelationships.forEach(rel => {
+        console.log(`Relación en memoria: ${rel.ideaI} -> ${rel.ideaJ} (${rel.relation})`);
+      });
       
-      try {
-        // Realizar solicitudes de a 1 para evitar problemas
-        for (const rel of filteredRelationships) {
-          console.log(`Creando relación: ${rel.ideaI} -> ${rel.ideaJ} (${rel.relation})`);
-          
-          await apiRequest('POST', `/api/projects/${selectedIdeas[0].projectId}/relationships`, {
-            fromIdeaId: rel.ideaI,
-            toIdeaId: rel.ideaJ,
-            projectId: selectedIdeas[0].projectId,
-            createdBy: user.id,
-            relationType: rel.relation
-          });
-          
-          console.log(`Relación creada correctamente`);
-          
-          // Pequeña pausa para asegurar que las solicitudes no se sobrecarguen
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      
-        // Invalidate the relationships query to refresh the data
-        queryClient.invalidateQueries({
-          queryKey: [`/api/projects/${selectedIdeas[0].projectId}/relationships`]
-        });
-        
-        toast({
-          title: "Relationships saved",
-          description: "The VAXO relationships have been saved to the database.",
-          variant: "default"
-        });
-        
-        // Importante: No cerrar el modal después de guardar
-        // Avanzar al siguiente paso automáticamente
-        setStage("ssim");
-      } catch (error) {
-        console.error(`Error al crear relaciones:`, error);
-        toast({
-          title: "Error saving relationships",
-          description: "There was a problem saving some VAXO relationships. Please try again.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error("Error saving VAXO relationships:", error);
       toast({
-        title: "Error saving relationships",
-        description: "There was a problem saving the VAXO relationships.",
+        title: "Relationships processed",
+        description: "The VAXO relationships have been processed and stored in memory.",
+        variant: "default"
+      });
+      
+      // Avanzar al siguiente paso automáticamente
+      setStage("ssim");
+    } catch (error) {
+      console.error("Error processing VAXO relationships:", error);
+      toast({
+        title: "Error processing relationships",
+        description: "There was a problem processing the VAXO relationships.",
         variant: "destructive"
       });
     } finally {
@@ -1009,7 +920,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       const hasUnansweredQuestions = questions.some(q => q.response === null);
       
       if (!hasUnansweredQuestions) {
-        console.log("Todas las relaciones guardadas correctamente, no hay preguntas pendientes");
+        console.log("Todas las relaciones procesadas correctamente, no hay preguntas pendientes");
         setIsSaving(false);
       } else {
         console.log(`PROTECCIÓN EN saveVAXORelationshipsToDatabase: Manteniendo isSaving=true porque aún quedan ${questions.filter(q => q.response === null).length} preguntas sin responder`);
