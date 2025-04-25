@@ -1078,125 +1078,11 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   // Render the current stage
   const renderCurrentStage = () => {
     switch (stage) {
+      // El caso "intro" ha sido eliminado ya que ahora iniciamos directamente en las preguntas
       case "intro":
-        return (
-          <div className="space-y-4">
-            {isLoadingRelationships && (
-              <Alert className="bg-yellow-50 mb-4">
-                <Info className="h-5 w-5" />
-                <AlertTitle>Loading...</AlertTitle>
-                <AlertDescription>
-                  Checking for existing VAXO relationships. Please wait...
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            <Alert className="bg-blue-50">
-              <Info className="h-5 w-5" />
-              <AlertTitle>Interpretive Structural Modeling (ISM) Process</AlertTitle>
-              <AlertDescription>
-                This process will guide you to build a relationship model between the selected ideas.
-                We will use the VAXO system to record influence relationships:
-              </AlertDescription>
-            </Alert>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">V: i influences j</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Idea i has a direct influence on idea j
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">A: j influences i</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Idea j has a direct influence on idea i
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">X: mutual influence</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Ideas i and j influence each other
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">O: no relationship</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    There is no influence relationship between ideas i and j
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-            
-            {projectContext && (
-              <div className="my-6 bg-slate-100 p-4 rounded-lg">
-                <h3 className="text-lg font-semibold mb-2">Project Context</h3>
-                
-                <div className="mb-3">
-                  <h4 className="font-medium text-sm">Context:</h4>
-                  <p className="text-sm">{projectContext.context}</p>
-                </div>
-                
-                <div className="mb-3">
-                  <h4 className="font-medium text-sm">Triggering Question:</h4>
-                  <p className="text-sm">{projectContext.triggeringQuestion}</p>
-                </div>
-                
-                <div className="mb-3">
-                  <h4 className="font-medium text-sm">Relation:</h4>
-                  <p className="text-sm">{projectContext.relation}</p>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-sm">Restriction:</h4>
-                  <p className="text-sm">{projectContext.restriction}</p>
-                </div>
-              </div>
-            )}
-            
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold mb-2">Selected Ideas</h3>
-              
-              <ul className="list-disc pl-6 space-y-2">
-                {selectedIdeas.map((idea) => (
-                  <li key={idea.id} className="text-sm">
-                    <span className="font-medium">{idea.title}</span>
-                    {idea.description && (
-                      <p className="text-xs text-muted-foreground">{idea.description}</p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            
-            <div className="text-sm text-muted-foreground">
-              <p>
-                Next, you will be asked questions about the relationship between each pair of ideas.
-                Use the context information to determine if there is an influence relationship
-                according to the VAXO system.
-              </p>
-            </div>
-          </div>
-        );
-        
+        // Este caso ya no se utilizará, pero lo mantenemos por compatibilidad
+        // con el valor "intro" que pueda venir de otros componentes
+        return null;
       case "questions":
         if (currentQuestionIndex < questions.length) {
           const question = questions[currentQuestionIndex];
@@ -1625,6 +1511,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const renderNavigationButtons = () => {
     switch (stage) {
       case "intro":
+        // Caso "intro" ya no se usa, pero mantenemos por compatibilidad
         return (
           <div className="flex justify-between">
             <Button variant="outline" onClick={handleCloseAttempt}>
@@ -1633,8 +1520,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             <Button 
               onClick={() => {
                 console.log("Botón Start Process clickeado, cambiando a etapa de preguntas");
-                // Ya no necesitamos activar isSaving porque siempre es true
-                // Usar safeStageChange en lugar de setTimeout para mayor seguridad
                 safeStageChange("questions");
               }}
             >
@@ -1817,15 +1702,15 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             <div className="flex justify-between items-start mb-6">
               <div className="flex flex-col space-y-1.5">
                 <h2 className="font-semibold leading-none tracking-tight text-lg">
-                  {stage === "intro" && "Interpretive Structural Modeling (ISM)"}
-                  {stage === "questions" && "Relationship Identification"}
+                  {stage === "intro" && "VAXO Relationship Analysis"}
+                  {stage === "questions" && "VAXO Relationship Identification"}
                   {stage === "ssim" && "SSIM Matrix"}
                   {stage === "reachability" && "Reachability Matrix"}
                   {stage === "levels" && "Level Partitioning"}
                   {stage === "diagram" && "Final ISM Diagram Model"}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  {stage === "intro" && "Build a structural model of relationships between selected ideas."}
+                  {stage === "intro" && "Analyzing relationships between selected ideas (proceeding directly to questions)."}
                   {stage === "questions" && "Determine the type of relationship between each pair of ideas."}
                   {stage === "ssim" && "View the structural self-interaction matrix."}
                   {stage === "reachability" && "Analyze the initial reachability matrix."}
