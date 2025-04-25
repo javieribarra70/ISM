@@ -332,9 +332,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     
     // Función para inicializar el proceso ISM
     const initializeISMProcess = () => {
-      // CAMBIO CRÍTICO: Activar inmediatamente isSaving para evitar cierre prematuro
-      setIsSaving(true);
-      
       if (selectedIdeas.length === 0) {
         console.error("ERROR CRÍTICO: No hay ideas seleccionadas para el proceso ISM");
         toast({
@@ -345,7 +342,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         return;
       }
       
-      console.log("⭐ INICIALIZANDO PROCESO ISM CON RELACIONES VAXO EXISTENTES ⭐");
+      console.log("Inicializando proceso ISM con ideas seleccionadas...");
       console.log(`SelectedIdeas (${selectedIdeas.length}):`, selectedIdeas.map(idea => idea.title));
       
       try {
@@ -1715,24 +1712,26 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
 
   // Función para manejar el intento de cierre con confirmación si hay progreso
   const handleCloseAttempt = () => {
-    // VERSIÓN FINAL: Log detallado para diagnóstico
-    console.log(`🛑 SOLICITUD DE CIERRE MANUAL DEL PROCESO VAXO - isSaving=${isSaving}, stage=${stage}, isInitialized=${isInitialized}`);
+    // MEJORA: Agregamos logging para debug
+    console.log(`Intento de cierre manual. Estado actual: isSaving=${isSaving}, stage=${stage}, isInitialized=${isInitialized}`);
     
-    // PASO 1: Activar protección inmediata contra cierres automáticos
-    // Esta protección evita que cualquier otro proceso cierre el modal mientras evaluamos el cierre
+    // SOLUCIÓN DEFINITIVA:
+    // Forzar que siempre esté isSaving=true durante el proceso de cierre para evitar cierres prematuros
+    // Esto garantiza que no se ejecutarán otros cierres paralelos mientras procesamos este cierre
     setIsSaving(true);
     
-    // PASO 2: Verificar si estamos en fase de inicialización
-    if (stage === "intro" && !isInitialized) {
-      console.log("⛔ BLOQUEO DE CIERRE: El proceso está en fase de inicialización");
+    // Verificar si estamos en medio de una operación sensible que no debe interrumpirse
+    if (stage === "intro" && isInitialized === false) {
+      console.log("Bloqueando cierre - el componente aún está inicializándose");
       toast({
-        title: "Proceso VAXO en inicialización",
-        description: "Por favor espera a que se carguen todas las relaciones existentes.",
+        title: "Inicializando proceso",
+        description: "Por favor espera a que termine la inicialización del proceso.",
         variant: "default",
         duration: 3000
       });
       
-      // Desactivamos isSaving después de un tiempo sin cerrar el modal
+      // Importante: No cerramos, pero tampoco dejamos isSaving bloqueado para siempre
+      // Lo desactivamos después de un tiempo prudencial
       setTimeout(() => setIsSaving(false), 3000);
       return;
     }
@@ -1802,54 +1801,33 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     }, 1000); // Damos un segundo completo para la fase de preparación
   };
 
-  // IMPLEMENTACIÓN ULTRA SIMPLE PARA DEPURACIÓN
+  // NUEVA IMPLEMENTACIÓN SIMPLIFICADA
+  // Este componente ahora siempre debe tener isOpen=true
+  // porque se renderiza condicionalmente desde el padre
   useEffect(() => {
-    console.log("🚀 COMPONENTE ISM MONTADO Y LISTO");
+    console.log("🚀 COMPONENTE ISM MONTADO Y LISTO - isOpen:", isOpen);
     
-    // Mostrar notificación para confirmar que estamos activos
+    // Eliminar cualquier overlay temporal que pueda estar mostrándose
+    const tempOverlay = document.getElementById("temp-overlay");
+    if (tempOverlay) {
+      console.log("Eliminando overlay temporal...");
+      tempOverlay.remove();
+    }
+    
+    // Mostrar notificación
     toast({
-      title: "Proceso VAXO Iniciado",
-      description: "El modal se ha abierto correctamente.",
+      title: "Proceso VAXO iniciado",
+      description: "El proceso VAXO se ha iniciado correctamente con las relaciones existentes.",
       duration: 3000,
     });
-    
-    // Llamar a window.alert para forzar que se muestre algo visible
-    // incluso si hay problemas de renderizado con React
-    setTimeout(() => {
-      // Esta alerta es temporal para debugging, se puede eliminar después
-      window.alert("Proceso VAXO iniciado. Presiona OK para continuar.");
-    }, 500);
-  }, []);
+  }, []); // Solo se ejecuta al montar el componente, ya que ahora siempre tendrá isOpen=true
   
-  console.log("ISMProcess renderizando");
+  console.log("ISMProcess renderizando - Continuando con relaciones VAXO existentes");
   
-  // Modal simplificado para maximizar probabilidad de que sea visible
+  // Modal personalizado con z-index muy alto para asegurarnos que sea visible
   return (
-    <div 
-      className="fixed inset-0 z-[9999]" 
-      style={{
-        position: 'fixed', 
-        top: 0, 
-        left: 0, 
-        right: 0, 
-        bottom: 0, 
-        background: 'rgba(0,0,0,0.9)', 
-        zIndex: 99999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}
-    >
-      <div 
-        className="bg-white rounded-lg" 
-        style={{
-          width: '90%', 
-          maxWidth: '1000px', 
-          height: '90vh', 
-          padding: '20px',
-          border: '8px solid red'
-        }}
-      >
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80" style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999}}>
+      <div className="bg-white rounded-lg shadow-lg max-w-4xl max-h-[95vh] h-[95vh] overflow-y-auto w-full" style={{border: '5px solid red'}}>
         <div className="p-6">
           {/* Header personalizado con botón de cerrar */}
           <div className="flex justify-between items-start mb-6">

@@ -133,53 +133,23 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   // Estado para controlar qué modal mostrar
   const [showRelationshipsDialog, setShowRelationshipsDialog] = useState(false);
 
-  // VERSIÓN FINAL REPARADA: Uso de alert nativo para bypass de React
+  // VERSIÓN FINAL - Flujo directo y sincronizado para iniciar el proceso VAXO
   const handleStartProcess = () => {
-    console.log("=== REPARACIÓN FINAL DEL PROCESO VAXO ===");
+    console.log("=== INICIANDO PROCESO VAXO - VERSIÓN FINAL ===");
     
-    // Mostrar una alerta nativa para confirmar la acción
-    // Esto detiene la ejecución y da tiempo a que React realice cualquier actualización pendiente
-    window.alert("Iniciando proceso VAXO. Presiona OK para continuar.");
+    // 1. Generar referencia persistente para este proceso
+    // (no usamos Date.now() para evitar problemas de sincronización)
+    const uniqueKey = "ism-process-stable-key";
+    setIsmInstanceKey(uniqueKey);
     
-    // Construimos manualmente un modal VAXO usando DOM nativo
-    // que no esté sujeto a problemas de React
-    const body = document.body;
+    // 2. PRIMER CAMBIO IMPORTANTE: Activar inmediatamente el indicador de diálogo
+    // Esto debe ocurrir antes de cualquier otro cambio de estado o proceso asíncrono
+    setIsISMDialogOpen(true);
     
-    // 1. Crear el contenedor del modal
-    const modalOverlay = document.createElement('div');
-    modalOverlay.id = "vaxo-manual-modal";
-    modalOverlay.style.position = "fixed";
-    modalOverlay.style.top = "0";
-    modalOverlay.style.left = "0";
-    modalOverlay.style.width = "100%";
-    modalOverlay.style.height = "100%";
-    modalOverlay.style.backgroundColor = "rgba(0,0,0,0.8)";
-    modalOverlay.style.display = "flex";
-    modalOverlay.style.alignItems = "center";
-    modalOverlay.style.justifyContent = "center";
-    modalOverlay.style.zIndex = "99999"; // Muy alto para garantizar visibilidad
+    // 3. Actualizar UI para indicar carga
+    setIsStarting(true);
     
-    // 2. Crear el contenido del modal
-    const modalContent = document.createElement('div');
-    modalContent.style.backgroundColor = "white";
-    modalContent.style.padding = "30px";
-    modalContent.style.borderRadius = "8px";
-    modalContent.style.maxWidth = "800px";
-    modalContent.style.width = "80%";
-    modalContent.style.maxHeight = "90vh";
-    modalContent.style.overflow = "auto";
-    modalContent.style.border = "5px solid red";
-    
-    // 3. Añadir título y contenido más completo
-    // Preparar la lista de ideas seleccionadas
-    const ideasList = selectedIdeas.map(idea => 
-      `<div style="padding: 10px; margin-bottom: 8px; border-radius: 4px; border: 1px solid #e5e7eb; background-color: #f9fafb;">
-        <strong>${idea.title}</strong>
-        ${idea.description ? `<p style="font-size: 14px; color: #6b7280; margin-top: 4px;">${idea.description}</p>` : ''}
-      </div>`
-    ).join('');
-    
-    // Verificar si hay relaciones existentes
+    // 4. Verificar relaciones existentes (esto es rápido y sincrónico)
     const selectedIds = selectedIdeas.map(idea => idea.id);
     const relationsForSelectedIdeas = existingRelationships.filter(rel => {
       const fromId = rel.fromIdeaId || rel.from;
@@ -188,169 +158,50 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     });
     
     const hasRelations = relationsForSelectedIdeas.length > 0;
+    console.log(`Total relaciones VAXO encontradas: ${relationsForSelectedIdeas.length}`);
     
-    modalContent.innerHTML = `
-      <h2 style="margin-bottom: 20px; font-size: 24px; font-weight: bold; color: #111827;">
-        Proceso VAXO - Matriz de Relaciones
-      </h2>
-      
-      <div style="margin-bottom: 20px; padding: 12px; border-radius: 4px; background-color: #f0f9ff; border-left: 4px solid #0ea5e9;">
-        <p style="font-weight: 500; margin-bottom: 8px;">Información del Proceso</p>
-        <ul style="list-style-type: disc; margin-left: 20px;">
-          <li>Ideas seleccionadas: ${selectedIdeas.length}</li>
-          ${hasRelations ? `<li>Relaciones existentes: ${relationsForSelectedIdeas.length}</li>` : '<li>No hay relaciones previas definidas</li>'}
-          <li>Total posibles relaciones VAXO: ${selectedIdeas.length * (selectedIdeas.length - 1) / 2}</li>
-        </ul>
-      </div>
-      
-      <div style="margin-bottom: 20px;">
-        <h3 style="margin-bottom: 10px; font-size: 18px; font-weight: 600; color: #374151;">Ideas Seleccionadas</h3>
-        <div style="max-height: 300px; overflow-y: auto; padding-right: 10px;">
-          ${ideasList}
-        </div>
-      </div>
-      
-      <div style="display: flex; justify-content: space-between; margin-top: 30px;">
-        <button id="download-report" style="padding: 8px 16px; background: #047857; color: white; border: none; border-radius: 4px; cursor: pointer; display: flex; align-items: center;">
-          <span>Descargar Reporte</span>
-        </button>
-        <button id="close-vaxo-modal" style="padding: 8px 16px; background: #e11d48; color: white; border: none; border-radius: 4px; cursor: pointer;">
-          Cerrar
-        </button>
-      </div>
-    `;
+    // 5. Agregar overlay visual solo como retroalimentación, no como lógica de control
+    const body = document.body;
+    const overlay = document.createElement('div');
+    overlay.id = "temp-overlay";
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
+    overlay.style.backgroundColor = "rgba(0,0,0,0.5)";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    overlay.style.zIndex = "1000"; // Menor que el modal para no bloquearlo
     
-    // 4. Añadir modal al DOM
-    modalOverlay.appendChild(modalContent);
-    body.appendChild(modalOverlay);
+    const mensaje = hasRelations 
+      ? `Cargando VAXO con ${relationsForSelectedIdeas.length} relaciones existentes...` 
+      : "Iniciando proceso VAXO...";
+      
+    overlay.innerHTML = `<div style='background: white; padding: 20px; border-radius: 8px;'>${mensaje}</div>`;
+    body.appendChild(overlay);
     
-    // 5. Configurar los botones de acción
+    // 6. Quitar el overlay después de un tiempo, pero sin afectar al modal
+    // Este setTimeout no afecta a la lógica de montaje del ISMProcess
     setTimeout(() => {
-      // Configurar botón de cierre
-      const closeButton = document.getElementById('close-vaxo-modal');
-      if (closeButton) {
-        closeButton.addEventListener('click', () => {
-          const modal = document.getElementById('vaxo-manual-modal');
-          if (modal) {
-            modal.remove();
-          }
-          
-          // Notificar al usuario
-          toast({
-            title: "Proceso VAXO cerrado",
-            description: "El proceso ha sido cerrado manualmente.",
-            duration: 3000,
-          });
-          
-          // Reset UI state
-          setIsStarting(false);
-        });
+      const tempOverlay = document.getElementById("temp-overlay");
+      if (tempOverlay) {
+        tempOverlay.remove();
       }
       
-      // Configurar botón de descarga de reporte
-      const downloadButton = document.getElementById('download-report');
-      if (downloadButton) {
-        downloadButton.addEventListener('click', () => {
-          try {
-            // Crear contenido del informe
-            const selectedIdsString = selectedIds.join(', ');
-            const reportDate = new Date().toLocaleString();
-            
-            // Generar contenido detallado
-            let reportContent = `
-              REPORTE VAXO - PROYECTO: ${project?.name || 'Sin nombre'}
-              =====================================================
-              Fecha: ${reportDate}
-              
-              INFORMACIÓN GENERAL
-              ------------------
-              Ideas seleccionadas: ${selectedIdeas.length}
-              IDs de ideas: ${selectedIdsString}
-              Relaciones existentes: ${relationsForSelectedIdeas.length}
-              Total posibles relaciones: ${selectedIdeas.length * (selectedIdeas.length - 1) / 2}
-              
-              LISTADO DE IDEAS
-              ----------------
-            `;
-            
-            // Agregar cada idea al reporte
-            selectedIdeas.forEach((idea, index) => {
-              reportContent += `
-              ${index + 1}. ${idea.title}
-                 ID: ${idea.id}
-                 ${idea.description ? `Descripción: ${idea.description}` : 'Sin descripción'}
-              `;
-            });
-            
-            // Si hay relaciones existentes, añadirlas al reporte
-            if (relationsForSelectedIdeas.length > 0) {
-              reportContent += `
-              
-              RELACIONES EXISTENTES
-              --------------------
-              `;
-              
-              relationsForSelectedIdeas.forEach((rel, index) => {
-                const fromIdea = selectedIdeas.find(idea => idea.id === (rel.fromIdeaId || rel.from));
-                const toIdea = selectedIdeas.find(idea => idea.id === (rel.toIdeaId || rel.to));
-                
-                reportContent += `
-              ${index + 1}. Relación ID: ${rel.id}
-                 Desde: ${fromIdea?.title || 'Desconocido'} (ID: ${rel.fromIdeaId || rel.from})
-                 Hacia: ${toIdea?.title || 'Desconocido'} (ID: ${rel.toIdeaId || rel.to})
-                 Tipo: ${rel.type || 'No especificado'}
-              `;
-              });
-            }
-            
-            // Crear un blob con el contenido
-            const blob = new Blob([reportContent], { type: 'text/plain' });
-            
-            // Crear un enlace temporal para la descarga
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `vaxo-report-${project?.name || 'project'}-${new Date().toISOString().slice(0, 10)}.txt`;
-            
-            // Simular un clic en el enlace para descargar
-            document.body.appendChild(a);
-            a.click();
-            
-            // Limpiar
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            // Notificar al usuario
-            toast({
-              title: "Reporte generado",
-              description: "El reporte VAXO se ha descargado correctamente.",
-              duration: 3000,
-            });
-          } catch (error) {
-            console.error("Error al generar el reporte:", error);
-            
-            toast({
-              title: "Error al generar reporte",
-              description: "No se pudo generar el reporte. Inténtelo de nuevo.",
-              variant: "destructive",
-              duration: 3000,
-            });
-          }
-        });
-      }
-    }, 100);
-    
-    // 6. Desactivar indicador de carga después de un breve tiempo
-    setTimeout(() => {
+      // Solo desactivamos indicador de carga UI
       setIsStarting(false);
-    }, 1000);
+    }, 1500); // Tiempo suficiente para que se vea el overlay, pero independiente del modal
     
-    // Notificar al usuario
-    toast({
-      title: "Solución temporal activada",
-      description: "Se ha creado un modal DOM nativo mientras se repara el componente React.",
-      duration: 5000,
-    });
+    // Mostrar también un mensaje toast para confirmar
+    if (hasRelations) {
+      toast({
+        title: "Relaciones VAXO detectadas",
+        description: `Se han encontrado ${relationsForSelectedIdeas.length} relaciones existentes.`,
+        duration: 3000,
+      });
+    }
   };
 
   // Handle the start alternative process button
@@ -370,30 +221,16 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     }, 500);
   };
 
-  // Handle ISM dialog close - Versión final
+  // Handle ISM dialog close
   const handleISMDialogClose = () => {
-    console.log("⚠️ SOLICITUD DE CIERRE DESDE ISM PROCESS - EJECUTANDO CIERRE SEGURO");
-    
-    // Mostrar mensaje al usuario
-    toast({
-      title: "Cerrando proceso VAXO",
-      description: "Las relaciones VAXO se han guardado correctamente.",
-      duration: 3000,
-    });
-    
-    // MEJORA CRÍTICA: Usamos un retraso MÁS LARGO para dar tiempo 
-    // a que cualquier proceso en curso en el componente interno termine
+    console.log("ISM Dialog close requested - closing the dialog");
+    // CORRECCIÓN DE BUG: Añadimos un retraso deliberado para asegurar que el componente
+    // interno pueda hacer su limpieza antes de que el padre lo desmonte.
+    // Este cambio es crucial para resolver el problema de cierre prematuro.
     setTimeout(() => {
-      // 1. Primero actualizamos el estado local
       setIsISMDialogOpen(false);
-      
-      // 2. Luego invalidamos las consultas para asegurar datos frescos en próxima apertura
-      queryClient.invalidateQueries({
-        queryKey: [`/api/projects/${projectId}/relationships`]
-      });
-      
-      console.log("✅ MODAL VAXO CERRADO EXITOSAMENTE");
-    }, 500); // Aumentamos el retraso de 100ms a 500ms
+      console.log("Dialog closed after deliberate delay to prevent premature unmounting");
+    }, 100);
   };
 
   // Prepare project context information for ISM process
@@ -632,9 +469,9 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
         </div>
       )}
       
-      {/* VERSIÓN SIMPLIFICADA DEL RENDERIZADO DEL COMPONENTE ISM */}
-      {isISMDialogOpen && (
-        <div id="ism-wrapper" style={{zIndex: 9999}}>
+      {/* Renderizamos ISMProcess condicionalmente */}
+      {isISMDialogOpen ? (
+        <div id="ism-wrapper">
           <ISMProcess 
             key={ismInstanceKey}
             isOpen={true}
@@ -643,7 +480,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
             projectContext={projectContext}
           />
         </div>
-      )}
+      ) : null}
     </>
   );
 }
