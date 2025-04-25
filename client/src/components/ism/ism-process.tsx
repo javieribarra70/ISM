@@ -372,7 +372,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         if (!isOpen) {
           console.log("🔴 EFECTO DETECTÓ isOpen=false - CERRANDO MODAL");
           setIsInitialized(false); 
-          setIsSaving(false);
+          // Ya no necesitamos setIsSaving(false) porque ahora isSaving es una constante
         } else {
           console.log("⚠️ Cancelando cierre automático porque el modal fue reabierto");
         }
