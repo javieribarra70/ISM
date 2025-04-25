@@ -1801,28 +1801,37 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     }, 1000); // Damos un segundo completo para la fase de preparación
   };
 
-  // NUEVA IMPLEMENTACIÓN SIMPLIFICADA
-  // Este componente ahora siempre debe tener isOpen=true
-  // porque se renderiza condicionalmente desde el padre
+  // Si no está abierto, no renderizamos nada
+  // Añadamos un useEffect específico para detectar cambios en isOpen
   useEffect(() => {
-    console.log("🚀 COMPONENTE ISM MONTADO Y LISTO - isOpen:", isOpen);
-    
-    // Eliminar cualquier overlay temporal que pueda estar mostrándose
-    const tempOverlay = document.getElementById("temp-overlay");
-    if (tempOverlay) {
-      console.log("Eliminando overlay temporal...");
-      tempOverlay.remove();
+    if (isOpen) {
+      console.log("🔴 EFECTO DETECTÓ isOpen=true - ABRIENDO MODAL");
+      
+      // Hack de emergencia: forzar que el modal permanezca abierto
+      const timer = setTimeout(() => {
+        console.log("🔴 VERIFICACIÓN ADICIONAL DE MODAL ABIERTO");
+        // Si por alguna razón el estado se pierde, este código garantiza que se mantenga abierto
+        const tempOverlay = document.getElementById("temp-overlay");
+        if (tempOverlay) tempOverlay.remove();
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    } else {
+      console.log("🔴 EFECTO DETECTÓ isOpen=false - CERRANDO MODAL");
     }
-    
-    // Mostrar notificación
-    toast({
-      title: "Proceso VAXO iniciado",
-      description: "El proceso VAXO se ha iniciado correctamente con las relaciones existentes.",
-      duration: 3000,
-    });
-  }, []); // Solo se ejecuta al montar el componente, ya que ahora siempre tendrá isOpen=true
+  }, [isOpen]); // Este efecto se ejecuta solo cuando isOpen cambia
   
-  console.log("ISMProcess renderizando - Continuando con relaciones VAXO existentes");
+  // Debugging para determinar si se está renderizando el componente correctamente
+  console.log("ISMProcess render - isOpen:", isOpen);
+  
+  // Si no está abierto, mostrar un div vacío pero presente en el DOM
+  // Esto es un cambio crítico: en lugar de return null, mantenemos un elemento en el DOM
+  if (!isOpen) {
+    console.log("ISMProcess - NO está abierto, retornando div vacío");
+    return <div id="ism-process-placeholder" style={{display: 'none'}}></div>;
+  }
+  
+  console.log("ISMProcess - ESTÁ abierto, renderizando modal!!!");
   
   // Modal personalizado con z-index muy alto para asegurarnos que sea visible
   return (
