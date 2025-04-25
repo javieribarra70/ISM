@@ -368,9 +368,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       // 1. MODAL ABIERTO: Nos aseguramos que isSaving esté activo para prevenir cierre automático
       console.log("🟢 MODAL ABIERTO - Previniendo cierre automático");
       
-      // FORZAR a que siempre estemos en la etapa "questions" cuando el modal está abierto
-      if (stage !== "questions") {
-        console.log("⚠️ Forzando cambio de etapa a 'questions' desde:", stage);
+      // Solo forzamos la etapa "questions" al inicio cuando esté en "intro"
+      // pero NO cuando ya ha avanzado a otra etapa como "ssim"
+      if (stage === "intro") {
+        console.log("⚠️ Cambiando de 'intro' a 'questions' al iniciar:", stage);
         setStage("questions");
       }
       
@@ -700,7 +701,36 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       
       if (!hasUnansweredQuestions) {
         console.log("Método saveIndividualRelationship: Todas las preguntas respondidas");
-        // setIsSaving(false); - Ya no es necesario porque es una constante
+        
+        // CRÍTICO: Avanzar a la matriz SSIM cuando se contesten todas las preguntas
+        // Aseguramos que esto suceda con un timeout para permitir que los estados se actualicen
+        setTimeout(() => {
+          console.log("✅ Avanzando a la etapa SSIM - todas las preguntas están respondidas");
+          
+          // Construir matrices necesarias
+          const updatedSSIM = [...ssimMatrix];
+          const initialMatrix = buildInitialReachabilityMatrix(selectedIdeas, updatedSSIM);
+          setReachabilityMatrix(initialMatrix);
+          
+          // Calcular matriz de accesibilidad con cierre transitivo
+          const finalMatrix = applyTransitiveClosure(initialMatrix);
+          setFinalReachabilityMatrix(finalMatrix);
+          
+          // Calcular niveles
+          const computedLevels = calculateLevels(finalMatrix, selectedIdeas);
+          setLevels(computedLevels);
+          
+          // Cambiar etapa
+          setStage("ssim");
+          
+          // Notificar al usuario
+          toast({
+            title: "Proceso completado",
+            description: "Todas las relaciones VAXO establecidas. Mostrando matriz SSIM.",
+            variant: "default",
+            duration: 3000
+          });
+        }, 500);
       } else {
         console.log(`Quedan ${questions.filter(q => q.response === null).length} preguntas sin responder`);
       }
