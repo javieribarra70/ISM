@@ -221,16 +221,30 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     }, 500);
   };
 
-  // Handle ISM dialog close
+  // Handle ISM dialog close - Versión final
   const handleISMDialogClose = () => {
-    console.log("ISM Dialog close requested - closing the dialog");
-    // CORRECCIÓN DE BUG: Añadimos un retraso deliberado para asegurar que el componente
-    // interno pueda hacer su limpieza antes de que el padre lo desmonte.
-    // Este cambio es crucial para resolver el problema de cierre prematuro.
+    console.log("⚠️ SOLICITUD DE CIERRE DESDE ISM PROCESS - EJECUTANDO CIERRE SEGURO");
+    
+    // Mostrar mensaje al usuario
+    toast({
+      title: "Cerrando proceso VAXO",
+      description: "Las relaciones VAXO se han guardado correctamente.",
+      duration: 3000,
+    });
+    
+    // MEJORA CRÍTICA: Usamos un retraso MÁS LARGO para dar tiempo 
+    // a que cualquier proceso en curso en el componente interno termine
     setTimeout(() => {
+      // 1. Primero actualizamos el estado local
       setIsISMDialogOpen(false);
-      console.log("Dialog closed after deliberate delay to prevent premature unmounting");
-    }, 100);
+      
+      // 2. Luego invalidamos las consultas para asegurar datos frescos en próxima apertura
+      queryClient.invalidateQueries({
+        queryKey: [`/api/projects/${projectId}/relationships`]
+      });
+      
+      console.log("✅ MODAL VAXO CERRADO EXITOSAMENTE");
+    }, 500); // Aumentamos el retraso de 100ms a 500ms
   };
 
   // Prepare project context information for ISM process

@@ -332,6 +332,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     
     // Función para inicializar el proceso ISM
     const initializeISMProcess = () => {
+      // CAMBIO CRÍTICO: Activar inmediatamente isSaving para evitar cierre prematuro
+      setIsSaving(true);
+      
       if (selectedIdeas.length === 0) {
         console.error("ERROR CRÍTICO: No hay ideas seleccionadas para el proceso ISM");
         toast({
@@ -342,7 +345,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         return;
       }
       
-      console.log("Inicializando proceso ISM con ideas seleccionadas...");
+      console.log("⭐ INICIALIZANDO PROCESO ISM CON RELACIONES VAXO EXISTENTES ⭐");
       console.log(`SelectedIdeas (${selectedIdeas.length}):`, selectedIdeas.map(idea => idea.title));
       
       try {
@@ -1712,26 +1715,24 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
 
   // Función para manejar el intento de cierre con confirmación si hay progreso
   const handleCloseAttempt = () => {
-    // MEJORA: Agregamos logging para debug
-    console.log(`Intento de cierre manual. Estado actual: isSaving=${isSaving}, stage=${stage}, isInitialized=${isInitialized}`);
+    // VERSIÓN FINAL: Log detallado para diagnóstico
+    console.log(`🛑 SOLICITUD DE CIERRE MANUAL DEL PROCESO VAXO - isSaving=${isSaving}, stage=${stage}, isInitialized=${isInitialized}`);
     
-    // SOLUCIÓN DEFINITIVA:
-    // Forzar que siempre esté isSaving=true durante el proceso de cierre para evitar cierres prematuros
-    // Esto garantiza que no se ejecutarán otros cierres paralelos mientras procesamos este cierre
+    // PASO 1: Activar protección inmediata contra cierres automáticos
+    // Esta protección evita que cualquier otro proceso cierre el modal mientras evaluamos el cierre
     setIsSaving(true);
     
-    // Verificar si estamos en medio de una operación sensible que no debe interrumpirse
-    if (stage === "intro" && isInitialized === false) {
-      console.log("Bloqueando cierre - el componente aún está inicializándose");
+    // PASO 2: Verificar si estamos en fase de inicialización
+    if (stage === "intro" && !isInitialized) {
+      console.log("⛔ BLOQUEO DE CIERRE: El proceso está en fase de inicialización");
       toast({
-        title: "Inicializando proceso",
-        description: "Por favor espera a que termine la inicialización del proceso.",
+        title: "Proceso VAXO en inicialización",
+        description: "Por favor espera a que se carguen todas las relaciones existentes.",
         variant: "default",
         duration: 3000
       });
       
-      // Importante: No cerramos, pero tampoco dejamos isSaving bloqueado para siempre
-      // Lo desactivamos después de un tiempo prudencial
+      // Desactivamos isSaving después de un tiempo sin cerrar el modal
       setTimeout(() => setIsSaving(false), 3000);
       return;
     }
