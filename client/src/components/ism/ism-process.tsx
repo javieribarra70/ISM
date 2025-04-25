@@ -1512,22 +1512,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const renderNavigationButtons = () => {
     switch (stage) {
       case "intro":
-        // Caso "intro" ya no se usa, pero mantenemos por compatibilidad
-        return (
-          <div className="flex justify-between">
-            <Button variant="outline" onClick={handleCloseAttempt}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={() => {
-                console.log("Botón Start Process clickeado, cambiando a etapa de preguntas");
-                safeStageChange("questions");
-              }}
-            >
-              Start Process
-            </Button>
-          </div>
-        );
+        // Este caso ya no se utilizará nunca, pero lo mantenemos por compatibilidad
+        // devolviendo null para evitar mostrar botones innecesarios
+        return null;
         
       case "questions":
         // Este es ahora el caso inicial
