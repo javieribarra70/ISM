@@ -582,13 +582,13 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         // Verificar estado final
         const hasUnansweredQuestions = newQuestions.some(q => q.response === null);
         
-        // CRUCIAL: Mantener isSaving=true si hay preguntas pendientes
+        // Ya no necesitamos modificar isSaving porque ahora es una constante true
         if (hasUnansweredQuestions) {
           console.log("MANTENIENDO isSaving=true porque hay preguntas sin responder");
-          setIsSaving(true);
+          // setIsSaving(true); - Ya no es necesario
         } else {
-          console.log("No hay preguntas pendientes, se puede desactivar isSaving");
-          setIsSaving(false);
+          console.log("No hay preguntas pendientes, pero mantenemos isSaving constante");
+          // setIsSaving(false); - Ya no es necesario
         }
       } catch (error) {
         // Manejo de errores durante la inicialización
@@ -603,7 +603,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         // En caso de error, establecer un estado básico
         setQuestions([]);
         setStage("intro");
-        setIsSaving(false);
+        // setIsSaving(false); - Ya no es necesario porque ahora isSaving es una constante
       }
     };
     
@@ -617,7 +617,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     if (!user || !selectedIdeas[0]?.projectId) return;
     
     try {
-      setIsSaving(true);
+      // Ya no necesitamos activar isSaving porque ahora es una constante true
+      // setIsSaving(true);
       
       // Ya no buscamos ni eliminamos relaciones existentes
       // Todo se mantiene solo en memoria
@@ -644,14 +645,14 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     } catch (error) {
       console.error("Error saving relationship:", error);
     } finally {
-      // CORRECCIÓN CRÍTICA: Verificamos si hay preguntas sin responder antes de desactivar isSaving
+      // Ya no es necesario verificar preguntas sin responder para gestionar isSaving
       const hasUnansweredQuestions = questions.some(q => q.response === null);
       
       if (!hasUnansweredQuestions) {
-        console.log("Método saveIndividualRelationship: Todas las preguntas respondidas, ahora sí podemos desactivar isSaving");
-        setIsSaving(false);
+        console.log("Método saveIndividualRelationship: Todas las preguntas respondidas");
+        // setIsSaving(false); - Ya no es necesario porque es una constante
       } else {
-        console.log(`PROTECCIÓN CRÍTICA en saveIndividualRelationship: Manteniendo isSaving=true porque aún quedan ${questions.filter(q => q.response === null).length} preguntas sin responder`);
+        console.log(`Quedan ${questions.filter(q => q.response === null).length} preguntas sin responder`);
       }
     }
     
@@ -664,10 +665,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const answerQuestion = async (response: RelationType) => {
     try {
       if (currentQuestionIndex < questions.length) {
-        // CRUCIAL: Establecemos isSaving para evitar cierres automáticos
-        // y lo mantenemos así durante todo el proceso
-        setIsSaving(true);
-        console.log("PROTECCIÓN: Estableciendo isSaving=true durante answerQuestion");
+        // Ya no necesitamos establecer isSaving porque ahora es una constante true
+        // setIsSaving(true);
+        console.log("isSaving siempre es true - no es necesario establecerlo durante answerQuestion");
         
         const updatedQuestions = [...questions];
         const currentQuestion = updatedQuestions[currentQuestionIndex];
@@ -690,9 +690,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         const pendingQuestions = inferredQuestions.filter(q => q.response === null);
         
         if (pendingQuestions.length > 0) {
-          // PROTECCIÓN ADICIONAL: Asegurarse de que isSaving permanezca true mientras hay preguntas pendientes
-          console.log(`Manteniendo isSaving=true: ${pendingQuestions.length} preguntas pendientes`);
-          setIsSaving(true);
+          // Ya no necesitamos asegurarnos que isSaving sea true porque ahora es una constante
+          console.log(`Quedan ${pendingQuestions.length} preguntas pendientes`);
+          // setIsSaving(true); - Ya no es necesario
           
           // En lugar de utilizar selectNextMostInformativeQuestion, buscar directamente
           // el índice de la siguiente pregunta sin responder
@@ -732,15 +732,15 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         variant: "destructive"
       });
     } finally {
-      // CORRECCIÓN CRÍTICA: Solo desactivamos isSaving cuando terminamos completamente Y NO quedan preguntas sin responder
+      // Ya no necesitamos verificar preguntas sin responder para gestionar isSaving
       const stillHasUnansweredQuestions = questions.some(q => q.response === null);
       
       if (!stillHasUnansweredQuestions) {
-        console.log("Todas las preguntas respondidas, ahora sí podemos desactivar isSaving");
-        setIsSaving(false);
+        console.log("Todas las preguntas respondidas");
+        // setIsSaving(false); - Ya no es necesario porque isSaving es una constante
       } else {
-        console.log(`PROTECCIÓN CRÍTICA: Manteniendo isSaving=true porque aún quedan ${questions.filter(q => q.response === null).length} preguntas sin responder`);
-        // Mantener isSaving=true para prevenir cierre prematuro del modal
+        console.log(`Aún quedan ${questions.filter(q => q.response === null).length} preguntas sin responder`);
+        // Ya no necesitamos mantener setIsSaving(true) porque ahora isSaving es una constante
       }
     }
   };
@@ -888,7 +888,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     if (!user || !selectedIdeas[0]?.projectId) return;
     
     try {
-      setIsSaving(true);
+      // Ya no necesitamos establecer isSaving porque ahora es una constante true
+      // setIsSaving(true);
       console.log("Procesando relaciones VAXO en memoria...");
       
       // Ya no eliminamos relaciones existentes
@@ -918,16 +919,15 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         variant: "destructive"
       });
     } finally {
-      // CORRECCIÓN CRÍTICA: Verificamos si hay preguntas sin responder antes de desactivar isSaving
+      // Ya no necesitamos verificar preguntas sin responder para gestionar isSaving
       const hasUnansweredQuestions = questions.some(q => q.response === null);
       
       if (!hasUnansweredQuestions) {
         console.log("Todas las relaciones procesadas correctamente, no hay preguntas pendientes");
-        setIsSaving(false);
+        // setIsSaving(false); - Ya no es necesario
       } else {
-        console.log(`PROTECCIÓN EN processVAXORelationshipsInMemory: Manteniendo isSaving=true porque aún quedan ${questions.filter(q => q.response === null).length} preguntas sin responder`);
-        // CRUCIAL: Mantener isSaving=true para evitar cierre prematuro
-        setIsSaving(true);
+        console.log(`Quedan ${questions.filter(q => q.response === null).length} preguntas sin responder`);
+        // No necesitamos establecer isSaving porque ahora es una constante
       }
     }
   };
