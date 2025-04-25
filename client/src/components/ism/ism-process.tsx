@@ -327,39 +327,61 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   // CORRECCIÓN DE BUG: Nueva lógica para el manejo del estado de inicialización
   // El problema principal era que el estado se reiniciaba demasiado rápido y
   // causaba un bucle infinito de actualizaciones
+  // SOLUCIÓN AL BUG: Replanteamiento completo del efecto que controla el ciclo de vida del modal
   useEffect(() => {
+    console.log(`🔍 Estado del modal: isOpen=${isOpen}, isSaving=${isSaving}, isInitialized=${isInitialized}`);
+    
     // Para evitar el bucle de actualizaciones, usamos un identificador de timeout
     let timeoutId: NodeJS.Timeout | null = null;
     
-    if (!isOpen) {
-      // El modal se ha cerrado desde fuera, pero NO reiniciamos el estado inmediatamente
-      console.log("Modal cerrado, pero manteniendo estado para evitar cierre prematuro");
+    if (isOpen) {
+      // 1. MODAL ABIERTO: Nos aseguramos que isSaving esté activo para prevenir cierre automático
+      console.log("🟢 MODAL ABIERTO - Previniendo cierre automático");
       
-      // IMPORTANTE: Aumentamos el tiempo de espera considerablemente para dar más margen
-      // Este cambio es crucial para resolver el problema de cierre prematuro
-      timeoutId = setTimeout(() => {
-        console.log("Ahora sí, reiniciando estado con retraso de 3 segundos");
-        // Se hace la limpieza SOLO después de un retraso significativo
-        setIsInitialized(false); 
-        setIsSaving(false);
-      }, 3000); // Aumento significativo del tiempo de espera a 3 segundos
-    } 
-    else if (isOpen && !isSaving) {
-      // Solo activamos isSaving si no está ya activado, para evitar un bucle infinito
-      console.log("Modal abierto, activando prevención de cierre durante todo el proceso");
-      setIsSaving(true);
-      
-      // Si no está inicializado, no hacemos nada más - otra parte del código se encargará
-      if (!isInitialized) {
-        console.log("Primera apertura - esperando inicialización");
-      } else {
-        console.log("Modal abierto y ya inicializado - manteniendo estado");
+      // Este es el cambio fundamental: siempre garantizamos que isSaving sea true cuando isOpen es true
+      if (!isSaving) {
+        setIsSaving(true);
+        console.log("🔒 Activando bloqueo de cierre (isSaving=true)");
       }
+      
+      // Si el modal está abierto pero no inicializado, mostramos un mensaje explícito
+      if (!isInitialized) {
+        console.log("⏳ Modal abierto pero pendiente de inicialización");
+      }
+      
+      // Resaltamos a nivel visual la apertura del modal con un elemento DOM
+      const container = document.getElementById("ism-modal-container");
+      if (container) {
+        container.classList.add("highlight-animation");
+        setTimeout(() => {
+          container.classList.remove("highlight-animation");
+        }, 2000);
+      }
+    } 
+    else if (!isOpen && isInitialized) {
+      // 2. MODAL CERRADO: No reseteamos el estado inmediatamente para evitar problemas de sincronización
+      console.log("🟠 MODAL CERRADO - Pero manteniendo estado temporalmente");
+      
+      // IMPORTANTE: Usamos un timeout muy largo (5 segundos) para asegurar que no haya reaperturas prematuras
+      timeoutId = setTimeout(() => {
+        // Solo reseteamos si realmente sigue cerrado después del timeout
+        // Esto evita que un intento de reapertura rápida sea interrumpido
+        if (!isOpen) {
+          console.log("🔴 EFECTO DETECTÓ isOpen=false - CERRANDO MODAL");
+          setIsInitialized(false); 
+          setIsSaving(false);
+        } else {
+          console.log("⚠️ Cancelando cierre automático porque el modal fue reabierto");
+        }
+      }, 5000); // Tiempo muy extenso para garantizar que no interfiera con reaperturas
     }
     
     // Limpieza del timeout cuando el componente se desmonta o las dependencias cambian
     return () => {
-      if (timeoutId) clearTimeout(timeoutId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        console.log("⚠️ Limpiando timeout de cierre automático");
+      }
     };
   }, [isOpen, isInitialized, isSaving]);
   
