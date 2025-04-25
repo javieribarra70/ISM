@@ -1802,33 +1802,54 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     }, 1000); // Damos un segundo completo para la fase de preparación
   };
 
-  // NUEVA IMPLEMENTACIÓN SIMPLIFICADA
-  // Este componente ahora siempre debe tener isOpen=true
-  // porque se renderiza condicionalmente desde el padre
+  // IMPLEMENTACIÓN ULTRA SIMPLE PARA DEPURACIÓN
   useEffect(() => {
-    console.log("🚀 COMPONENTE ISM MONTADO Y LISTO - isOpen:", isOpen);
+    console.log("🚀 COMPONENTE ISM MONTADO Y LISTO");
     
-    // Eliminar cualquier overlay temporal que pueda estar mostrándose
-    const tempOverlay = document.getElementById("temp-overlay");
-    if (tempOverlay) {
-      console.log("Eliminando overlay temporal...");
-      tempOverlay.remove();
-    }
-    
-    // Mostrar notificación
+    // Mostrar notificación para confirmar que estamos activos
     toast({
-      title: "Proceso VAXO iniciado",
-      description: "El proceso VAXO se ha iniciado correctamente con las relaciones existentes.",
+      title: "Proceso VAXO Iniciado",
+      description: "El modal se ha abierto correctamente.",
       duration: 3000,
     });
-  }, []); // Solo se ejecuta al montar el componente, ya que ahora siempre tendrá isOpen=true
+    
+    // Llamar a window.alert para forzar que se muestre algo visible
+    // incluso si hay problemas de renderizado con React
+    setTimeout(() => {
+      // Esta alerta es temporal para debugging, se puede eliminar después
+      window.alert("Proceso VAXO iniciado. Presiona OK para continuar.");
+    }, 500);
+  }, []);
   
-  console.log("ISMProcess renderizando - Continuando con relaciones VAXO existentes");
+  console.log("ISMProcess renderizando");
   
-  // Modal personalizado con z-index muy alto para asegurarnos que sea visible
+  // Modal simplificado para maximizar probabilidad de que sea visible
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80" style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999}}>
-      <div className="bg-white rounded-lg shadow-lg max-w-4xl max-h-[95vh] h-[95vh] overflow-y-auto w-full" style={{border: '5px solid red'}}>
+    <div 
+      className="fixed inset-0 z-[9999]" 
+      style={{
+        position: 'fixed', 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        bottom: 0, 
+        background: 'rgba(0,0,0,0.9)', 
+        zIndex: 99999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
+      <div 
+        className="bg-white rounded-lg" 
+        style={{
+          width: '90%', 
+          maxWidth: '1000px', 
+          height: '90vh', 
+          padding: '20px',
+          border: '8px solid red'
+        }}
+      >
         <div className="p-6">
           {/* Header personalizado con botón de cerrar */}
           <div className="flex justify-between items-start mb-6">

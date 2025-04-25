@@ -133,75 +133,34 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   // Estado para controlar qué modal mostrar
   const [showRelationshipsDialog, setShowRelationshipsDialog] = useState(false);
 
-  // VERSIÓN FINAL - Flujo directo y sincronizado para iniciar el proceso VAXO
+  // VERSIÓN EXTREMADAMENTE SIMPLIFICADA: Para descartar problemas de UI
   const handleStartProcess = () => {
-    console.log("=== INICIANDO PROCESO VAXO - VERSIÓN FINAL ===");
+    console.log("=== INICIANDO PROCESO VAXO - VERSIÓN ULTRA SIMPLE ===");
     
-    // 1. Generar referencia persistente para este proceso
-    // (no usamos Date.now() para evitar problemas de sincronización)
-    const uniqueKey = "ism-process-stable-key";
-    setIsmInstanceKey(uniqueKey);
-    
-    // 2. PRIMER CAMBIO IMPORTANTE: Activar inmediatamente el indicador de diálogo
-    // Esto debe ocurrir antes de cualquier otro cambio de estado o proceso asíncrono
-    setIsISMDialogOpen(true);
-    
-    // 3. Actualizar UI para indicar carga
-    setIsStarting(true);
-    
-    // 4. Verificar relaciones existentes (esto es rápido y sincrónico)
-    const selectedIds = selectedIdeas.map(idea => idea.id);
-    const relationsForSelectedIdeas = existingRelationships.filter(rel => {
-      const fromId = rel.fromIdeaId || rel.from;
-      const toId = rel.toIdeaId || rel.to;
-      return selectedIds.includes(fromId) && selectedIds.includes(toId);
+    // Mostrar toast de carga
+    toast({
+      title: "Abriendo Matriz VAXO",
+      description: "Iniciando proceso de relación entre ideas...",
+      duration: 3000,
     });
     
-    const hasRelations = relationsForSelectedIdeas.length > 0;
-    console.log(`Total relaciones VAXO encontradas: ${relationsForSelectedIdeas.length}`);
+    // Actualizar state para indicar que estamos comenzando
+    setIsStarting(true);
     
-    // 5. Agregar overlay visual solo como retroalimentación, no como lógica de control
-    const body = document.body;
-    const overlay = document.createElement('div');
-    overlay.id = "temp-overlay";
-    overlay.style.position = "fixed";
-    overlay.style.top = "0";
-    overlay.style.left = "0";
-    overlay.style.width = "100%";
-    overlay.style.height = "100%";
-    overlay.style.backgroundColor = "rgba(0,0,0,0.5)";
-    overlay.style.display = "flex";
-    overlay.style.alignItems = "center";
-    overlay.style.justifyContent = "center";
-    overlay.style.zIndex = "1000"; // Menor que el modal para no bloquearlo
+    // Generar key única para forzar un nuevo montaje limpio
+    setIsmInstanceKey(`ism-${Date.now()}`);
     
-    const mensaje = hasRelations 
-      ? `Cargando VAXO con ${relationsForSelectedIdeas.length} relaciones existentes...` 
-      : "Iniciando proceso VAXO...";
-      
-    overlay.innerHTML = `<div style='background: white; padding: 20px; border-radius: 8px;'>${mensaje}</div>`;
-    body.appendChild(overlay);
-    
-    // 6. Quitar el overlay después de un tiempo, pero sin afectar al modal
-    // Este setTimeout no afecta a la lógica de montaje del ISMProcess
+    // LA PARTE MÁS IMPORTANTE: Activar el modal después
+    // de un pequeño retraso para asegurar que la UI se actualice
     setTimeout(() => {
-      const tempOverlay = document.getElementById("temp-overlay");
-      if (tempOverlay) {
-        tempOverlay.remove();
-      }
+      // Activar el diálogo
+      setIsISMDialogOpen(true);
       
-      // Solo desactivamos indicador de carga UI
-      setIsStarting(false);
-    }, 1500); // Tiempo suficiente para que se vea el overlay, pero independiente del modal
-    
-    // Mostrar también un mensaje toast para confirmar
-    if (hasRelations) {
-      toast({
-        title: "Relaciones VAXO detectadas",
-        description: `Se han encontrado ${relationsForSelectedIdeas.length} relaciones existentes.`,
-        duration: 3000,
-      });
-    }
+      // Desactivar el indicador de carga
+      setTimeout(() => {
+        setIsStarting(false);
+      }, 1000);
+    }, 500);
   };
 
   // Handle the start alternative process button
@@ -483,9 +442,9 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
         </div>
       )}
       
-      {/* Renderizamos ISMProcess condicionalmente */}
-      {isISMDialogOpen ? (
-        <div id="ism-wrapper">
+      {/* VERSIÓN SIMPLIFICADA DEL RENDERIZADO DEL COMPONENTE ISM */}
+      {isISMDialogOpen && (
+        <div id="ism-wrapper" style={{zIndex: 9999}}>
           <ISMProcess 
             key={ismInstanceKey}
             isOpen={true}
@@ -494,7 +453,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
             projectContext={projectContext}
           />
         </div>
-      ) : null}
+      )}
     </>
   );
 }
