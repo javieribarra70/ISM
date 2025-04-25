@@ -884,8 +884,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     return updatedQuestions;
   };
 
-  // Save VAXO relationships to the database
-  const saveVAXORelationshipsToDatabase = async (relationships: SSIMCell[]) => {
+  // Process VAXO relationships in memory (no longer saves to database)
+  const processVAXORelationshipsInMemory = async (relationships: SSIMCell[]) => {
     if (!user || !selectedIdeas[0]?.projectId) return;
     
     try {
@@ -926,7 +926,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         console.log("Todas las relaciones procesadas correctamente, no hay preguntas pendientes");
         setIsSaving(false);
       } else {
-        console.log(`PROTECCIÓN EN saveVAXORelationshipsToDatabase: Manteniendo isSaving=true porque aún quedan ${questions.filter(q => q.response === null).length} preguntas sin responder`);
+        console.log(`PROTECCIÓN EN processVAXORelationshipsInMemory: Manteniendo isSaving=true porque aún quedan ${questions.filter(q => q.response === null).length} preguntas sin responder`);
         // CRUCIAL: Mantener isSaving=true para evitar cierre prematuro
         setIsSaving(true);
       }
@@ -977,9 +977,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     
     setSSIMMatrix(matrix);
     
-    // Save the relationships to the database
-    // Ya no pasamos al siguiente paso aquí, lo hacemos en saveVAXORelationshipsToDatabase
-    saveVAXORelationshipsToDatabase(matrix);
+    // Process the relationships in memory
+    // Ya no pasamos al siguiente paso aquí, lo hacemos en processVAXORelationshipsInMemory
+    processVAXORelationshipsInMemory(matrix);
   };
 
   // Proceed to the reachability matrix stage
