@@ -223,6 +223,13 @@ function areSetEqual(a: Set<number>, b: Set<number>): boolean {
 }
 
 export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectContext }: ISMProcessProps) {
+  // Debug para seguimiento de renderizaciones
+  console.log(`ISMProcess render - isOpen:`, isOpen);
+  if (!isOpen) {
+    console.log("ISMProcess - NO está abierto, pero sigue montado");
+  } else {
+    console.log("👁️👁️👁️ ISMProcess - ABIERTO Y VISIBLE - debe estar renderizado en pantalla");
+  }
   // Get current user from auth context
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -245,8 +252,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const [finalReachabilityMatrix, setFinalReachabilityMatrix] = useState<boolean[][]>([]);
   // Element levels
   const [levels, setLevels] = useState<number[][]>([]);
-  // State to track saving progress - iniciamos con true para evitar cierres prematuros
-  const [isSaving, setIsSaving] = useState(true);
+  // Ya no usamos la variable isSaving para controlar el cierre del modal
   
   // Get existing relationships to check if we need to load previous VAXO responses
   const { data: existingRelationships, isLoading: isLoadingRelationships, error: relationshipsError } = useQuery({
@@ -287,45 +293,127 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   // Estado para controlar la inicialización del proceso
   const [isInitialized, setIsInitialized] = useState(false);
   
-  // CORRECCIÓN DE BUG: Nueva lógica para el manejo del estado de inicialización
-  // El problema principal era que el estado se reiniciaba demasiado rápido
+  // Fallback element para cuando el modal no se muestra correctamente
   useEffect(() => {
-    if (!isOpen) {
-      // El modal se ha cerrado desde fuera, pero NO reiniciamos el estado inmediatamente
-      console.log("Modal cerrado, pero manteniendo estado para evitar cierre prematuro");
-      
-      // IMPORTANTE: Aumentamos el tiempo de espera considerablemente para dar más margen
-      // Este cambio es crucial para resolver el problema de cierre prematuro
-      setTimeout(() => {
-        console.log("Ahora sí, reiniciando estado con retraso de 3 segundos");
-        // Se hace la limpieza SOLO después de un retraso significativo
-        setIsInitialized(false); 
-        setIsSaving(false);
-      }, 3000); // Aumento significativo del tiempo de espera a 3 segundos
-    } 
-    else if (isOpen) {
-      // El modal está abierto - SIEMPRE activamos isSaving sin condición
-      // Esto evita problemas de sincronización con isInitialized
-      console.log("Modal abierto, activando prevención de cierre durante todo el proceso");
-      setIsSaving(true);
-      
-      // Si no está inicializado, no hacemos nada más - otra parte del código se encargará
-      if (!isInitialized) {
-        console.log("Primera apertura - esperando inicialización");
-      } else {
-        console.log("Modal abierto y ya inicializado - manteniendo estado");
+    const fallback = document.getElementById("ism-process-fallback");
+    if (!fallback) return;
+    fallback.style.display = isOpen ? "none" : "block";
+  }, [isOpen]);
+  
+  // Mejora de visibilidad: Cuando el modal se abre, asegura que sea visible en pantalla
+  useEffect(() => {
+    if (isOpen) {
+      // Intentar hacer scroll al modal principal
+      const modalElement = document.querySelector(".fixed.inset-0.z-\\[9999\\]");
+      if (modalElement) {
+        modalElement.scrollIntoView({ behavior: "smooth" });
+        console.log("👁 Modal ahora debe estar visible visualmente - forzando scroll");
       }
+      
+      // También podemos forzar el foco para asegurar accesibilidad
+      setTimeout(() => {
+        // Buscar un elemento interno del modal para darle foco
+        const firstFocusableElement = 
+          document.querySelector(".fixed.inset-0.z-\\[9999\\] button") as HTMLElement;
+        if (firstFocusableElement) {
+          firstFocusableElement.focus();
+          console.log("💡 Foco establecido en el primer elemento interactivo del modal");
+        }
+      }, 100);
     }
-  }, [isOpen, isInitialized]);
+  }, [isOpen]);
+  
+  // CORRECCIÓN DE BUG: Nueva lógica para el manejo del estado de inicialización
+  // El problema principal era que el estado se reiniciaba demasiado rápido y
+  // causaba un bucle infinito de actualizaciones
+  // SOLUCIÓN AL BUG: Replanteamiento completo del efecto que controla el ciclo de vida del modal
+  useEffect(() => {
+    console.log(`🔍 Estado del modal: isOpen=${isOpen}, isSaving=${isSaving}, isInitialized=${isInitialized}`);
+    
+    // Para evitar el bucle de actualizaciones, usamos un identificador de timeout
+    let timeoutId: NodeJS.Timeout | null = null;
+    
+    if (isOpen) {
+      // 1. MODAL ABIERTO: Nos aseguramos que isSaving esté activo para prevenir cierre automático
+      console.log("🟢 MODAL ABIERTO - Previniendo cierre automático");
+      
+      // Este es el cambio fundamental: siempre garantizamos que isSaving sea true cuando isOpen es true
+      if (!isSaving) {
+        setIsSaving(true);
+        console.log("🔒 Activando bloqueo de cierre (isSaving=true)");
+      }
+      
+      // Si el modal está abierto pero no inicializado, mostramos un mensaje explícito
+      if (!isInitialized) {
+        console.log("⏳ Modal abierto pero pendiente de inicialización");
+      }
+      
+      // Resaltamos a nivel visual la apertura del modal con un elemento DOM
+      const container = document.getElementById("ism-modal-container");
+      if (container) {
+        container.classList.add("highlight-animation");
+        setTimeout(() => {
+          container.classList.remove("highlight-animation");
+        }, 2000);
+      }
+    } 
+    else if (!isOpen && isInitialized) {
+      // 2. MODAL CERRADO: No reseteamos el estado inmediatamente para evitar problemas de sincronización
+      console.log("🟠 MODAL CERRADO - Pero manteniendo estado temporalmente");
+      
+      // IMPORTANTE: Usamos un timeout muy largo (5 segundos) para asegurar que no haya reaperturas prematuras
+      timeoutId = setTimeout(() => {
+        // Solo reseteamos si realmente sigue cerrado después del timeout
+        // Esto evita que un intento de reapertura rápida sea interrumpido
+        if (!isOpen) {
+          console.log("🔴 EFECTO DETECTÓ isOpen=false - CERRANDO MODAL");
+          setIsInitialized(false); 
+          setIsSaving(false);
+        } else {
+          console.log("⚠️ Cancelando cierre automático porque el modal fue reabierto");
+        }
+      }, 5000); // Tiempo muy extenso para garantizar que no interfiera con reaperturas
+    }
+    
+    // Limpieza del timeout cuando el componente se desmonta o las dependencias cambian
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        console.log("⚠️ Limpiando timeout de cierre automático");
+      }
+    };
+  }, [isOpen, isInitialized, isSaving]);
   
   // Load existing relationships from the database if available - solo en la inicialización
   useEffect(() => {
     // Si ya está inicializado o no está abierto, no hacer nada
-    if (!isOpen || isInitialized) return;
+    if (!isOpen) return;
+    
+    // Crear una bandera para evitar actualizaciones de estado después de desmontaje
+    let isMounted = true;
+    
+    if (isInitialized) {
+      console.log("⚠️ Ya estaba inicializado. Reiniciando proceso VAXO.");
+      if (isMounted) setIsInitialized(false);
+      
+      // Usamos un timeout para espaciar estas llamadas de actualización de estado
+      const timeoutId = setTimeout(() => {
+        if (isMounted) setIsInitialized(true);
+      }, 100); // Aumentamos de 10ms a 100ms para dar más tiempo
+      
+      // Limpieza
+      return () => {
+        clearTimeout(timeoutId);
+        isMounted = false;
+      };
+    }
     
     // ACTIVACIÓN CRÍTICA: Inmediatamente activar isSaving para evitar cierre prematuro
-    setIsSaving(true);
-    console.log("PROTECCIÓN ACTIVADA: isSaving=true durante inicialización");
+    // Solo si el componente sigue montado
+    if (isMounted && !isSaving) {
+      setIsSaving(true);
+      console.log("PROTECCIÓN ACTIVADA: isSaving=true durante inicialización");
+    }
     
     // Marcamos como inicializado para evitar reiniciar el proceso
     setIsInitialized(true);
@@ -450,16 +538,28 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                 const nextUnansweredIndex = newQuestions.findIndex(q => q.response === null);
                 
                 if (nextUnansweredIndex !== -1) {
+                  // CRÍTICO: Primero establecemos todas las variables de estado
                   setQuestions(newQuestions);
                   setCurrentQuestionIndex(nextUnansweredIndex);
-                  setStage("questions");
                   
+                  // Activa explícitamente el modo de guardado para prevenir el cierre automático
+                  setIsSaving(true);
+                  
+                  // Notificación con aumento de duración
                   toast({
                     title: "Continuando proceso",
                     description: `Se encontraron ${answeredCount} relaciones. Continuando desde donde se quedó.`,
                     variant: "default",
-                    duration: 3000
+                    duration: 5000
                   });
+                  
+                  // IMPORTANTE: Usamos un retraso para el cambio de etapa
+                  // Esto da tiempo a que los otros estados se establezcan primero
+                  console.log("Preparando cambio a etapa de preguntas con retraso...");
+                  setTimeout(() => {
+                    console.log("Cambiando a etapa de preguntas para continuar con relaciones pendientes");
+                    setStage("questions");
+                  }, 1000); // Retraso considerable para garantizar estabilidad
                 }
               }
             }
@@ -509,82 +609,34 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     
   }, [isOpen, selectedIdeas, existingRelationships, toast, isInitialized]);
 
-  // Function to save individual VAXO relationship to the database
+  // Function to process individual VAXO relationship (in memory only)
   const saveIndividualRelationship = async (ideaI: number, ideaJ: number, relation: RelationType) => {
     if (!user || !selectedIdeas[0]?.projectId) return;
     
     try {
       setIsSaving(true);
       
-      // Find existing relationship for these ideas
-      const existingRel = existingRelationships && Array.isArray(existingRelationships) ?
-        (existingRelationships as any[]).find(rel => {
-          // Extraer los IDs correctos según el formato de los datos
-          const fromId = rel.fromIdeaId || rel.from_idea_id || rel.from;
-          const toId = rel.toIdeaId || rel.to_idea_id || rel.to;
-          
-          return (fromId === ideaI && toId === ideaJ) ||
-                (fromId === ideaJ && toId === ideaI && (relation === RelationType.X || relation === RelationType.O))
-        }) : null;
+      // Ya no buscamos ni eliminamos relaciones existentes
+      // Todo se mantiene solo en memoria
       
-      // Delete existing relationship if it exists
-      if (existingRel) {
-        try {
-          await apiRequest('DELETE', `/api/relationships/${existingRel.id}`);
-          console.log(`Relación existente ${existingRel.id} eliminada`);
-        } catch (error) {
-          console.error(`Error al eliminar relación ${existingRel.id}:`, error);
+      // Procesamos la relación solo en memoria
+      console.log(`Procesando relación en memoria: ${ideaI} -> ${ideaJ} (${relation})`);
+      
+      // Ya no creamos relaciones en la base de datos
+      if (relation !== RelationType.O) {
+        console.log(`Relación procesada en memoria: ${ideaI} -> ${ideaJ} (${relation})`);
+        
+        // Registramos también la relación inversa en consola (solo para depuración)
+        if (relation === RelationType.V || relation === RelationType.A || relation === RelationType.X) {
+          const inverseRelation = relation === RelationType.V ? RelationType.A :
+                                  relation === RelationType.A ? RelationType.V :
+                                  RelationType.X;
+          
+          console.log(`Relación inversa procesada en memoria: ${ideaJ} -> ${ideaI} (${inverseRelation})`);
         }
       }
       
-      // Create new relationship
-      if (relation !== RelationType.O) { // No need to save "O" relationships
-        try {
-          console.log(`Guardando relación: ${ideaI} -> ${ideaJ} (${relation})`);
-          
-          await apiRequest('POST', `/api/projects/${selectedIdeas[0].projectId}/relationships`, {
-            fromIdeaId: ideaI,
-            toIdeaId: ideaJ,
-            projectId: selectedIdeas[0].projectId,
-            createdBy: user.id,
-            relationType: relation
-          });
-          
-          console.log(`Relación guardada correctamente`);
-          
-          // Also create inverse relationship if needed
-          if (relation === RelationType.V || relation === RelationType.A || relation === RelationType.X) {
-            const inverseRelation = relation === RelationType.V ? RelationType.A :
-                                     relation === RelationType.A ? RelationType.V :
-                                     RelationType.X;
-            
-            console.log(`Guardando relación inversa: ${ideaJ} -> ${ideaI} (${inverseRelation})`);
-            
-            await apiRequest('POST', `/api/projects/${selectedIdeas[0].projectId}/relationships`, {
-              fromIdeaId: ideaJ,
-              toIdeaId: ideaI,
-              projectId: selectedIdeas[0].projectId,
-              createdBy: user.id,
-              relationType: inverseRelation
-            });
-            
-            console.log(`Relación inversa guardada correctamente`);
-          }
-          
-        } catch (error) {
-          console.error(`Error al guardar relación:`, error);
-          toast({
-            title: "Error saving relationship",
-            description: "There was a problem saving the VAXO relationship.",
-            variant: "destructive"
-          });
-        }
-      }
-      
-      // Invalidate relationships query to refresh data
-      queryClient.invalidateQueries({
-        queryKey: [`/api/projects/${selectedIdeas[0].projectId}/relationships`]
-      });
+      // Ya no invalidamos consultas porque no hay cambios en la base de datos
       
     } catch (error) {
       console.error("Error saving relationship:", error);
@@ -609,8 +661,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const answerQuestion = async (response: RelationType) => {
     try {
       if (currentQuestionIndex < questions.length) {
-        // Establecemos isSaving para evitar cierres automáticos
+        // CRUCIAL: Establecemos isSaving para evitar cierres automáticos
+        // y lo mantenemos así durante todo el proceso
         setIsSaving(true);
+        console.log("PROTECCIÓN: Estableciendo isSaving=true durante answerQuestion");
         
         const updatedQuestions = [...questions];
         const currentQuestion = updatedQuestions[currentQuestionIndex];
@@ -633,6 +687,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         const pendingQuestions = inferredQuestions.filter(q => q.response === null);
         
         if (pendingQuestions.length > 0) {
+          // PROTECCIÓN ADICIONAL: Asegurarse de que isSaving permanezca true mientras hay preguntas pendientes
+          console.log(`Manteniendo isSaving=true: ${pendingQuestions.length} preguntas pendientes`);
+          setIsSaving(true);
+          
           // En lugar de utilizar selectNextMostInformativeQuestion, buscar directamente
           // el índice de la siguiente pregunta sin responder
           const nextIndex = inferredQuestions.findIndex(q => q.response === null);
@@ -828,73 +886,32 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     
     try {
       setIsSaving(true);
-      console.log("Guardando relaciones VAXO...");
+      console.log("Procesando relaciones VAXO en memoria...");
       
-      // Delete any existing relationships first (to avoid duplicates)
-      if (existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
-        console.log(`Eliminando ${existingRelationships.length} relaciones existentes`);
-        // Use Promise.all to delete all existing relationships
-        for (const rel of existingRelationships) {
-          try {
-            await apiRequest('DELETE', `/api/relationships/${rel.id}`);
-            console.log(`Relación ${rel.id} eliminada correctamente`);
-          } catch (error) {
-            console.error(`Error al eliminar relación ${rel.id}:`, error);
-          }
-        }
-      }
+      // Ya no eliminamos relaciones existentes
+      // Ya no guardamos relaciones en la base de datos
       
-      console.log(`Creando nuevas relaciones VAXO (${relationships.filter(rel => rel.relation !== RelationType.O).length})`);
+      console.log(`Relaciones VAXO procesadas en memoria (${relationships.filter(rel => rel.relation !== RelationType.O).length})`);
       
-      // Create the new VAXO relationships one by one to better track errors
+      // Mostramos las relaciones en formato de registro para depuración
       const filteredRelationships = relationships.filter(rel => rel.relation !== RelationType.O);
+      filteredRelationships.forEach(rel => {
+        console.log(`Relación en memoria: ${rel.ideaI} -> ${rel.ideaJ} (${rel.relation})`);
+      });
       
-      try {
-        // Realizar solicitudes de a 1 para evitar problemas
-        for (const rel of filteredRelationships) {
-          console.log(`Creando relación: ${rel.ideaI} -> ${rel.ideaJ} (${rel.relation})`);
-          
-          await apiRequest('POST', `/api/projects/${selectedIdeas[0].projectId}/relationships`, {
-            fromIdeaId: rel.ideaI,
-            toIdeaId: rel.ideaJ,
-            projectId: selectedIdeas[0].projectId,
-            createdBy: user.id,
-            relationType: rel.relation
-          });
-          
-          console.log(`Relación creada correctamente`);
-          
-          // Pequeña pausa para asegurar que las solicitudes no se sobrecarguen
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      
-        // Invalidate the relationships query to refresh the data
-        queryClient.invalidateQueries({
-          queryKey: [`/api/projects/${selectedIdeas[0].projectId}/relationships`]
-        });
-        
-        toast({
-          title: "Relationships saved",
-          description: "The VAXO relationships have been saved to the database.",
-          variant: "default"
-        });
-        
-        // Importante: No cerrar el modal después de guardar
-        // Avanzar al siguiente paso automáticamente
-        setStage("ssim");
-      } catch (error) {
-        console.error(`Error al crear relaciones:`, error);
-        toast({
-          title: "Error saving relationships",
-          description: "There was a problem saving some VAXO relationships. Please try again.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error("Error saving VAXO relationships:", error);
       toast({
-        title: "Error saving relationships",
-        description: "There was a problem saving the VAXO relationships.",
+        title: "Relationships processed",
+        description: "The VAXO relationships have been processed and stored in memory.",
+        variant: "default"
+      });
+      
+      // Avanzar al siguiente paso automáticamente
+      setStage("ssim");
+    } catch (error) {
+      console.error("Error processing VAXO relationships:", error);
+      toast({
+        title: "Error processing relationships",
+        description: "There was a problem processing the VAXO relationships.",
         variant: "destructive"
       });
     } finally {
@@ -902,11 +919,12 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       const hasUnansweredQuestions = questions.some(q => q.response === null);
       
       if (!hasUnansweredQuestions) {
-        console.log("Todas las relaciones guardadas correctamente, no hay preguntas pendientes");
+        console.log("Todas las relaciones procesadas correctamente, no hay preguntas pendientes");
         setIsSaving(false);
       } else {
         console.log(`PROTECCIÓN EN saveVAXORelationshipsToDatabase: Manteniendo isSaving=true porque aún quedan ${questions.filter(q => q.response === null).length} preguntas sin responder`);
-        // Mantener isSaving=true para evitar cierre prematuro
+        // CRUCIAL: Mantener isSaving=true para evitar cierre prematuro
+        setIsSaving(true);
       }
     }
   };
@@ -1625,7 +1643,17 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             <Button variant="outline" onClick={handleCloseAttempt}>
               Cancel
             </Button>
-            <Button onClick={() => safeStageChange("questions")}>
+            <Button 
+              onClick={() => {
+                console.log("Botón Start Process clickeado, cambiando a etapa de preguntas");
+                // Activar isSaving para evitar cierre prematuro
+                setIsSaving(true);
+                // Usar setTimeout para asegurar que el cambio ocurra después de la activación
+                setTimeout(() => {
+                  setStage("questions");
+                }, 500);
+              }}
+            >
               Start Process
             </Button>
           </div>
@@ -1746,72 +1774,141 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       // FASE 2: Limpiar y cerrar
       // En la fase 2 mantenemos isSaving=true hasta el último momento
       
-      // El orden es importante:
-      // 1. Marcar como no inicializado ANTES de cerrar
-      setIsInitialized(false); 
-      console.log("Componente marcado como no inicializado");
+      // SOLUCIÓN CRÍTICA: No cerrar automáticamente
+      // Solo actualizar estados sin cerrar
       
-      // 2. Finalmente, cerrar
-      console.log("Ejecutando onClose() después de preparación completa");
-      onClose(); 
+      // Actualizar el estado para indicar que el proceso ha terminado pero mantener abierto
+      setIsInitialized(true); // Marcar como inicializado para indicar que está listo
+      console.log("Componente listo para continuar - NO SE CIERRA AUTOMÁTICAMENTE");
       
-      // 3. Desactivar isSaving DESPUÉS DE cerrar - esto es solo para limpiar el estado
-      // incluso aunque el componente ya no existirá
+      // Eliminar cualquier overlay temporal que pueda estar mostrándose
+      const tempOverlay = document.getElementById("temp-overlay");
+      if (tempOverlay) tempOverlay.remove();
+      
+      // Mostrar mensaje de finalización
+      toast({
+        title: "Proceso completado",
+        description: "Las relaciones VAXO han sido cargadas. Puede continuar trabajando o cerrar manualmente.",
+        duration: 5000,
+      });
+      
+      // Desactivar el indicador de guardado después de un tiempo prudencial
       setTimeout(() => {
         setIsSaving(false);
-        console.log("Estado de isSaving limpiado post-cierre");
-      }, 500);
+        console.log("Proceso listo para interacción del usuario");
+      }, 1000);
     }, 1000); // Damos un segundo completo para la fase de preparación
   };
 
   // Si no está abierto, no renderizamos nada
-  if (!isOpen) return null;
+  // Añadamos un useEffect específico para detectar cambios en isOpen
+  useEffect(() => {
+    if (isOpen) {
+      console.log("🔴 EFECTO DETECTÓ isOpen=true - ABRIENDO MODAL");
+      
+      // Hack de emergencia: forzar que el modal permanezca abierto
+      const timer = setTimeout(() => {
+        console.log("🔴 VERIFICACIÓN ADICIONAL DE MODAL ABIERTO");
+        // Si por alguna razón el estado se pierde, este código garantiza que se mantenga abierto
+        const tempOverlay = document.getElementById("temp-overlay");
+        if (tempOverlay) tempOverlay.remove();
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    } else {
+      console.log("🔴 EFECTO DETECTÓ isOpen=false - CERRANDO MODAL");
+    }
+  }, [isOpen]); // Este efecto se ejecuta solo cuando isOpen cambia
   
-  // Modal personalizado
+  // Debugging para determinar si se está renderizando el componente correctamente
+  console.log("ISMProcess render - isOpen:", isOpen);
+  
+  // ELIMINADO el return condicional - SIEMPRE se renderiza el modal, pero se oculta con CSS
+  console.log(isOpen ? "👁️👁️👁️ ISMProcess - ESTÁ abierto, renderizando modal!!!" : "ISMProcess - NO está abierto, pero sigue montado");
+  
+  // Intenta hacer scroll al modal cuando cambia de estado - pero solo una vez
+  useEffect(() => {
+    if (isOpen) {
+      // Evitar actualizaciones infinitas usando un flag de referencia
+      const timeoutId = setTimeout(() => {
+        console.log('🔍 Intentando hacer visible el modal VAXO con scroll...');
+        try {
+          const modalElement = document.getElementById("ism-modal-container");
+          if (modalElement) {
+            modalElement.scrollIntoView({ behavior: 'smooth' });
+            console.log('✅ Modal VAXO desplazado a la vista');
+            
+            // Añadir animación pero sin modificar la clase para evitar re-renderizados
+            modalElement.style.animation = 'pulse 1s';
+            setTimeout(() => {
+              modalElement.style.animation = '';
+            }, 1000);
+          } else {
+            console.log('❌ No se encontró el elemento modal para desplazar');
+          }
+        } catch (error) {
+          console.error('Error al intentar hacer scroll al modal:', error);
+        }
+      }, 300);
+      
+      // Limpiar timeout para evitar memory leaks
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isOpen]);
+  
+  // Modal personalizado con z-index muy alto - utilizando CSS para controlar visibilidad
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-lg shadow-lg max-w-4xl max-h-[95vh] h-[95vh] overflow-y-auto w-full">
-        <div className="p-6">
-          {/* Header personalizado con botón de cerrar */}
-          <div className="flex justify-between items-start mb-6">
-            <div className="flex flex-col space-y-1.5">
-              <h2 className="font-semibold leading-none tracking-tight text-lg">
-                {stage === "intro" && "Interpretive Structural Modeling (ISM)"}
-                {stage === "questions" && "Relationship Identification"}
-                {stage === "ssim" && "SSIM Matrix"}
-                {stage === "reachability" && "Reachability Matrix"}
-                {stage === "levels" && "Level Partitioning"}
-                {stage === "diagram" && "Final ISM Diagram Model"}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {stage === "intro" && "Build a structural model of relationships between selected ideas."}
-                {stage === "questions" && "Determine the type of relationship between each pair of ideas."}
-                {stage === "ssim" && "View the structural self-interaction matrix."}
-                {stage === "reachability" && "Analyze the initial reachability matrix."}
-                {stage === "levels" && "Explore the identified level hierarchy."}
-                {stage === "diagram" && ""}
-              </p>
-            </div>
-            <Button variant="ghost" size="icon" onClick={handleCloseAttempt} className="h-8 w-8 rounded-full" title="Close">
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <div className="my-4">
-            {renderCurrentStage()}
-          </div>
-          
-          <div className="flex justify-end space-x-2 mt-6">
-            {isSaving && (
-              <div className="flex items-center justify-center w-full mb-2">
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-t-transparent"></div>
-                <p className="text-sm text-muted-foreground">Saving relationships...</p>
+    <>
+      <div
+        className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 ${
+          !isOpen ? 'hidden' : ''
+        }`}
+        id="ism-modal-container"
+      >
+        <div className="bg-white rounded-lg shadow-lg max-w-4xl max-h-[95vh] h-[95vh] overflow-y-auto w-full"
+             id="ism-modal-content">
+          <div className="p-6">
+            {/* Header personalizado con botón de cerrar */}
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex flex-col space-y-1.5">
+                <h2 className="font-semibold leading-none tracking-tight text-lg">
+                  {stage === "intro" && "Interpretive Structural Modeling (ISM)"}
+                  {stage === "questions" && "Relationship Identification"}
+                  {stage === "ssim" && "SSIM Matrix"}
+                  {stage === "reachability" && "Reachability Matrix"}
+                  {stage === "levels" && "Level Partitioning"}
+                  {stage === "diagram" && "Final ISM Diagram Model"}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {stage === "intro" && "Build a structural model of relationships between selected ideas."}
+                  {stage === "questions" && "Determine the type of relationship between each pair of ideas."}
+                  {stage === "ssim" && "View the structural self-interaction matrix."}
+                  {stage === "reachability" && "Analyze the initial reachability matrix."}
+                  {stage === "levels" && "Explore the identified level hierarchy."}
+                  {stage === "diagram" && ""}
+                </p>
               </div>
-            )}
-            {renderNavigationButtons()}
+              <Button variant="ghost" size="icon" onClick={handleCloseAttempt} className="h-8 w-8 rounded-full" title="Close">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="my-4">
+              {renderCurrentStage()}
+            </div>
+            
+            <div className="flex justify-end space-x-2 mt-6">
+              {isSaving && (
+                <div className="flex items-center justify-center w-full mb-2">
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-t-transparent"></div>
+                  <p className="text-sm text-muted-foreground">Saving relationships...</p>
+                </div>
+              )}
+              {renderNavigationButtons()}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

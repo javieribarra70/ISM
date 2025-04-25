@@ -252,8 +252,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const [finalReachabilityMatrix, setFinalReachabilityMatrix] = useState<boolean[][]>([]);
   // Element levels
   const [levels, setLevels] = useState<number[][]>([]);
-  // State to track saving progress - iniciamos con true para evitar cierres prematuros
-  const [isSaving, setIsSaving] = useState(true);
+  // Ya no usamos la variable isSaving para controlar el cierre del modal
   
   // Get existing relationships to check if we need to load previous VAXO responses
   const { data: existingRelationships, isLoading: isLoadingRelationships, error: relationshipsError } = useQuery({
@@ -1309,15 +1308,13 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       case "ssim":
         return (
           <div className="space-y-4">
-            {isSaving && (
-              <Alert className="bg-yellow-50 mb-4">
-                <Info className="h-5 w-5" />
-                <AlertTitle>Saving relationships</AlertTitle>
-                <AlertDescription>
-                  Saving VAXO relationships to the database. Please wait...
-                </AlertDescription>
-              </Alert>
-            )}
+            <Alert className="bg-yellow-50 mb-4">
+              <Info className="h-5 w-5" />
+              <AlertTitle>Processing relationships</AlertTitle>
+              <AlertDescription>
+                Processing VAXO relationships in memory. Please wait...
+              </AlertDescription>
+            </Alert>
             
             <h3 className="text-lg font-semibold">Structural Self-Interaction Matrix (SSIM)</h3>
             
@@ -1899,12 +1896,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             </div>
             
             <div className="flex justify-end space-x-2 mt-6">
-              {isSaving && (
-                <div className="flex items-center justify-center w-full mb-2">
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-t-transparent"></div>
-                  <p className="text-sm text-muted-foreground">Saving relationships...</p>
-                </div>
-              )}
+              <div className="flex items-center justify-center w-full mb-2">
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-t-transparent"></div>
+                <p className="text-sm text-muted-foreground">Processing in memory...</p>
+              </div>
               {renderNavigationButtons()}
             </div>
           </div>
