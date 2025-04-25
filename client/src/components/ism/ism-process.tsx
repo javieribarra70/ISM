@@ -321,7 +321,13 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   // Load existing relationships from the database if available - solo en la inicialización
   useEffect(() => {
     // Si ya está inicializado o no está abierto, no hacer nada
-    if (!isOpen || isInitialized) return;
+    if (!isOpen) return;
+    if (isInitialized) {
+      console.log("⚠️ Ya estaba inicializado. Reiniciando proceso VAXO.");
+      setIsInitialized(false);
+      setTimeout(() => setIsInitialized(true), 10);
+      return;
+    }
     
     // ACTIVACIÓN CRÍTICA: Inmediatamente activar isSaving para evitar cierre prematuro
     setIsSaving(true);
