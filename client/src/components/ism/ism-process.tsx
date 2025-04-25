@@ -1084,6 +1084,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         // con el valor "intro" que pueda venir de otros componentes
         return null;
       case "questions":
+        // Este es ahora el primer caso, ya que saltamos "intro"
         if (currentQuestionIndex < questions.length) {
           const question = questions[currentQuestionIndex];
           return (
@@ -1528,6 +1529,36 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           </div>
         );
         
+      case "questions":
+        // Este es ahora el caso inicial
+        if (currentQuestionIndex < questions.length && currentQuestionIndex > 0) {
+          // Solo mostrar botón para retroceder si no estamos en la primera pregunta
+          return (
+            <div className="flex justify-end gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setCurrentQuestionIndex(currentQuestionIndex - 1);
+                }}
+              >
+                Previous Question
+              </Button>
+              <Button variant="outline" onClick={handleCloseAttempt}>
+                Cancel
+              </Button>
+            </div>
+          );
+        } else {
+          // En la primera pregunta, solo el botón Cancel
+          return (
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={handleCloseAttempt}>
+                Cancel
+              </Button>
+            </div>
+          );
+        }
+        
       case "ssim":
         return (
           <div className="flex justify-between">
@@ -1583,8 +1614,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     // MEJORA: Agregamos logging para debug
     console.log(`Intento de cierre manual. Estado actual: isSaving=${isSaving}, stage=${stage}, isInitialized=${isInitialized}`);
     
-    // Verificar si estamos en medio de una operación sensible que no debe interrumpirse
-    if (stage === "intro" && isInitialized === false) {
+    // Ya no verificamos bloqueo en etapa "intro" ya que fue eliminada,
+    // pero mantenemos una comprobación de inicialización por seguridad
+    if (isInitialized === false) {
       console.log("Bloqueando cierre - el componente aún está inicializándose");
       toast({
         title: "Inicializando proceso",
