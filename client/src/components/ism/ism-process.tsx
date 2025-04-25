@@ -1076,6 +1076,32 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   };
 
   // Render the current stage
+  // Verificar si hay preguntas generadas, si no, intentar generarlas
+  useEffect(() => {
+    if (isOpen && stage === "questions" && questions.length === 0 && selectedIdeas.length > 0) {
+      console.log("⚠️ Se detectó que no hay preguntas generadas, generando ahora...");
+      
+      // Generamos preguntas VAXO inmediatamente
+      const newQuestions: ISMQuestion[] = [];
+      
+      // Generate questions for each pair (i,j) where i < j para evitar duplicados
+      for (let i = 0; i < selectedIdeas.length - 1; i++) {
+        for (let j = i + 1; j < selectedIdeas.length; j++) {
+          newQuestions.push({
+            ideaI: selectedIdeas[i],
+            ideaJ: selectedIdeas[j],
+            response: null,  // Inicialmente todas sin responder
+          });
+        }
+      }
+      
+      console.log(`Generadas ${newQuestions.length} preguntas VAXO para ${selectedIdeas.length} ideas`);
+      setQuestions(newQuestions);
+      setCurrentQuestionIndex(0);
+      setIsInitialized(true);
+    }
+  }, [isOpen, stage, questions.length, selectedIdeas]);
+
   const renderCurrentStage = () => {
     switch (stage) {
       // El caso "intro" ha sido eliminado ya que ahora iniciamos directamente en las preguntas
