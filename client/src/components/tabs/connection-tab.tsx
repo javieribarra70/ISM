@@ -191,7 +191,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
         description: `Continuando proceso con ${relationsForSelectedIdeas.length} relaciones existentes.`,
         duration: 3000,
       });
-      return; // <- PARA SALIR Y NO SEGUIR CON EL FLUJO NORMAL
+      // Note: Do not return to ensure continuation to open ISMProcess modal
     }
 
     // Ya no usamos esta apertura directa porque ahora lo hacemos con retraso
