@@ -1824,18 +1824,16 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   // Debugging para determinar si se está renderizando el componente correctamente
   console.log("ISMProcess render - isOpen:", isOpen);
   
-  // Si no está abierto, mostrar un div vacío pero presente en el DOM
-  // Esto es un cambio crítico: en lugar de return null, mantenemos un elemento en el DOM
-  if (!isOpen) {
-    console.log("ISMProcess - NO está abierto, retornando div vacío");
-    return <div id="ism-process-placeholder" style={{display: 'none'}}></div>;
-  }
+  // ELIMINADO el return condicional - SIEMPRE se renderiza el modal, pero se oculta con CSS
+  console.log(isOpen ? "ISMProcess - ESTÁ abierto, renderizando modal!!!" : "ISMProcess - NO está abierto, pero sigue montado");
   
-  console.log("ISMProcess - ESTÁ abierto, renderizando modal!!!");
-  
-  // Modal personalizado con z-index muy alto para asegurarnos que sea visible
+  // Modal personalizado con z-index muy alto - utilizando CSS para controlar visibilidad
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80" style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999}}>
+    <div
+      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 ${
+        !isOpen ? 'hidden' : ''
+      }`}
+    >
       <div className="bg-white rounded-lg shadow-lg max-w-4xl max-h-[95vh] h-[95vh] overflow-y-auto w-full" style={{border: '5px solid red'}}>
         <div className="p-6">
           {/* Header personalizado con botón de cerrar */}
