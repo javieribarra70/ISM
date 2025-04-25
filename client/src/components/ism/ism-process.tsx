@@ -253,6 +253,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   // Element levels
   const [levels, setLevels] = useState<number[][]>([]);
   // Ya no usamos la variable isSaving para controlar el cierre del modal
+  // Ahora usamos una constante siempre true para mantener compatibilidad con el código existente
+  const isSaving = true; // Siempre true para que el modal permanezca abierto
+  // Función vacía para evitar errores en las llamadas existentes a setIsSaving
+  const setIsSaving = (_value: boolean) => {}; // Acepta un parámetro pero no hace nada
   
   // Get existing relationships to check if we need to load previous VAXO responses
   const { data: existingRelationships, isLoading: isLoadingRelationships, error: relationshipsError } = useQuery({
