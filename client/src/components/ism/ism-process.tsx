@@ -1789,7 +1789,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
                   {stage === "diagram" && "Final ISM Diagram Model"}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  {stage === "intro" && "Analyzing relationships between selected ideas (proceeding directly to questions)."}
+                  {stage === "intro" && "Analyzing relationships between selected ideas."}
                   {stage === "questions" && "Determine the type of relationship between each pair of ideas."}
                   {stage === "ssim" && "View the structural self-interaction matrix."}
                   {stage === "reachability" && "Analyze the initial reachability matrix."}
