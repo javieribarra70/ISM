@@ -888,9 +888,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       });
       
       toast({
-        title: "Relationships processed",
-        description: "The VAXO relationships have been processed and stored in memory.",
-        variant: "default"
+        title: "Relationships processed in memory",
+        description: "The VAXO relationships have been processed and stored in memory. No database changes were made.",
+        variant: "default",
+        duration: 5000
       });
       
       // Avanzar al siguiente paso automáticamente
@@ -1842,10 +1843,13 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             </div>
             
             <div className="flex justify-end space-x-2 mt-6">
-              <div className="flex items-center justify-center w-full mb-2">
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-t-transparent"></div>
-                <p className="text-sm text-muted-foreground">Processing in memory...</p>
-              </div>
+              {/* Mostramos el indicador de "procesando" solo cuando es relevante */}
+              {isSaving && (
+                <div className="flex items-center justify-center w-full mb-2">
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-t-transparent"></div>
+                  <p className="text-sm text-muted-foreground">Processing in memory...</p>
+                </div>
+              )}
               {renderNavigationButtons()}
             </div>
           </div>
