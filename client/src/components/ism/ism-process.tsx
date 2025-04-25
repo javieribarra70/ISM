@@ -223,6 +223,13 @@ function areSetEqual(a: Set<number>, b: Set<number>): boolean {
 }
 
 export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectContext }: ISMProcessProps) {
+  // Debug para seguimiento de renderizaciones
+  console.log(`ISMProcess render - isOpen:`, isOpen);
+  if (!isOpen) {
+    console.log("ISMProcess - NO está abierto, pero sigue montado");
+  } else {
+    console.log("👁️👁️👁️ ISMProcess - ABIERTO Y VISIBLE - debe estar renderizado en pantalla");
+  }
   // Get current user from auth context
   const { user } = useAuth();
   const queryClient = useQueryClient();

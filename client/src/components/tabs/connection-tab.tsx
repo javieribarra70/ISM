@@ -11,6 +11,7 @@ import { PlayCircle, X } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import ISMProcess from "@/components/ism/ism-process";
+import { useLocation } from "wouter";
 
 // Interface for ProjectUser
 interface ProjectUser {
