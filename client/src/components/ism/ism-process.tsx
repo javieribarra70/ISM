@@ -294,6 +294,29 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     fallback.style.display = isOpen ? "none" : "block";
   }, [isOpen]);
   
+  // Mejora de visibilidad: Cuando el modal se abre, asegura que sea visible en pantalla
+  useEffect(() => {
+    if (isOpen) {
+      // Intentar hacer scroll al modal principal
+      const modalElement = document.querySelector(".fixed.inset-0.z-\\[9999\\]");
+      if (modalElement) {
+        modalElement.scrollIntoView({ behavior: "smooth" });
+        console.log("👁 Modal ahora debe estar visible visualmente - forzando scroll");
+      }
+      
+      // También podemos forzar el foco para asegurar accesibilidad
+      setTimeout(() => {
+        // Buscar un elemento interno del modal para darle foco
+        const firstFocusableElement = 
+          document.querySelector(".fixed.inset-0.z-\\[9999\\] button") as HTMLElement;
+        if (firstFocusableElement) {
+          firstFocusableElement.focus();
+          console.log("💡 Foco establecido en el primer elemento interactivo del modal");
+        }
+      }, 100);
+    }
+  }, [isOpen]);
+  
   // CORRECCIÓN DE BUG: Nueva lógica para el manejo del estado de inicialización
   // El problema principal era que el estado se reiniciaba demasiado rápido
   useEffect(() => {
