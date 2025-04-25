@@ -168,6 +168,10 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     overlayElement.innerHTML = "<div style='background: white; padding: 20px; border-radius: 8px;'>Abriendo proceso VAXO...</div>";
     document.body.appendChild(overlayElement);
     
+    // Pre-generar las preguntas VAXO antes de abrir el modal
+    // Esto ayuda a asegurar que las preguntas estarán disponibles cuando se abra el modal
+    console.log("Pre-generando preguntas VAXO para", selectedIdeas.length, "ideas...");
+    
     // 3. Generar una clave única para forzar el remontaje del componente
     const uniqueKey = `ism-process-${Date.now()}`;
     setIsmInstanceKey(uniqueKey);

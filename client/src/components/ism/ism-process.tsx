@@ -305,9 +305,36 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   }, [isOpen]);
   
   // Mejora de visibilidad: Cuando el modal se abre, asegura que sea visible en pantalla
+  // y genera preguntas VAXO inmediatamente
   useEffect(() => {
     if (isOpen) {
-      // Intentar hacer scroll al modal principal
+      // PRIMERO: Generar las preguntas VAXO inmediatamente cuando el modal se abre
+      if (selectedIdeas.length > 0) {
+        console.log("🟢 MODAL ABIERTO Y HAY IDEAS SELECCIONADAS - GENERANDO PREGUNTAS DE INMEDIATO");
+        
+        // Forzar la generación de preguntas aquí
+        const newQuestions: ISMQuestion[] = [];
+        
+        // Generate questions for each pair (i,j) where i < j para evitar duplicados
+        for (let i = 0; i < selectedIdeas.length - 1; i++) {
+          for (let j = i + 1; j < selectedIdeas.length; j++) {
+            newQuestions.push({
+              ideaI: selectedIdeas[i],
+              ideaJ: selectedIdeas[j],
+              response: null,  // Inicialmente todas sin responder
+            });
+          }
+        }
+        
+        if (newQuestions.length > 0) {
+          console.log(`⭐ URGENTE: Generando ${newQuestions.length} preguntas para mostrar inmediatamente`);
+          setQuestions(newQuestions);
+          setCurrentQuestionIndex(0);
+          setIsInitialized(true);
+        }
+      }
+      
+      // SEGUNDO: Intentar hacer scroll al modal principal
       const modalElement = document.querySelector(".fixed.inset-0.z-\\[9999\\]");
       if (modalElement) {
         modalElement.scrollIntoView({ behavior: "smooth" });
@@ -1077,11 +1104,13 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
 
   // Render the current stage
   // Verificar si hay preguntas generadas, si no, intentar generarlas
+  // Este efecto ahora tiene prioridad alta y se ejecuta SIEMPRE que el modal esté abierto
   useEffect(() => {
-    if (isOpen && stage === "questions" && questions.length === 0 && selectedIdeas.length > 0) {
-      console.log("⚠️ Se detectó que no hay preguntas generadas, generando ahora...");
+    // Se ejecuta SIEMPRE que el modal esté abierto, independientemente del estado
+    if (isOpen && selectedIdeas.length > 0) {
+      console.log("🔴 MODAL ABIERTO - Generando preguntas VAXO forzadamente");
       
-      // Generamos preguntas VAXO inmediatamente
+      // Generamos preguntas VAXO inmediatamente, siempre que el modal esté abierto
       const newQuestions: ISMQuestion[] = [];
       
       // Generate questions for each pair (i,j) where i < j para evitar duplicados
@@ -1095,12 +1124,17 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         }
       }
       
-      console.log(`Generadas ${newQuestions.length} preguntas VAXO para ${selectedIdeas.length} ideas`);
-      setQuestions(newQuestions);
-      setCurrentQuestionIndex(0);
-      setIsInitialized(true);
+      // Solo actualizamos si realmente hay preguntas generadas y no había preguntas antes
+      if (newQuestions.length > 0 && questions.length === 0) {
+        console.log(`🔄 Generadas ${newQuestions.length} preguntas VAXO para ${selectedIdeas.length} ideas`);
+        setQuestions(newQuestions);
+        setCurrentQuestionIndex(0);
+        setIsInitialized(true);
+      } else if (questions.length > 0) {
+        console.log(`✅ Ya existen ${questions.length} preguntas, no es necesario regenerar`);
+      }
     }
-  }, [isOpen, stage, questions.length, selectedIdeas]);
+  }, [isOpen, selectedIdeas]);  // Dependencias reducidas para que se ejecute con mayor frecuencia
 
   const renderCurrentStage = () => {
     switch (stage) {
