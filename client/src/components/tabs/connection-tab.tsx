@@ -407,7 +407,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
 
             <div className="space-y-4">
               <p className="text-base">
-                Hay{" "}
+                Se han detectado{" "}
                 <strong>
                   {
                     existingRelationships.filter((r) => {
@@ -421,15 +421,15 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
                     }).length
                   }
                 </strong>{" "}
-                relaciones VAXO guardadas para estas ideas.
+                relaciones VAXO previas para estas ideas. Estas relaciones ya no se modificarán en la base de datos, solo se trabajará en memoria.
               </p>
 
               <Alert>
                 <AlertTitle>Sesión VAXO Interrumpida</AlertTitle>
                 <AlertDescription>
                   El sistema ha detectado una sesión VAXO previa que no se
-                  completó. Para continuar, es necesario eliminar las relaciones
-                  existentes y comenzar un proceso nuevo.
+                  completó. Para continuar, puede iniciar un nuevo proceso
+                  (todas las relaciones se procesarán solo en memoria).
                 </AlertDescription>
               </Alert>
 
@@ -446,81 +446,27 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
                 <Button
                   onClick={async () => {
                     toast({
-                      title: "Limpiando relaciones VAXO",
+                      title: "Comenzando nuevo proceso",
                       description:
-                        "Preparando sistema para comenzar de nuevo...",
-                      duration: 5000,
+                        "Preparando sistema para comenzar sesión VAXO...",
+                      duration: 3000,
                     });
 
                     try {
-                      // Obtener los IDs de las ideas seleccionadas
-                      const selectedIds = selectedIdeas.map((idea) => idea.id);
-
-                      // Obtener las relaciones para las ideas seleccionadas
-                      const relationsToDelete = existingRelationships.filter(
-                        (rel) => {
-                          const fromId = rel.fromIdeaId || rel.from;
-                          const toId = rel.toIdeaId || rel.to;
-                          return (
-                            selectedIds.includes(fromId) &&
-                            selectedIds.includes(toId)
-                          );
-                        },
-                      );
-
+                      // Ya no eliminamos relaciones existentes de la base de datos
+                      // Solo logueamos para depuración
                       console.log(
-                        `Se eliminarán ${relationsToDelete.length} relaciones VAXO`,
+                        `Proceso VAXO reiniciado sin eliminar relaciones de base de datos (todo en memoria)`,
                       );
-
-                      // Eliminar cada relación una por una
-                      for (const relation of relationsToDelete) {
-                        try {
-                          const response = await fetch(
-                            `/api/relationships/${relation.id}`,
-                            {
-                              method: "DELETE",
-                              headers: {
-                                "Content-Type": "application/json",
-                              },
-                              credentials: "include",
-                            },
-                          );
-
-                          if (response.ok) {
-                            console.log(
-                              `Relación ${relation.id} eliminada correctamente`,
-                            );
-                          } else {
-                            console.error(
-                              `Error al eliminar relación ${relation.id}: ${response.statusText}`,
-                            );
-                          }
-                        } catch (error) {
-                          console.error(
-                            `Error al eliminar relación ${relation.id}:`,
-                            error,
-                          );
-                        }
-                      }
-
-                      // Actualizar el estado local
-                      queryClient.invalidateQueries({
-                        queryKey: [`/api/projects/${projectId}/relationships`],
-                      });
-
-                      toast({
-                        title: "Relaciones eliminadas",
-                        description: `Se han eliminado ${relationsToDelete.length} relaciones. Ahora puede iniciar un nuevo proceso.`,
-                        duration: 5000,
-                      });
 
                       // Cerrar este diálogo
                       setShowRelationshipsDialog(false);
 
+                      // Generamos un nuevo key para forzar la recreación del componente
                       const newKey = `ism-process-${Date.now()}`;
                       setIsmInstanceKey(newKey);
                       console.log(
-                        "Nuevo key generado tras limpieza de relaciones:",
+                        "Nuevo key generado para reinicio del proceso:",
                         newKey,
                       );
 
@@ -533,18 +479,18 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
                       );
                       setIsISMDialogOpen(true);
                     } catch (error) {
-                      console.error("Error al eliminar relaciones:", error);
+                      console.error("Error al reiniciar proceso:", error);
                       toast({
                         title: "Error",
                         description:
-                          "Ocurrió un error al eliminar las relaciones VAXO.",
+                          "Ocurrió un error al iniciar un nuevo proceso VAXO.",
                         variant: "destructive",
                         duration: 5000,
                       });
                     }
                   }}
                 >
-                  Eliminar y Comenzar Nuevo
+                  Comenzar Nuevo Proceso
                 </Button>
               </div>
             </div>
