@@ -176,7 +176,9 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     // Simplificamos la lógica para evitar cerrar y reabrir el modal
     // que puede causar problemas con el estado constante isSaving
     console.log("🔓 Abriendo modal VAXO directamente...");
+    console.log("📌 Estado actual antes de abrir: isISMDialogOpen=", isISMDialogOpen, "isStarting=", isStarting);
     setIsISMDialogOpen(true);
+    console.log("📌 Modal VAXO debería estar abierto ahora (setIsISMDialogOpen=true)");
     
     // Quitar overlay y resetear estado de loading después de un tiempo
     setTimeout(() => {

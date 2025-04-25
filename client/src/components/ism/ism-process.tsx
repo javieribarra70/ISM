@@ -1490,8 +1490,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const safeStageChange = (targetStage: "intro" | "questions" | "ssim" | "reachability" | "levels" | "diagram") => {
     console.log(`Solicitando cambio seguro a etapa: ${targetStage}`);
     
-    // PRIMERA PROTECCIÓN: Activar isSaving inmediatamente para evitar cierres prematuros
-    setIsSaving(true);
+    // Ya no necesitamos activar isSaving porque siempre es true
+    // El modal permanecerá abierto
     
     // VERIFICACIÓN CRÍTICA: ¿Hay preguntas sin responder?
     const hasUnansweredQuestions = questions.some(q => q.response === null);
@@ -1574,8 +1574,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     setTimeout(() => {
       console.log(`Cambiando a etapa ${targetStage}`);
       
-      // Asegurarse de que isSaving sigue activo antes de cambiar etapa
-      setIsSaving(true);
+      // Ya no necesitamos asegurar que isSaving sea true porque ahora es una constante
+      // El modal permanecerá abierto
       
       // Ahora cambiamos la etapa
       setStage(targetStage);
@@ -1603,7 +1603,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             
             if (isOpen && !finalCheckUnanswered) {
               console.log(`Verificación final para etapa ${targetStage} - Modal aún abierto y todas las preguntas respondidas`);
-              setIsSaving(false);
+              // Ya no es necesario porque isSaving es una constante
+              console.log(`Ya no es necesario cambiar isSaving porque ahora es una constante`);
             } else if (finalCheckUnanswered) {
               console.log(`NO se desactiva isSaving - Aún hay preguntas sin responder`);
             } else {
