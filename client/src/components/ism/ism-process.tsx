@@ -368,15 +368,38 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       // 1. MODAL ABIERTO: Nos aseguramos que isSaving esté activo para prevenir cierre automático
       console.log("🟢 MODAL ABIERTO - Previniendo cierre automático");
       
-      // Ya no necesitamos esto porque isSaving ahora es una constante siempre true
-      // if (!isSaving) {
-      //   setIsSaving(true);
-      //   console.log("🔒 Activando bloqueo de cierre (isSaving=true)");
-      // }
+      // FORZAR a que siempre estemos en la etapa "questions" cuando el modal está abierto
+      if (stage !== "questions") {
+        console.log("⚠️ Forzando cambio de etapa a 'questions' desde:", stage);
+        setStage("questions");
+      }
+      
+      // Generar preguntas inmediatamente si el modal está abierto y no hay preguntas
+      if (questions.length === 0 && selectedIdeas.length > 0) {
+        console.log("🔴 EFECTO DETECTÓ isOpen=true - ABRIENDO MODAL");
+        
+        // Crear preguntas VAXO
+        const newQuestions: ISMQuestion[] = [];
+        for (let i = 0; i < selectedIdeas.length - 1; i++) {
+          for (let j = i + 1; j < selectedIdeas.length; j++) {
+            newQuestions.push({
+              ideaI: selectedIdeas[i],
+              ideaJ: selectedIdeas[j],
+              response: null,  // Inicialmente todas sin responder
+            });
+          }
+        }
+        
+        console.log(`⭐ CRÍTICO: Generando ${newQuestions.length} preguntas VAXO en apertura`);
+        setQuestions(newQuestions);
+        setCurrentQuestionIndex(0);
+        setIsInitialized(true);
+      }
       
       // Si el modal está abierto pero no inicializado, mostramos un mensaje explícito
       if (!isInitialized) {
         console.log("⏳ Modal abierto pero pendiente de inicialización");
+        setIsInitialized(true);
       }
       
       // Resaltamos a nivel visual la apertura del modal con un elemento DOM
@@ -387,6 +410,22 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           container.classList.remove("highlight-animation");
         }, 2000);
       }
+      
+      // Intenta hacer scroll al modal para asegurarse que sea visible
+      timeoutId = setTimeout(() => {
+        const modalElement = document.querySelector(".fixed.inset-0.z-\\[9999\\]");
+        if (modalElement) {
+          modalElement.scrollIntoView({ behavior: "smooth" });
+          console.log("🔍 Intentando hacer visible el modal VAXO con scroll...");
+          
+          // También podemos intentar forzar el scroll al elemento interno
+          const modalContent = document.getElementById("ism-modal-container");
+          if (modalContent) {
+            modalContent.scrollIntoView({ behavior: "smooth" });
+            console.log("✅ Modal VAXO desplazado a la vista");
+          }
+        }
+      }, 300);
     } 
     else if (!isOpen && isInitialized) {
       // 2. MODAL CERRADO: No reseteamos el estado inmediatamente para evitar problemas de sincronización
@@ -404,7 +443,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         console.log("⚠️ Limpiando timeout de cierre automático");
       }
     };
-  }, [isOpen, isInitialized, isSaving]);
+  }, [isOpen, isInitialized, isSaving, questions.length, selectedIdeas, stage, setStage]);
   
   // Load existing relationships from the database if available - solo en la inicialización
   useEffect(() => {
@@ -1807,13 +1846,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             </div>
             
             <div className="flex justify-end space-x-2 mt-6">
-              {/* Mostramos el indicador de "procesando" solo cuando es relevante */}
-              {isSaving && (
-                <div className="flex items-center justify-center w-full mb-2">
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-t-transparent"></div>
-                  <p className="text-sm text-muted-foreground">Processing in memory...</p>
-                </div>
-              )}
+              {/* Se ha eliminado el indicador de "procesando" que ya no es necesario */}
               {renderNavigationButtons()}
             </div>
           </div>
