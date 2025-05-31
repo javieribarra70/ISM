@@ -794,14 +794,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         const currentQuestion = updatedQuestions[currentQuestionIndex];
         currentQuestion.response = response;
         
-        console.log(`Guardando relación de pregunta ${currentQuestionIndex + 1}: ${currentQuestion.ideaI.title} -> ${currentQuestion.ideaJ.title} (${response})`);
+        console.log(`Procesando relación de pregunta ${currentQuestionIndex + 1}: ${currentQuestion.ideaI.title} -> ${currentQuestion.ideaJ.title} (${response})`);
         
-        // Save this relationship to database immediately
-        await saveIndividualRelationship(
-          currentQuestion.ideaI.id,
-          currentQuestion.ideaJ.id,
-          response
-        );
+        // NO guardar en base de datos - mantener solo en memoria como solicitado
         
         // Infer logical relationships if possible
         const inferredQuestions = applyLogicalInference(updatedQuestions, currentQuestionIndex);
