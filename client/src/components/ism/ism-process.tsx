@@ -854,6 +854,22 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           const computedLevels = calculateLevels(finalMatrix, selectedIdeas);
           setLevels(computedLevels);
           
+          // Guardar resultados en localStorage para la pestaña Report
+          const vaxoResults = {
+            ssimMatrix: buildBooleanMatrix(selectedIdeas, matrix),
+            reachabilityMatrix: initialMatrix,
+            levels: computedLevels,
+            selectedIdeas: selectedIdeas,
+            processDate: new Date().toISOString(),
+          };
+          
+          try {
+            localStorage.setItem(`vaxo-results-${selectedIdeas[0]?.projectId}`, JSON.stringify(vaxoResults));
+            console.log("✅ Resultados VAXO guardados en localStorage para la pestaña Report");
+          } catch (error) {
+            console.error("Error guardando resultados VAXO:", error);
+          }
+          
           // Cambiar a la etapa SSIM INMEDIATAMENTE sin retraso
           console.log("🎯 CAMBIANDO A ETAPA SSIM - todas las preguntas completadas");
           setStage("ssim");
@@ -863,7 +879,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           
           toast({
             title: "Proceso completado",
-            description: "Todas las relaciones VAXO establecidas. Mostrando matriz SSIM.",
+            description: "Resultados guardados. Ve a la pestaña Report para ver el análisis completo.",
             variant: "default",
             duration: 5000
           });

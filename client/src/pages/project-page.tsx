@@ -16,6 +16,7 @@ import SelectorTab from "@/components/tabs/selector-tab";
 import SettingsTab from "@/components/tabs/settings-tab";
 import ContextTab from "@/components/tabs/context-tab";
 import ConnectionTab from "@/components/tabs/connection-tab";
+import ReportTab from "@/components/tabs/report-tab";
 import { Avatars } from "@/components/avatars";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -460,7 +461,7 @@ export default function ProjectPage() {
             onValueChange={handleTabChange}
             className="w-full px-4 sm:px-6 lg:px-8"
           >
-            <TabsList className={`grid w-full max-w-lg ${isUserProjectAdmin() ? 'grid-cols-6' : 'grid-cols-5'} mb-4`}>
+            <TabsList className={`grid w-full max-w-lg ${isUserProjectAdmin() ? 'grid-cols-7' : 'grid-cols-6'} mb-4`}>
               <TabsTrigger value="categories">
                 Categories
               </TabsTrigger>
@@ -475,6 +476,9 @@ export default function ProjectPage() {
               </TabsTrigger>
               <TabsTrigger value="connection">
                 Connection
+              </TabsTrigger>
+              <TabsTrigger value="report">
+                Report
               </TabsTrigger>
               {isUserProjectAdmin() && (
                 <TabsTrigger value="settings">
@@ -530,6 +534,10 @@ export default function ProjectPage() {
             
             <TabsContent value="connection" className="mt-0 p-4">
               <ConnectionTab projectId={parsedProjectId} />
+            </TabsContent>
+            
+            <TabsContent value="report" className="mt-0 p-4">
+              <ReportTab projectId={parsedProjectId} />
             </TabsContent>
             
             {isUserProjectAdmin() && (
