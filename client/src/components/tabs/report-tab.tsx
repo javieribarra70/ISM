@@ -3,14 +3,27 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Idea, Project } from "@shared/schema";
-import { BarChart3, Network, FileText, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { BarChart3, FileText, Network, Download } from "lucide-react";
 import cytoscape from "cytoscape";
 import dagre from "cytoscape-dagre";
 
 interface ReportTabProps {
   projectId: number;
+}
+
+interface Idea {
+  id: number;
+  title: string;
+  description?: string;
+  categoryId?: number;
+}
+
+interface SelectedIdea {
+  id: number;
+  projectId: number;
+  ideaId: number;
+  selectedAt: string;
 }
 
 interface VaxoResults {
@@ -22,34 +35,37 @@ interface VaxoResults {
 }
 
 export default function ReportTab({ projectId }: ReportTabProps) {
-  const { toast } = useToast();
-  const [vaxoResults, setVaxoResults] = useState<VaxoResults | null>(null);
   const [hasVaxoData, setHasVaxoData] = useState(false);
+  const [vaxoResults, setVaxoResults] = useState<VaxoResults | null>(null);
   const cyRef = useRef<HTMLDivElement>(null);
   const cyInstance = useRef<cytoscape.Core | null>(null);
+  const { toast } = useToast();
 
-  // Fetch project data
-  const { data: project } = useQuery<Project>({
-    queryKey: [`/api/projects/${projectId}`],
-    enabled: !!projectId,
+  // Fetch all ideas
+  const { data: allIdeas = [] } = useQuery<Idea[]>({
+    queryKey: [`/api/projects/${projectId}/ideas`],
   });
 
   // Fetch selected ideas
-  const { data: selectedIdeas = [] } = useQuery<{ ideaId: number }[]>({
+  const { data: selectedIdeas = [] } = useQuery<SelectedIdea[]>({
     queryKey: [`/api/projects/${projectId}/selected-ideas`],
-    enabled: !!projectId,
   });
 
-  // Fetch all ideas to get the full idea objects
-  const { data: allIdeas = [] } = useQuery<Idea[]>({
-    queryKey: [`/api/projects/${projectId}/ideas`],
-    enabled: !!projectId,
-  });
-
-  // Initialize Cytoscape with dagre
+  // Initialize Cytoscape
   useEffect(() => {
     cytoscape.use(dagre);
   }, []);
+
+  // Get the full idea objects for selected ideas
+  const getSelectedIdeaObjects = () => {
+    if (!selectedIdeas || !allIdeas) return [];
+    
+    return selectedIdeas
+      .map(si => allIdeas.find(idea => idea.id === si.ideaId))
+      .filter(Boolean) as Idea[];
+  };
+
+  const selectedIdeaObjects = getSelectedIdeaObjects();
 
   // Check if there's stored VAXO data in localStorage
   useEffect(() => {
@@ -58,9 +74,11 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         const storedData = localStorage.getItem(`vaxo-results-${projectId}`);
         if (storedData) {
           const parsedData = JSON.parse(storedData);
+          console.log('Loaded VAXO results from localStorage:', parsedData);
           setVaxoResults(parsedData);
           setHasVaxoData(true);
         } else {
+          console.log('No VAXO results found in localStorage for project:', projectId);
           setHasVaxoData(false);
         }
       } catch (error) {
@@ -81,25 +99,7 @@ export default function ReportTab({ projectId }: ReportTabProps) {
     if (vaxoResults && cyRef.current && hasVaxoData) {
       initializeNetworkDiagram();
     }
-    
-    return () => {
-      if (cyInstance.current) {
-        cyInstance.current.destroy();
-        cyInstance.current = null;
-      }
-    };
   }, [vaxoResults, hasVaxoData]);
-
-  // Get the full idea objects for selected ideas
-  const getSelectedIdeaObjects = () => {
-    if (!selectedIdeas || !allIdeas) return [];
-    
-    return selectedIdeas
-      .map(si => allIdeas.find(idea => idea.id === si.ideaId))
-      .filter(Boolean) as Idea[];
-  };
-
-  const selectedIdeaObjects = getSelectedIdeaObjects();
 
   // Initialize network diagram
   const initializeNetworkDiagram = useCallback(() => {
@@ -125,27 +125,46 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         });
       }
 
+      // Color based on level
+      const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6'];
+      const color = colors[levelIndex % colors.length];
+
       return {
         data: {
-          id: idea.id.toString(),
+          id: `node-${index}`,
           label: idea.title,
           level: levelIndex,
         },
-        classes: `level-${levelIndex}`,
+        style: {
+          'background-color': color,
+          'color': '#ffffff',
+          'text-valign': 'center',
+          'text-halign': 'center',
+          'font-size': '12px',
+          'width': '60px',
+          'height': '60px',
+        },
       };
     });
 
-    // Create edges from SSIM matrix
+    // Create edges based on SSIM matrix
     const edges: any[] = [];
     if (ssimMatrix) {
       for (let i = 0; i < ssimMatrix.length; i++) {
         for (let j = 0; j < ssimMatrix[i].length; j++) {
-          if (ssimMatrix[i][j] && i !== j) {
+          if (ssimMatrix[i][j]) {
             edges.push({
               data: {
                 id: `edge-${i}-${j}`,
-                source: ideas[i]?.id.toString(),
-                target: ideas[j]?.id.toString(),
+                source: `node-${i}`,
+                target: `node-${j}`,
+              },
+              style: {
+                'width': 2,
+                'line-color': '#666',
+                'target-arrow-color': '#666',
+                'target-arrow-shape': 'triangle',
+                'curve-style': 'bezier',
               },
             });
           }
@@ -161,106 +180,46 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         {
           selector: 'node',
           style: {
-            'background-color': '#3b82f6',
-            'label': 'data(label)',
-            'text-valign': 'center',
-            'text-halign': 'center',
-            'color': '#ffffff',
-            'font-size': '12px',
-            'width': '60px',
-            'height': '60px',
-            'border-width': 2,
-            'border-color': '#1e40af',
             'text-wrap': 'wrap',
             'text-max-width': '50px',
-          }
-        },
-        {
-          selector: 'node.level-0',
-          style: {
-            'background-color': '#ef4444',
-            'border-color': '#dc2626',
-          }
-        },
-        {
-          selector: 'node.level-1',
-          style: {
-            'background-color': '#f97316',
-            'border-color': '#ea580c',
-          }
-        },
-        {
-          selector: 'node.level-2',
-          style: {
-            'background-color': '#eab308',
-            'border-color': '#ca8a04',
-          }
-        },
-        {
-          selector: 'node.level-3',
-          style: {
-            'background-color': '#22c55e',
-            'border-color': '#16a34a',
-          }
+          },
         },
         {
           selector: 'edge',
           style: {
-            'width': 2,
-            'line-color': '#6b7280',
-            'target-arrow-color': '#6b7280',
-            'target-arrow-shape': 'triangle',
-            'curve-style': 'bezier',
-          }
+            opacity: 0.6,
+          },
         },
         {
-          selector: 'node:selected',
+          selector: '.highlighted',
           style: {
-            'border-width': 4,
-            'border-color': '#facc15',
-          }
-        }
+            opacity: 1,
+            'z-index': 999,
+          },
+        },
       ],
       layout: {
         name: 'dagre',
         spacingFactor: 1.5,
-        nodeSep: 50,
-        rankSep: 100,
       } as any,
-      userZoomingEnabled: true,
-      userPanningEnabled: true,
-      boxSelectionEnabled: false,
     });
 
-    // Add click event to highlight connected nodes
-    cyInstance.current.on('tap', 'node', function(evt) {
-      const node = evt.target;
-      const connectedEdges = node.connectedEdges();
-      const connectedNodes = connectedEdges.connectedNodes();
-      
-      // Reset all styles
+    // Add click event to highlight connections
+    cyInstance.current.on('tap', 'node', (event) => {
+      const node = event.target;
       cyInstance.current?.elements().removeClass('highlighted');
       
-      // Highlight selected node and connected elements
-      node.addClass('highlighted');
-      connectedNodes.addClass('highlighted');
-      connectedEdges.addClass('highlighted');
+      const connectedElements = node.neighborhood().add(node);
+      connectedElements.addClass('highlighted');
     });
 
-    // Add styles for highlighted elements
-    cyInstance.current.style()
+    // Style for highlighted and non-highlighted elements
+    cyInstance.current
+      .style()
       .selector('.highlighted')
       .style({
         'opacity': 1,
-        'z-index': 10,
-      })
-      .selector('node:not(.highlighted)')
-      .style({
-        'opacity': 0.4,
-      })
-      .selector('edge:not(.highlighted)')
-      .style({
-        'opacity': 0.2,
+        'z-index': 999,
       })
       .update();
   }, [vaxoResults, selectedIdeaObjects]);
@@ -269,133 +228,56 @@ export default function ReportTab({ projectId }: ReportTabProps) {
   const renderSSIMMatrix = () => {
     if (!vaxoResults || !vaxoResults.ssimMatrix) return null;
 
-    const { ssimMatrix } = vaxoResults;
+    const matrix = vaxoResults.ssimMatrix;
     const ideas = vaxoResults.selectedIdeas || selectedIdeaObjects;
 
     return (
-      <div className="overflow-x-auto">
-        <table className="w-full border border-gray-300">
+      <div className="overflow-auto">
+        <table className="min-w-full border-collapse">
           <thead>
-            <tr className="bg-gray-100">
-              <th className="border border-gray-300 p-2 text-sm font-medium">Ideas</th>
-              {ideas.map((idea, i) => (
-                <th key={i} className="border border-gray-300 p-2 text-sm font-medium min-w-[80px]">
-                  {idea?.title || `Idea ${i + 1}`}
+            <tr>
+              <th className="border p-2 bg-gray-50 text-xs"></th>
+              {ideas.map((idea, index) => (
+                <th key={index} className="border p-2 bg-gray-50 text-xs max-w-20">
+                  {idea.title}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {ssimMatrix.map((row, i) => (
-              <tr key={i}>
-                <td className="border border-gray-300 p-2 font-medium bg-gray-50">
-                  {ideas[i]?.title || `Idea ${i + 1}`}
+            {matrix.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                <td className="border p-2 bg-gray-50 font-medium text-xs max-w-20">
+                  {ideas[rowIndex]?.title}
                 </td>
-                {row.map((cell, j) => (
-                  <td key={j} className="border border-gray-300 p-2 text-center">
-                    <span className={`inline-block w-6 h-6 rounded ${
-                      cell ? 'bg-blue-500 text-white' : 'bg-gray-200'
-                    }`}>
-                      {cell ? '1' : '0'}
-                    </span>
+                {row.map((cell, colIndex) => (
+                  <td
+                    key={colIndex}
+                    className={`border p-2 text-center text-xs ${
+                      cell ? 'bg-green-100' : 'bg-gray-50'
+                    }`}
+                  >
+                    {cell ? '1' : '0'}
                   </td>
                 ))}
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
-    );
-  };
-
-  // Generate Reachability Matrix display
-  const renderReachabilityMatrix = () => {
-    if (!vaxoResults || !vaxoResults.reachabilityMatrix) return null;
-
-    const { reachabilityMatrix } = vaxoResults;
-    const ideas = vaxoResults.selectedIdeas || selectedIdeaObjects;
-
-    return (
-      <div className="overflow-x-auto">
-        <table className="w-full border border-gray-300">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="border border-gray-300 p-2 text-sm font-medium">Ideas</th>
-              {ideas.map((idea, i) => (
-                <th key={i} className="border border-gray-300 p-2 text-sm font-medium min-w-[80px]">
-                  {idea?.title || `Idea ${i + 1}`}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {reachabilityMatrix.map((row, i) => (
-              <tr key={i}>
-                <td className="border border-gray-300 p-2 font-medium bg-gray-50">
-                  {ideas[i]?.title || `Idea ${i + 1}`}
-                </td>
-                {row.map((cell, j) => (
-                  <td key={j} className="border border-gray-300 p-2 text-center">
-                    <span className={`inline-block w-6 h-6 rounded ${
-                      cell ? 'bg-green-500 text-white' : 'bg-gray-200'
-                    }`}>
-                      {cell ? '1' : '0'}
-                    </span>
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  };
-
-  // Generate Levels display
-  const renderLevels = () => {
-    if (!vaxoResults || !vaxoResults.levels) return null;
-
-    const { levels } = vaxoResults;
-    const ideas = vaxoResults.selectedIdeas || selectedIdeaObjects;
-
-    return (
-      <div className="space-y-4">
-        {levels.map((level, levelIndex) => (
-          <div key={levelIndex} className="border rounded-lg p-4 bg-gray-50">
-            <h4 className="font-semibold mb-2">Level {levelIndex + 1}</h4>
-            <div className="flex flex-wrap gap-2">
-              {level.map((ideaIndex) => {
-                const idea = ideas[ideaIndex];
-                return (
-                  <Badge key={ideaIndex} variant="outline" className="bg-white">
-                    {idea?.title || `Idea ${ideaIndex + 1}`}
-                  </Badge>
-                );
-              })}
-            </div>
-          </div>
-        ))}
       </div>
     );
   };
 
   // Export results as JSON
   const exportResults = () => {
-    if (!vaxoResults) {
-      toast({
-        title: "No data available",
-        description: "No VAXO results to export.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!vaxoResults) return;
 
     const dataStr = JSON.stringify(vaxoResults, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `vaxo-results-${project?.name || 'project'}-${Date.now()}.json`;
+    link.download = `vaxo-results-project-${projectId}-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -526,9 +408,9 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       {/* SSIM Matrix */}
       <Card>
         <CardHeader>
-          <CardTitle>SSIM (Structural Self-Interaction Matrix)</CardTitle>
+          <CardTitle>SSIM Matrix</CardTitle>
           <CardDescription>
-            Shows the direct relationships between ideas based on VAXO analysis
+            Structural Self-Interaction Matrix showing direct relationships between ideas
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -536,35 +418,36 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         </CardContent>
       </Card>
 
-      {/* Reachability Matrix */}
-      {vaxoResults?.reachabilityMatrix && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Reachability Matrix</CardTitle>
-            <CardDescription>
-              Shows both direct and indirect relationships including transitivity
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {renderReachabilityMatrix()}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Level Partitioning */}
-      {vaxoResults?.levels && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Level Partitioning</CardTitle>
-            <CardDescription>
-              Hierarchical organization of ideas based on their relationships
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {renderLevels()}
-          </CardContent>
-        </Card>
-      )}
+      {/* Hierarchy Levels */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Hierarchy Levels</CardTitle>
+          <CardDescription>
+            Ideas organized by their hierarchical levels in the ISM model
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {vaxoResults?.levels?.map((level, levelIndex) => (
+              <div key={levelIndex} className="flex items-center gap-4">
+                <Badge variant="outline" className="text-sm">
+                  Level {levelIndex + 1}
+                </Badge>
+                <div className="flex flex-wrap gap-2">
+                  {level.map((ideaIndex) => {
+                    const idea = vaxoResults.selectedIdeas?.[ideaIndex] || selectedIdeaObjects[ideaIndex];
+                    return idea ? (
+                      <Badge key={ideaIndex} variant="secondary" className="text-xs">
+                        {idea.title}
+                      </Badge>
+                    ) : null;
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
