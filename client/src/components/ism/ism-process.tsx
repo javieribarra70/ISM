@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Idea, Relationship } from "@shared/schema";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -252,11 +252,17 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const [finalReachabilityMatrix, setFinalReachabilityMatrix] = useState<boolean[][]>([]);
   // Element levels
   const [levels, setLevels] = useState<number[][]>([]);
-  // Ya no usamos la variable isSaving para controlar el cierre del modal
-  // Ahora usamos una constante siempre true para mantener compatibilidad con el código existente
-  const isSaving = true; // Siempre true para que el modal permanezca abierto
-  // Función vacía para evitar errores en las llamadas existentes a setIsSaving
-  const setIsSaving = (_value: boolean) => {}; // Acepta un parámetro pero no hace nada
+  // Control de guardado: false para resultados, true para preguntas
+  const [isSaving, setIsSaving] = useState(true);
+  
+  // Actualizar isSaving basado en la etapa
+  useEffect(() => {
+    if (stage === "ssim" || stage === "reachability" || stage === "levels" || stage === "diagram") {
+      setIsSaving(false); // Permitir navegación en resultados
+    } else {
+      setIsSaving(true); // Bloquear cierre durante preguntas
+    }
+  }, [stage]);
   
   // Get existing relationships to check if we need to load previous VAXO responses
   const { data: existingRelationships, isLoading: isLoadingRelationships, error: relationshipsError } = useQuery({
@@ -723,32 +729,8 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       console.log(`Relación procesada en memoria: ${ideaI} -> ${ideaJ} (${relation})`);
       console.log(`Matriz SSIM actualizada, total relaciones: ${updatedSSIM.length}`);
       
-      // Si todas las preguntas están respondidas, procesar inmediatamente
-      const allAnswered = questions.every(q => q.response !== null);
-      if (allAnswered) {
-        console.log("🎯 TODAS LAS PREGUNTAS RESPONDIDAS - Procesando matrices finales");
-        
-        // Construir matrices de accesibilidad
-        const initialMatrix = buildInitialReachabilityMatrix(selectedIdeas, updatedSSIM);
-        setReachabilityMatrix(initialMatrix);
-        
-        const finalMatrix = applyTransitiveClosure(initialMatrix);
-        setFinalReachabilityMatrix(finalMatrix);
-        
-        const computedLevels = calculateLevels(finalMatrix, selectedIdeas);
-        setLevels(computedLevels);
-        
-        // Cambiar a etapa SSIM inmediatamente
-        setTimeout(() => {
-          setStage("ssim");
-          toast({
-            title: "Proceso completado",
-            description: "Todas las relaciones VAXO establecidas. Mostrando matriz SSIM.",
-            variant: "default",
-            duration: 3000
-          });
-        }, 100);
-      }
+      // IMPORTANTE: NO cambiar de etapa aquí ya que se maneja en answerQuestion
+      // Solo actualizar la matriz SSIM y procesar las matrices si es necesario
       
       // Ya no invalidamos consultas porque no hay cambios en la base de datos
       
@@ -875,7 +857,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           
           // Cambiar a la etapa SSIM con un pequeño retraso para asegurar que todos los estados se actualicen
           setTimeout(() => {
+            console.log("🎯 CAMBIANDO A ETAPA SSIM - todas las preguntas completadas");
             setStage("ssim");
+            
+            // El estado de isSaving se actualizará automáticamente por el useEffect basado en stage
             
             toast({
               title: "Proceso completado",
@@ -1811,6 +1796,18 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const handleCloseAttempt = () => {
     // MEJORA: Agregamos logging para debug
     console.log(`Intento de cierre manual. Estado actual: isSaving=${isSaving}, stage=${stage}, isInitialized=${isInitialized}`);
+    
+    // BLOQUEAR cierre cuando estamos mostrando resultados
+    if (stage === "ssim" || stage === "reachability" || stage === "levels" || stage === "diagram") {
+      console.log("🚫 BLOQUEANDO CIERRE - Mostrando resultados, usar botones de navegación");
+      toast({
+        title: "Resultados disponibles",
+        description: "Usa los botones de navegación para explorar los resultados o volver a las preguntas.",
+        variant: "default",
+        duration: 3000
+      });
+      return;
+    }
     
     // Ya no verificamos bloqueo en etapa "intro" ya que fue eliminada,
     // pero mantenemos una comprobación de inicialización por seguridad

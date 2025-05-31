@@ -242,18 +242,25 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     }, 500);
   };
 
-  // Handle ISM dialog close
+  // Handle ISM dialog close - modificado para no cerrar durante resultados
   const handleISMDialogClose = () => {
-    console.log("ISM Dialog close requested - closing the dialog");
-    // CORRECCIÓN DE BUG: Añadimos un retraso deliberado para asegurar que el componente
-    // interno pueda hacer su limpieza antes de que el padre lo desmonte.
-    // Este cambio es crucial para resolver el problema de cierre prematuro.
-    setTimeout(() => {
-      setIsISMDialogOpen(false);
-      console.log(
-        "Dialog closed after deliberate delay to prevent premature unmounting",
-      );
-    }, 100);
+    console.log("ISM Dialog close requested - evaluating if should close");
+    
+    // IMPORTANTE: Solo cerrar si el usuario realmente quiere cerrar
+    // No cerrar automáticamente cuando se completan las preguntas
+    const shouldActuallyClose = window.confirm(
+      "¿Estás seguro de que quieres cerrar el proceso VAXO? Si has completado las preguntas, puedes ver los resultados."
+    );
+    
+    if (shouldActuallyClose) {
+      console.log("Usuario confirmó cierre - cerrando dialog");
+      setTimeout(() => {
+        setIsISMDialogOpen(false);
+        console.log("Dialog closed after user confirmation");
+      }, 100);
+    } else {
+      console.log("Usuario canceló cierre - manteniendo dialog abierto");
+    }
   };
 
   // Prepare project context information for ISM process
