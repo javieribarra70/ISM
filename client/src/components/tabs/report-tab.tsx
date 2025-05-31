@@ -183,20 +183,45 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       }
     }
     
-    // Remove transitive edges in the condensed graph
-    for (let i = 0; i < sccCount; i++) {
-      for (let j = 0; j < sccCount; j++) {
-        if (condensedGraph[i][j]) {
-          // Check if there's an indirect path from SCC i to SCC j
-          for (let k = 0; k < sccCount; k++) {
-            if (k !== i && k !== j && condensedGraph[i][k] && condensedGraph[k][j]) {
+    // Compute transitive closure of the condensed graph first
+    const closure = condensedGraph.map(row => [...row]);
+    for (let k = 0; k < sccCount; k++) {
+      for (let i = 0; i < sccCount; i++) {
+        for (let j = 0; j < sccCount; j++) {
+          closure[i][j] = closure[i][j] || (closure[i][k] && closure[k][j]);
+        }
+      }
+    }
+    
+    // Apply multiple passes to remove all transitive edges
+    let hasChanges = true;
+    let passes = 0;
+    while (hasChanges && passes < 5) {
+      hasChanges = false;
+      passes++;
+      
+      for (let i = 0; i < sccCount; i++) {
+        for (let j = 0; j < sccCount; j++) {
+          if (condensedGraph[i][j]) {
+            // Check if there's an indirect path from SCC i to SCC j
+            let hasIndirectPath = false;
+            for (let k = 0; k < sccCount; k++) {
+              if (k !== i && k !== j && condensedGraph[i][k] && closure[k][j]) {
+                hasIndirectPath = true;
+                break;
+              }
+            }
+            if (hasIndirectPath) {
               condensedGraph[i][j] = false;
-              break;
+              hasChanges = true;
             }
           }
         }
       }
     }
+    
+    console.log(`SCC graph reduction completed in ${passes} passes`);
+    console.log('Final condensed graph:', condensedGraph);
     
     // Apply the reduced condensed graph back to the original matrix
     for (let i = 0; i < n; i++) {
@@ -211,6 +236,32 @@ export default function ReportTab({ projectId }: ReportTabProps) {
           } else {
             // Between different SCCs, use the reduced condensed graph
             reducedMatrix[i][j] = condensedGraph[sccI][sccJ];
+          }
+        }
+      }
+    }
+    
+    // Additional pass: Remove redundancies considering paths through SCCs
+    // This handles cases where nodes before/after cycles have redundant connections
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        if (reducedMatrix[i][j] && nodeToScc[i] !== nodeToScc[j]) {
+          // Check if there's an alternative path through other SCCs
+          let hasAlternativePath = false;
+          
+          for (let k = 0; k < n; k++) {
+            const sccK = nodeToScc[k];
+            if (sccK !== nodeToScc[i] && sccK !== nodeToScc[j]) {
+              // Check if we can reach j from i through SCC of k
+              if (reducedMatrix[i][k] && closure[sccK][nodeToScc[j]]) {
+                hasAlternativePath = true;
+                break;
+              }
+            }
+          }
+          
+          if (hasAlternativePath) {
+            reducedMatrix[i][j] = false;
           }
         }
       }
