@@ -241,34 +241,43 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       }
     }
     
-    // Additional pass: Remove redundancies considering paths through SCCs
-    // This handles cases where nodes before/after cycles have redundant connections
+    // Build transitive closure of the reduced matrix to detect all possible paths
+    const transitiveClosureMatrix = reducedMatrix.map(row => [...row]);
+    for (let k = 0; k < n; k++) {
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          transitiveClosureMatrix[i][j] = transitiveClosureMatrix[i][j] || 
+            (transitiveClosureMatrix[i][k] && transitiveClosureMatrix[k][j]);
+        }
+      }
+    }
+    
+    // Final pass: Remove ALL redundant edges using the complete transitive closure
+    const finalMatrix = reducedMatrix.map(row => [...row]);
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
-        if (reducedMatrix[i][j] && nodeToScc[i] !== nodeToScc[j]) {
-          // Check if there's an alternative path through other SCCs
+        if (finalMatrix[i][j] && i !== j) {
+          // Check if there's ANY alternative path from i to j
           let hasAlternativePath = false;
           
           for (let k = 0; k < n; k++) {
-            const sccK = nodeToScc[k];
-            if (sccK !== nodeToScc[i] && sccK !== nodeToScc[j]) {
-              // Check if we can reach j from i through SCC of k
-              if (reducedMatrix[i][k] && closure[sccK][nodeToScc[j]]) {
-                hasAlternativePath = true;
-                break;
-              }
+            if (k !== i && k !== j && finalMatrix[i][k] && transitiveClosureMatrix[k][j]) {
+              hasAlternativePath = true;
+              break;
             }
           }
           
           if (hasAlternativePath) {
-            reducedMatrix[i][j] = false;
+            finalMatrix[i][j] = false;
           }
         }
       }
     }
     
+    console.log('Final matrix after complete redundancy elimination:', finalMatrix);
+    
     console.log('Transitive reduction completed with SCC-aware algorithm');
-    return reducedMatrix;
+    return finalMatrix;
   }, [findStronglyConnectedComponents]);
 
   // Initialize network diagram
