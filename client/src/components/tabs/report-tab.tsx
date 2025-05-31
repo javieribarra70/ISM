@@ -101,57 +101,6 @@ export default function ReportTab({ projectId }: ReportTabProps) {
     }
   }, [vaxoResults, hasVaxoData]);
 
-  // Function to find strongly connected components using Tarjan's algorithm
-  const findStronglyConnectedComponents = useCallback((matrix: boolean[][]): number[][] => {
-    const n = matrix.length;
-    const index: number[] = new Array(n).fill(-1);
-    const lowlink: number[] = new Array(n).fill(-1);
-    const onStack: boolean[] = new Array(n).fill(false);
-    const stack: number[] = [];
-    const components: number[][] = [];
-    let currentIndex = 0;
-
-    const strongConnect = (v: number) => {
-      index[v] = currentIndex;
-      lowlink[v] = currentIndex;
-      currentIndex++;
-      stack.push(v);
-      onStack[v] = true;
-
-      // Consider successors of v
-      for (let w = 0; w < n; w++) {
-        if (matrix[v][w]) {
-          if (index[w] === -1) {
-            strongConnect(w);
-            lowlink[v] = Math.min(lowlink[v], lowlink[w]);
-          } else if (onStack[w]) {
-            lowlink[v] = Math.min(lowlink[v], index[w]);
-          }
-        }
-      }
-
-      // If v is a root node, pop the stack and create an SCC
-      if (lowlink[v] === index[v]) {
-        const component: number[] = [];
-        let w;
-        do {
-          w = stack.pop()!;
-          onStack[w] = false;
-          component.push(w);
-        } while (w !== v);
-        components.push(component);
-      }
-    };
-
-    for (let v = 0; v < n; v++) {
-      if (index[v] === -1) {
-        strongConnect(v);
-      }
-    }
-
-    return components;
-  }, []);
-
   // Function to remove transitive redundancies from SSIM matrix
   const removeTransitiveRedundancies = useCallback((matrix: boolean[][]): boolean[][] => {
     const n = matrix.length;
@@ -159,40 +108,46 @@ export default function ReportTab({ projectId }: ReportTabProps) {
     // Create a copy of the matrix
     const reducedMatrix = matrix.map(row => [...row]);
     
-    // Find strongly connected components (cycles)
-    const sccs = findStronglyConnectedComponents(matrix);
+    // Compute transitive closure first to identify all reachable paths
+    const closure = matrix.map(row => [...row]);
     
-    // Create a mapping from node to SCC index
-    const nodeToSCC: number[] = new Array(n);
-    sccs.forEach((component, sccIndex) => {
-      component.forEach(node => {
-        nodeToSCC[node] = sccIndex;
-      });
-    });
+    // Floyd-Warshall algorithm for transitive closure
+    for (let k = 0; k < n; k++) {
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          closure[i][j] = closure[i][j] || (closure[i][k] && closure[k][j]);
+        }
+      }
+    }
     
-    // Remove transitive redundancies while treating SCCs as single units
+    // Now remove edges that are transitively reducible
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
-        if (reducedMatrix[i][j] && nodeToSCC[i] !== nodeToSCC[j]) {
-          // Check if there's an alternative path from SCC(i) to SCC(j)
+        if (reducedMatrix[i][j]) {
+          // Check if there's an alternative path from i to j
+          let hasAlternativePath = false;
+          
           for (let k = 0; k < n; k++) {
-            if (k !== i && k !== j && 
-                nodeToSCC[k] !== nodeToSCC[i] && nodeToSCC[k] !== nodeToSCC[j]) {
-              // Check for path i -> k -> j where each belongs to different SCCs
-              if (reducedMatrix[i][k] && reducedMatrix[k][j]) {
-                reducedMatrix[i][j] = false;
+            if (k !== i && k !== j) {
+              // Check if we can reach j from i through k
+              if (reducedMatrix[i][k] && closure[k][j]) {
+                hasAlternativePath = true;
                 break;
               }
             }
+          }
+          
+          // If there's an alternative path, remove the direct edge
+          if (hasAlternativePath) {
+            reducedMatrix[i][j] = false;
           }
         }
       }
     }
     
-    console.log('Transitive reduction completed with SCC-aware algorithm');
-    console.log('Strongly Connected Components:', sccs);
+    console.log('Transitive reduction completed using Floyd-Warshall approach');
     return reducedMatrix;
-  }, [findStronglyConnectedComponents]);
+  }, []);
 
   // Initialize network diagram
   const initializeNetworkDiagram = useCallback(() => {
