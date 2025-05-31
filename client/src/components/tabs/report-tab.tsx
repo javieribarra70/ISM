@@ -182,23 +182,30 @@ export default function ReportTab({ projectId }: ReportTabProps) {
                 source: `node-${i}`,
                 target: `node-${j}`,
               },
-              style: {
-                'width': 2,
-                'line-color': '#666',
-                'target-arrow-color': '#666',
-                'target-arrow-shape': 'triangle',
-                'curve-style': 'bezier',
-              },
             });
           }
         }
       }
     }
 
+    // Create level separator lines (invisible nodes for positioning)
+    const levelSeparators: any[] = [];
+    if (levels && levels.length > 1) {
+      for (let i = 0; i < levels.length - 1; i++) {
+        levelSeparators.push({
+          data: {
+            id: `separator-${i}`,
+            type: 'separator',
+          },
+          classes: 'separator',
+        });
+      }
+    }
+
     // Initialize Cytoscape
     cyInstance.current = cytoscape({
       container: cyRef.current,
-      elements: [...nodes, ...edges],
+      elements: [...nodes, ...edges, ...levelSeparators],
       style: [
         {
           selector: 'node',
@@ -224,12 +231,22 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         {
           selector: 'edge',
           style: {
-            'width': 2,
-            'line-color': '#666',
-            'target-arrow-color': '#666',
+            'width': 3,
+            'line-color': '#4f46e5',
+            'target-arrow-color': '#4f46e5',
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
-            'opacity': 0.6,
+            'opacity': 0.8,
+          },
+        },
+        {
+          selector: '.separator',
+          style: {
+            'width': '1px',
+            'height': '400px',
+            'background-color': '#e5e7eb',
+            'opacity': 0,
+            'shape': 'rectangle',
           },
         },
         {
@@ -242,7 +259,10 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       ],
       layout: {
         name: 'dagre',
-        spacingFactor: 1.5,
+        rankDir: 'LR', // Left to Right direction
+        spacingFactor: 2,
+        rankSep: 150, // Horizontal spacing between levels
+        nodeSep: 80,  // Vertical spacing between nodes in same level
       } as any,
     });
 
@@ -264,7 +284,72 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         'z-index': 999,
       })
       .update();
+
+    // Add level labels after layout is complete
+    cyInstance.current.ready(() => {
+      setTimeout(() => {
+        addLevelLabels();
+      }, 100);
+    });
   }, [vaxoResults, selectedIdeaObjects, removeTransitiveRedundancies]);
+
+  // Function to add level labels to the diagram
+  const addLevelLabels = useCallback(() => {
+    if (!cyInstance.current || !vaxoResults?.levels) return;
+
+    const container = cyRef.current;
+    if (!container) return;
+
+    // Remove existing level labels
+    const existingLabels = container.querySelectorAll('.level-label');
+    existingLabels.forEach(label => label.remove());
+
+    // Get nodes grouped by level
+    const nodesByLevel: { [key: number]: any[] } = {};
+    cyInstance.current.nodes().forEach((node) => {
+      const level = node.data('level');
+      if (!nodesByLevel[level]) nodesByLevel[level] = [];
+      nodesByLevel[level].push(node);
+    });
+
+    // Add labels for each level
+    Object.keys(nodesByLevel).forEach((levelStr) => {
+      const level = parseInt(levelStr);
+      const nodesInLevel = nodesByLevel[level];
+      
+      if (nodesInLevel.length > 0) {
+        // Get the leftmost position of nodes in this level
+        let minX = Infinity;
+        let avgY = 0;
+        
+        nodesInLevel.forEach(node => {
+          const pos = node.renderedPosition();
+          minX = Math.min(minX, pos.x);
+          avgY += pos.y;
+        });
+        
+        avgY /= nodesInLevel.length;
+
+        // Create level label
+        const label = document.createElement('div');
+        label.className = 'level-label';
+        label.style.position = 'absolute';
+        label.style.left = (minX - 80) + 'px';
+        label.style.top = (avgY - 10) + 'px';
+        label.style.fontSize = '14px';
+        label.style.fontWeight = 'bold';
+        label.style.color = '#374151';
+        label.style.backgroundColor = '#f9fafb';
+        label.style.padding = '4px 8px';
+        label.style.borderRadius = '4px';
+        label.style.border = '1px solid #e5e7eb';
+        label.style.zIndex = '1000';
+        label.textContent = `Level ${level + 1}`;
+        
+        container.appendChild(label);
+      }
+    });
+  }, [vaxoResults]);
 
   // Generate SSIM Matrix display
   const renderSSIMMatrix = () => {
