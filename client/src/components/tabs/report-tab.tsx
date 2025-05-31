@@ -108,44 +108,34 @@ export default function ReportTab({ projectId }: ReportTabProps) {
     // Create a copy of the matrix
     const reducedMatrix = matrix.map(row => [...row]);
     
-    // Compute transitive closure first to identify all reachable paths
-    const closure = matrix.map(row => [...row]);
-    
-    // Floyd-Warshall algorithm for transitive closure
-    for (let k = 0; k < n; k++) {
-      for (let i = 0; i < n; i++) {
-        for (let j = 0; j < n; j++) {
-          closure[i][j] = closure[i][j] || (closure[i][k] && closure[k][j]);
-        }
-      }
-    }
-    
-    // Now remove edges that are transitively reducible
+    // Remove only simple transitive redundancies (A->B->C makes A->C redundant)
+    // But preserve cycles and their outgoing connections
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
         if (reducedMatrix[i][j]) {
-          // Check if there's an alternative path from i to j
-          let hasAlternativePath = false;
-          
+          // Check if there's a simple intermediate path from i to j
           for (let k = 0; k < n; k++) {
             if (k !== i && k !== j) {
-              // Check if we can reach j from i through k
-              if (reducedMatrix[i][k] && closure[k][j]) {
-                hasAlternativePath = true;
-                break;
+              // Check for simple path i -> k -> j
+              if (reducedMatrix[i][k] && reducedMatrix[k][j]) {
+                // Special handling for cycles: don't remove if there's a cycle involving i and j
+                const hasCycleIJ = reducedMatrix[j][i]; // j -> i (reverse connection)
+                const hasCycleIK = reducedMatrix[k][i]; // k -> i (cycle with intermediate)
+                const hasCycleJK = reducedMatrix[j][k]; // j -> k (cycle with intermediate)
+                
+                // If there are no cycles, remove the transitive connection
+                if (!hasCycleIJ && !hasCycleIK && !hasCycleJK) {
+                  reducedMatrix[i][j] = false;
+                  break;
+                }
               }
             }
-          }
-          
-          // If there's an alternative path, remove the direct edge
-          if (hasAlternativePath) {
-            reducedMatrix[i][j] = false;
           }
         }
       }
     }
     
-    console.log('Transitive reduction completed using Floyd-Warshall approach');
+    console.log('Transitive reduction completed with cycle preservation');
     return reducedMatrix;
   }, []);
 
