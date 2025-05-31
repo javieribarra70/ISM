@@ -254,13 +254,17 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const [levels, setLevels] = useState<number[][]>([]);
   // Control de guardado: false para resultados, true para preguntas
   const [isSaving, setIsSaving] = useState(true);
+  const [forceOpen, setForceOpen] = useState(false);
   
   // Actualizar isSaving basado en la etapa
   useEffect(() => {
     if (stage === "ssim" || stage === "reachability" || stage === "levels" || stage === "diagram") {
       setIsSaving(false); // Permitir navegación en resultados
+      setForceOpen(true); // Forzar que el modal permanezca abierto
+      console.log("🔒 FORZANDO MODAL A PERMANECER ABIERTO - Mostrando resultados");
     } else {
       setIsSaving(true); // Bloquear cierre durante preguntas
+      setForceOpen(false);
     }
   }, [stage]);
   
@@ -1912,7 +1916,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     <>
       <div
         className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 ${
-          !isOpen ? 'hidden' : ''
+          (!isOpen && !forceOpen) ? 'hidden' : ''
         }`}
         id="ism-modal-container"
       >
