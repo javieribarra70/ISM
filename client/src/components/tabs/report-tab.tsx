@@ -252,14 +252,46 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       }
     }
     
-    // Final pass: Remove ALL redundant edges using the complete transitive closure
+    // Final pass: Remove redundant edges but preserve essential connections from cycles
     const finalMatrix = reducedMatrix.map(row => [...row]);
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
         if (finalMatrix[i][j] && i !== j) {
+          const sccI = nodeToScc[i];
+          const sccJ = nodeToScc[j];
+          
+          // Don't remove connections from cycles to different levels if they're essential
+          if (sccI !== sccJ) {
+            // Check if this is a connection from/to a cycle (SCC with multiple nodes)
+            const sccISize = sccs[sccI].length;
+            const sccJSize = sccs[sccJ].length;
+            
+            // If this is a connection from a cycle to another SCC, be more conservative
+            if (sccISize > 1) {
+              // Check if this is the only outgoing connection from this cycle to any other SCC
+              let hasOtherOutgoingConnections = false;
+              for (let otherNode = 0; otherNode < n; otherNode++) {
+                if (nodeToScc[otherNode] === sccI) {
+                  for (let targetNode = 0; targetNode < n; targetNode++) {
+                    if (nodeToScc[targetNode] !== sccI && finalMatrix[otherNode][targetNode] && 
+                        !(otherNode === i && targetNode === j)) {
+                      hasOtherOutgoingConnections = true;
+                      break;
+                    }
+                  }
+                  if (hasOtherOutgoingConnections) break;
+                }
+              }
+              
+              // If this is the only outgoing connection from the cycle, keep it
+              if (!hasOtherOutgoingConnections) {
+                continue;
+              }
+            }
+          }
+          
           // Check if there's ANY alternative path from i to j
           let hasAlternativePath = false;
-          
           for (let k = 0; k < n; k++) {
             if (k !== i && k !== j && finalMatrix[i][k] && transitiveClosureMatrix[k][j]) {
               hasAlternativePath = true;
