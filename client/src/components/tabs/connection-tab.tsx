@@ -30,6 +30,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   const { user } = useAuth();
   const [isStarting, setIsStarting] = useState(false);
   const [isISMDialogOpen, setIsISMDialogOpen] = useState(false);
+  const [preventAutoClose, setPreventAutoClose] = useState(false);
   const [ismInstanceKey, setIsmInstanceKey] = useState<string>("");
   const [isStartingAlternative, setIsStartingAlternative] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -177,6 +178,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     // que puede causar problemas con el estado constante isSaving
     console.log("🔓 Abriendo modal VAXO directamente...");
     console.log("📌 Estado actual antes de abrir: isISMDialogOpen=", isISMDialogOpen, "isStarting=", isStarting);
+    setPreventAutoClose(true); // Activar prevención de cierre automático
     setIsISMDialogOpen(true);
     console.log("📌 Modal VAXO debería estar abierto ahora (setIsISMDialogOpen=true)");
     
@@ -246,6 +248,18 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   const handleISMDialogClose = () => {
     console.log("ISM Dialog close requested - evaluating if should close");
     
+    // BLOQUEAR cierre si está en modo de prevención automática
+    if (preventAutoClose) {
+      console.log("🚫 CIERRE BLOQUEADO - Modal en modo de prevención de cierre automático");
+      toast({
+        title: "Proceso en curso",
+        description: "El proceso VAXO está en curso. Usa los botones internos para navegar.",
+        variant: "default",
+        duration: 3000
+      });
+      return;
+    }
+    
     // IMPORTANTE: Solo cerrar si el usuario realmente quiere cerrar
     // No cerrar automáticamente cuando se completan las preguntas
     const shouldActuallyClose = window.confirm(
@@ -254,6 +268,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     
     if (shouldActuallyClose) {
       console.log("Usuario confirmó cierre - cerrando dialog");
+      setPreventAutoClose(false); // Resetear prevención
       setTimeout(() => {
         setIsISMDialogOpen(false);
         console.log("Dialog closed after user confirmation");
