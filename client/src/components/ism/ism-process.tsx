@@ -48,6 +48,30 @@ interface SSIMCell {
 }
 
 // Function that builds the initial reachability matrix
+function buildBooleanMatrix(ideas: Idea[], ssimMatrix: SSIMCell[]): boolean[][] {
+  const n = ideas.length;
+  const matrix: boolean[][] = Array(n).fill(null).map(() => Array(n).fill(false));
+  
+  ssimMatrix.forEach(cell => {
+    const iIndex = ideas.findIndex(idea => idea.id === cell.ideaI);
+    const jIndex = ideas.findIndex(idea => idea.id === cell.ideaJ);
+    
+    if (iIndex !== -1 && jIndex !== -1) {
+      if (cell.relation === RelationType.V) {
+        matrix[iIndex][jIndex] = true;
+      } else if (cell.relation === RelationType.A) {
+        matrix[jIndex][iIndex] = true;
+      } else if (cell.relation === RelationType.X) {
+        matrix[iIndex][jIndex] = true;
+        matrix[jIndex][iIndex] = true;
+      }
+      // RelationType.O relationships remain false
+    }
+  });
+  
+  return matrix;
+}
+
 function buildInitialReachabilityMatrix(
   ideas: Idea[],
   ssimMatrix: SSIMCell[]
@@ -854,9 +878,30 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           const computedLevels = calculateLevels(finalMatrix, selectedIdeas);
           setLevels(computedLevels);
           
+          // Construir matriz booleana para visualización
+          const n = selectedIdeas.length;
+          const booleanMatrix: boolean[][] = Array(n).fill(null).map(() => Array(n).fill(false));
+          
+          matrix.forEach(cell => {
+            const iIndex = selectedIdeas.findIndex(idea => idea.id === cell.ideaI);
+            const jIndex = selectedIdeas.findIndex(idea => idea.id === cell.ideaJ);
+            
+            if (iIndex !== -1 && jIndex !== -1) {
+              if (cell.relation === 'V') {
+                booleanMatrix[iIndex][jIndex] = true;
+              } else if (cell.relation === 'A') {
+                booleanMatrix[jIndex][iIndex] = true;
+              } else if (cell.relation === 'X') {
+                booleanMatrix[iIndex][jIndex] = true;
+                booleanMatrix[jIndex][iIndex] = true;
+              }
+              // 'O' relationships remain false
+            }
+          });
+
           // Guardar resultados en localStorage para la pestaña Report
           const vaxoResults = {
-            ssimMatrix: buildBooleanMatrix(selectedIdeas, matrix),
+            ssimMatrix: booleanMatrix,
             reachabilityMatrix: initialMatrix,
             levels: computedLevels,
             selectedIdeas: selectedIdeas,
