@@ -188,24 +188,12 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       }
     }
 
-    // Create level separator lines (invisible nodes for positioning)
-    const levelSeparators: any[] = [];
-    if (levels && levels.length > 1) {
-      for (let i = 0; i < levels.length - 1; i++) {
-        levelSeparators.push({
-          data: {
-            id: `separator-${i}`,
-            type: 'separator',
-          },
-          classes: 'separator',
-        });
-      }
-    }
+    // Note: Level separators removed due to Cytoscape warnings
 
     // Initialize Cytoscape
     cyInstance.current = cytoscape({
       container: cyRef.current,
-      elements: [...nodes, ...edges, ...levelSeparators],
+      elements: [...nodes, ...edges],
       style: [
         {
           selector: 'node',
@@ -237,16 +225,6 @@ export default function ReportTab({ projectId }: ReportTabProps) {
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
             'opacity': 0.8,
-          },
-        },
-        {
-          selector: '.separator',
-          style: {
-            'width': '1px',
-            'height': '400px',
-            'background-color': '#e5e7eb',
-            'opacity': 0,
-            'shape': 'rectangle',
           },
         },
         {
