@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Idea, Project } from "@shared/schema";
 import { BarChart3, Network, FileText, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import cytoscape from "cytoscape";
+import dagre from "cytoscape-dagre";
 
 interface ReportTabProps {
   projectId: number;
@@ -23,6 +25,8 @@ export default function ReportTab({ projectId }: ReportTabProps) {
   const { toast } = useToast();
   const [vaxoResults, setVaxoResults] = useState<VaxoResults | null>(null);
   const [hasVaxoData, setHasVaxoData] = useState(false);
+  const cyRef = useRef<HTMLDivElement>(null);
+  const cyInstance = useRef<cytoscape.Core | null>(null);
 
   // Fetch project data
   const { data: project } = useQuery<Project>({
@@ -41,6 +45,11 @@ export default function ReportTab({ projectId }: ReportTabProps) {
     queryKey: [`/api/projects/${projectId}/ideas`],
     enabled: !!projectId,
   });
+
+  // Initialize Cytoscape with dagre
+  useEffect(() => {
+    cytoscape.use(dagre);
+  }, []);
 
   // Check if there's stored VAXO data in localStorage
   useEffect(() => {
@@ -67,6 +76,20 @@ export default function ReportTab({ projectId }: ReportTabProps) {
     return () => clearInterval(interval);
   }, [projectId]);
 
+  // Initialize network diagram when VAXO results are available
+  useEffect(() => {
+    if (vaxoResults && cyRef.current && hasVaxoData) {
+      initializeNetworkDiagram();
+    }
+    
+    return () => {
+      if (cyInstance.current) {
+        cyInstance.current.destroy();
+        cyInstance.current = null;
+      }
+    };
+  }, [vaxoResults, hasVaxoData]);
+
   // Get the full idea objects for selected ideas
   const getSelectedIdeaObjects = () => {
     if (!selectedIdeas || !allIdeas) return [];
@@ -77,6 +100,170 @@ export default function ReportTab({ projectId }: ReportTabProps) {
   };
 
   const selectedIdeaObjects = getSelectedIdeaObjects();
+
+  // Initialize network diagram
+  const initializeNetworkDiagram = useCallback(() => {
+    if (!cyRef.current || !vaxoResults) return;
+
+    // Destroy existing instance
+    if (cyInstance.current) {
+      cyInstance.current.destroy();
+    }
+
+    const ideas = vaxoResults.selectedIdeas || selectedIdeaObjects;
+    const { ssimMatrix, levels } = vaxoResults;
+
+    // Create nodes
+    const nodes = ideas.map((idea, index) => {
+      // Find which level this idea belongs to
+      let levelIndex = 0;
+      if (levels) {
+        levels.forEach((level, lIndex) => {
+          if (level.includes(index)) {
+            levelIndex = lIndex;
+          }
+        });
+      }
+
+      return {
+        data: {
+          id: idea.id.toString(),
+          label: idea.title,
+          level: levelIndex,
+        },
+        classes: `level-${levelIndex}`,
+      };
+    });
+
+    // Create edges from SSIM matrix
+    const edges: any[] = [];
+    if (ssimMatrix) {
+      for (let i = 0; i < ssimMatrix.length; i++) {
+        for (let j = 0; j < ssimMatrix[i].length; j++) {
+          if (ssimMatrix[i][j] && i !== j) {
+            edges.push({
+              data: {
+                id: `edge-${i}-${j}`,
+                source: ideas[i]?.id.toString(),
+                target: ideas[j]?.id.toString(),
+              },
+            });
+          }
+        }
+      }
+    }
+
+    // Initialize Cytoscape
+    cyInstance.current = cytoscape({
+      container: cyRef.current,
+      elements: [...nodes, ...edges],
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'background-color': '#3b82f6',
+            'label': 'data(label)',
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'color': '#ffffff',
+            'font-size': '12px',
+            'width': '60px',
+            'height': '60px',
+            'border-width': 2,
+            'border-color': '#1e40af',
+            'text-wrap': 'wrap',
+            'text-max-width': '50px',
+          }
+        },
+        {
+          selector: 'node.level-0',
+          style: {
+            'background-color': '#ef4444',
+            'border-color': '#dc2626',
+          }
+        },
+        {
+          selector: 'node.level-1',
+          style: {
+            'background-color': '#f97316',
+            'border-color': '#ea580c',
+          }
+        },
+        {
+          selector: 'node.level-2',
+          style: {
+            'background-color': '#eab308',
+            'border-color': '#ca8a04',
+          }
+        },
+        {
+          selector: 'node.level-3',
+          style: {
+            'background-color': '#22c55e',
+            'border-color': '#16a34a',
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width': 2,
+            'line-color': '#6b7280',
+            'target-arrow-color': '#6b7280',
+            'target-arrow-shape': 'triangle',
+            'curve-style': 'bezier',
+          }
+        },
+        {
+          selector: 'node:selected',
+          style: {
+            'border-width': 4,
+            'border-color': '#facc15',
+          }
+        }
+      ],
+      layout: {
+        name: 'dagre',
+        spacingFactor: 1.5,
+        nodeSep: 50,
+        rankSep: 100,
+      } as any,
+      userZoomingEnabled: true,
+      userPanningEnabled: true,
+      boxSelectionEnabled: false,
+    });
+
+    // Add click event to highlight connected nodes
+    cyInstance.current.on('tap', 'node', function(evt) {
+      const node = evt.target;
+      const connectedEdges = node.connectedEdges();
+      const connectedNodes = connectedEdges.connectedNodes();
+      
+      // Reset all styles
+      cyInstance.current?.elements().removeClass('highlighted');
+      
+      // Highlight selected node and connected elements
+      node.addClass('highlighted');
+      connectedNodes.addClass('highlighted');
+      connectedEdges.addClass('highlighted');
+    });
+
+    // Add styles for highlighted elements
+    cyInstance.current.style()
+      .selector('.highlighted')
+      .style({
+        'opacity': 1,
+        'z-index': 10,
+      })
+      .selector('node:not(.highlighted)')
+      .style({
+        'opacity': 0.4,
+      })
+      .selector('edge:not(.highlighted)')
+      .style({
+        'opacity': 0.2,
+      })
+      .update();
+  }, [vaxoResults, selectedIdeaObjects]);
 
   // Generate SSIM Matrix display
   const renderSSIMMatrix = () => {
@@ -298,6 +485,43 @@ export default function ReportTab({ projectId }: ReportTabProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Network Diagram */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Network Diagram</CardTitle>
+          <CardDescription>
+            Interactive visualization of idea relationships and hierarchy levels. Click on nodes to highlight connections.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-4">
+            <div className="flex flex-wrap gap-2 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                <span>Level 1</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                <span>Level 2</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                <span>Level 3</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                <span>Level 4+</span>
+              </div>
+            </div>
+          </div>
+          <div
+            ref={cyRef}
+            className="w-full h-96 border border-gray-200 rounded-lg"
+            style={{ background: '#fafafa' }}
+          />
+        </CardContent>
+      </Card>
 
       {/* SSIM Matrix */}
       <Card>
