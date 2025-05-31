@@ -850,20 +850,19 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           const computedLevels = calculateLevels(finalMatrix, selectedIdeas);
           setLevels(computedLevels);
           
-          // Cambiar a la etapa SSIM con un pequeño retraso para asegurar que todos los estados se actualicen
-          setTimeout(() => {
-            console.log("🎯 CAMBIANDO A ETAPA SSIM - todas las preguntas completadas");
-            setStage("ssim");
-            
-            // El estado de isSaving se actualizará automáticamente por el useEffect basado en stage
-            
-            toast({
-              title: "Proceso completado",
-              description: "Todas las relaciones VAXO establecidas. Mostrando matriz SSIM.",
-              variant: "default",
-              duration: 3000
-            });
-          }, 200);
+          // Cambiar a la etapa SSIM INMEDIATAMENTE sin retraso
+          console.log("🎯 CAMBIANDO A ETAPA SSIM - todas las preguntas completadas");
+          setStage("ssim");
+          
+          // Forzar que el modal permanezca abierto
+          console.log("🔒 FORZANDO MODAL A PERMANECER ABIERTO PARA MOSTRAR RESULTADOS");
+          
+          toast({
+            title: "Proceso completado",
+            description: "Todas las relaciones VAXO establecidas. Mostrando matriz SSIM.",
+            variant: "default",
+            duration: 5000
+          });
         }
       }
     } catch (error) {
