@@ -677,18 +677,77 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       // Procesamos la relación solo en memoria
       console.log(`Procesando relación en memoria: ${ideaI} -> ${ideaJ} (${relation})`);
       
-      // Ya no creamos relaciones en la base de datos
-      if (relation !== RelationType.O) {
-        console.log(`Relación procesada en memoria: ${ideaI} -> ${ideaJ} (${relation})`);
+      // Actualizar la matriz SSIM inmediatamente
+      const updatedSSIM = [...ssimMatrix];
+      
+      // Agregar la relación directa
+      updatedSSIM.push({
+        ideaI: ideaI,
+        ideaJ: ideaJ,
+        relation: relation
+      });
+      
+      // Agregar la relación inversa según el tipo
+      if (relation === RelationType.V) {
+        updatedSSIM.push({
+          ideaI: ideaJ,
+          ideaJ: ideaI,
+          relation: RelationType.A
+        });
+        console.log(`Relación inversa procesada en memoria: ${ideaJ} -> ${ideaI} (A)`);
+      } else if (relation === RelationType.A) {
+        updatedSSIM.push({
+          ideaI: ideaJ,
+          ideaJ: ideaI,
+          relation: RelationType.V
+        });
+        console.log(`Relación inversa procesada en memoria: ${ideaJ} -> ${ideaI} (V)`);
+      } else if (relation === RelationType.X) {
+        updatedSSIM.push({
+          ideaI: ideaJ,
+          ideaJ: ideaI,
+          relation: RelationType.X
+        });
+        console.log(`Relación inversa procesada en memoria: ${ideaJ} -> ${ideaI} (X)`);
+      } else if (relation === RelationType.O) {
+        updatedSSIM.push({
+          ideaI: ideaJ,
+          ideaJ: ideaI,
+          relation: RelationType.O
+        });
+        console.log(`Relación inversa procesada en memoria: ${ideaJ} -> ${ideaI} (O)`);
+      }
+      
+      // Actualizar el estado de la matriz SSIM
+      setSSIMMatrix(updatedSSIM);
+      console.log(`Relación procesada en memoria: ${ideaI} -> ${ideaJ} (${relation})`);
+      console.log(`Matriz SSIM actualizada, total relaciones: ${updatedSSIM.length}`);
+      
+      // Si todas las preguntas están respondidas, procesar inmediatamente
+      const allAnswered = questions.every(q => q.response !== null);
+      if (allAnswered) {
+        console.log("🎯 TODAS LAS PREGUNTAS RESPONDIDAS - Procesando matrices finales");
         
-        // Registramos también la relación inversa en consola (solo para depuración)
-        if (relation === RelationType.V || relation === RelationType.A || relation === RelationType.X) {
-          const inverseRelation = relation === RelationType.V ? RelationType.A :
-                                  relation === RelationType.A ? RelationType.V :
-                                  RelationType.X;
-          
-          console.log(`Relación inversa procesada en memoria: ${ideaJ} -> ${ideaI} (${inverseRelation})`);
-        }
+        // Construir matrices de accesibilidad
+        const initialMatrix = buildInitialReachabilityMatrix(selectedIdeas, updatedSSIM);
+        setReachabilityMatrix(initialMatrix);
+        
+        const finalMatrix = applyTransitiveClosure(initialMatrix);
+        setFinalReachabilityMatrix(finalMatrix);
+        
+        const computedLevels = calculateLevels(finalMatrix, selectedIdeas);
+        setLevels(computedLevels);
+        
+        // Cambiar a etapa SSIM inmediatamente
+        setTimeout(() => {
+          setStage("ssim");
+          toast({
+            title: "Proceso completado",
+            description: "Todas las relaciones VAXO establecidas. Mostrando matriz SSIM.",
+            variant: "default",
+            duration: 3000
+          });
+        }, 100);
       }
       
       // Ya no invalidamos consultas porque no hay cambios en la base de datos
@@ -786,7 +845,9 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             selectNextMostInformativeQuestion(inferredQuestions);
           }
         } else {
-          // All questions have been answered, build the SSIM matrix (without saving again)
+          // All questions have been answered, build the SSIM matrix and advance to next stage
+          console.log("✅ Todas las preguntas completadas en answerQuestion - avanzando a SSIM");
+          
           const matrix: SSIMCell[] = [];
           
           // Add the directly answered relationships
@@ -801,7 +862,28 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           });
           
           setSSIMMatrix(matrix);
-          setStage("ssim");
+          
+          // Construir matrices de accesibilidad
+          const initialMatrix = buildInitialReachabilityMatrix(selectedIdeas, matrix);
+          setReachabilityMatrix(initialMatrix);
+          
+          const finalMatrix = applyTransitiveClosure(initialMatrix);
+          setFinalReachabilityMatrix(finalMatrix);
+          
+          const computedLevels = calculateLevels(finalMatrix, selectedIdeas);
+          setLevels(computedLevels);
+          
+          // Cambiar a la etapa SSIM con un pequeño retraso para asegurar que todos los estados se actualicen
+          setTimeout(() => {
+            setStage("ssim");
+            
+            toast({
+              title: "Proceso completado",
+              description: "Todas las relaciones VAXO establecidas. Mostrando matriz SSIM.",
+              variant: "default",
+              duration: 3000
+            });
+          }, 200);
         }
       }
     } catch (error) {
