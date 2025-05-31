@@ -104,24 +104,48 @@ export default function ReportTab({ projectId }: ReportTabProps) {
   // Function to remove transitive redundancies from SSIM matrix
   const removeTransitiveRedundancies = useCallback((matrix: boolean[][]): boolean[][] => {
     const n = matrix.length;
-    const reducedMatrix = matrix.map(row => [...row]); // Create a copy
     
-    // For each relationship (i,j), check if it can be reached through another path
+    // Create a copy of the matrix
+    const reducedMatrix = matrix.map(row => [...row]);
+    
+    // Compute transitive closure first to identify all reachable paths
+    const closure = matrix.map(row => [...row]);
+    
+    // Floyd-Warshall algorithm for transitive closure
+    for (let k = 0; k < n; k++) {
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          closure[i][j] = closure[i][j] || (closure[i][k] && closure[k][j]);
+        }
+      }
+    }
+    
+    // Now remove edges that are transitively reducible
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
         if (reducedMatrix[i][j]) {
-          // Check if there's an indirect path from i to j through k
+          // Check if there's an alternative path from i to j
+          let hasAlternativePath = false;
+          
           for (let k = 0; k < n; k++) {
-            if (k !== i && k !== j && reducedMatrix[i][k] && reducedMatrix[k][j]) {
-              // There's a path i -> k -> j, so the direct relationship i -> j is redundant
-              reducedMatrix[i][j] = false;
-              break;
+            if (k !== i && k !== j) {
+              // Check if we can reach j from i through k
+              if (reducedMatrix[i][k] && closure[k][j]) {
+                hasAlternativePath = true;
+                break;
+              }
             }
+          }
+          
+          // If there's an alternative path, remove the direct edge
+          if (hasAlternativePath) {
+            reducedMatrix[i][j] = false;
           }
         }
       }
     }
     
+    console.log('Transitive reduction completed using Floyd-Warshall approach');
     return reducedMatrix;
   }, []);
 
