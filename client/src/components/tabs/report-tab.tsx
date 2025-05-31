@@ -101,6 +101,30 @@ export default function ReportTab({ projectId }: ReportTabProps) {
     }
   }, [vaxoResults, hasVaxoData]);
 
+  // Function to remove transitive redundancies from SSIM matrix
+  const removeTransitiveRedundancies = useCallback((matrix: boolean[][]): boolean[][] => {
+    const n = matrix.length;
+    const reducedMatrix = matrix.map(row => [...row]); // Create a copy
+    
+    // For each relationship (i,j), check if it can be reached through another path
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        if (reducedMatrix[i][j]) {
+          // Check if there's an indirect path from i to j through k
+          for (let k = 0; k < n; k++) {
+            if (k !== i && k !== j && reducedMatrix[i][k] && reducedMatrix[k][j]) {
+              // There's a path i -> k -> j, so the direct relationship i -> j is redundant
+              reducedMatrix[i][j] = false;
+              break;
+            }
+          }
+        }
+      }
+    }
+    
+    return reducedMatrix;
+  }, []);
+
   // Initialize network diagram
   const initializeNetworkDiagram = useCallback(() => {
     if (!cyRef.current || !vaxoResults) return;
@@ -112,6 +136,13 @@ export default function ReportTab({ projectId }: ReportTabProps) {
 
     const ideas = vaxoResults.selectedIdeas || selectedIdeaObjects;
     const { ssimMatrix, levels } = vaxoResults;
+    
+    // Remove transitive redundancies for cleaner visualization
+    const reducedMatrix = removeTransitiveRedundancies(ssimMatrix);
+    
+    console.log('Original SSIM Matrix:', ssimMatrix);
+    console.log('Reduced SSIM Matrix (without redundancies):', reducedMatrix);
+    console.log('Ideas:', ideas.map(idea => idea.title));
 
     // Create nodes
     const nodes = ideas.map((idea, index) => {
@@ -147,12 +178,12 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       };
     });
 
-    // Create edges based on SSIM matrix
+    // Create edges based on reduced SSIM matrix (without transitive redundancies)
     const edges: any[] = [];
-    if (ssimMatrix) {
-      for (let i = 0; i < ssimMatrix.length; i++) {
-        for (let j = 0; j < ssimMatrix[i].length; j++) {
-          if (ssimMatrix[i][j]) {
+    if (reducedMatrix) {
+      for (let i = 0; i < reducedMatrix.length; i++) {
+        for (let j = 0; j < reducedMatrix[i].length; j++) {
+          if (reducedMatrix[i][j]) {
             edges.push({
               data: {
                 id: `edge-${i}-${j}`,
@@ -222,7 +253,7 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         'z-index': 999,
       })
       .update();
-  }, [vaxoResults, selectedIdeaObjects]);
+  }, [vaxoResults, selectedIdeaObjects, removeTransitiveRedundancies]);
 
   // Generate SSIM Matrix display
   const renderSSIMMatrix = () => {
