@@ -457,12 +457,15 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         yPos += 8;
 
         pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
         cycles.forEach((cycle, index) => {
-          checkNewPage(10);
+          checkNewPage(15);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(`Cycle ${index + 1}:`, margin, yPos);
+          pdf.setFont('helvetica', 'normal');
           const cycleIdeas = cycle.map(idx => ideas[idx]?.title || `Idea ${idx + 1}`).join(' ↔ ');
-          pdf.text(`Cycle ${index + 1}: ${cycleIdeas}`, margin, yPos);
-          yPos += 5;
+          const textLines = pdf.splitTextToSize(cycleIdeas, pageWidth - margin * 2 - 25);
+          pdf.text(textLines, margin + 25, yPos);
+          yPos += (textLines.length * 5) + 3;
         });
         yPos += 10;
       }
