@@ -7,7 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { BarChart3, FileText, Network, Download } from "lucide-react";
 import cytoscape from "cytoscape";
 import dagre from "cytoscape-dagre";
-import { removeTransitiveRedundancies } from "@/lib/matrix-utils";
+import { jsPDF } from "jspdf";
+import { removeTransitiveRedundancies, findStronglyConnectedComponents } from "@/lib/matrix-utils";
 
 interface ReportTabProps {
   projectId: number;
@@ -350,25 +351,249 @@ export default function ReportTab({ projectId }: ReportTabProps) {
     );
   };
 
-  // Export results as JSON
-  const exportResults = () => {
+  // Export results as PDF with diagram and node information
+  const exportResults = async () => {
     if (!vaxoResults) return;
 
-    const dataStr = JSON.stringify(vaxoResults, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `vaxo-results-project-${projectId}-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    try {
+      toast({
+        title: "Generating PDF...",
+        description: "Please wait while the report is being generated.",
+      });
 
-    toast({
-      title: "Results exported",
-      description: "VAXO results have been downloaded as JSON file.",
-    });
+      const ideas = vaxoResults.selectedIdeas || selectedIdeaObjects;
+      const { ssimMatrix, levels } = vaxoResults;
+      
+      // Detect cycles (SCCs with more than one node)
+      const sccs = findStronglyConnectedComponents(ssimMatrix);
+      const cycles = sccs.filter(scc => scc.length > 1);
+      
+      // Create PDF document
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 15;
+      let yPos = margin;
+
+      // Helper function to check if we need a new page
+      const checkNewPage = (height: number) => {
+        if (yPos + height > pageHeight - margin) {
+          pdf.addPage();
+          yPos = margin;
+          return true;
+        }
+        return false;
+      };
+
+      // Title
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('VAXO Analysis Report', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 10;
+
+      // Date
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      const dateStr = vaxoResults.processDate 
+        ? new Date(vaxoResults.processDate).toLocaleDateString()
+        : new Date().toLocaleDateString();
+      pdf.text(`Generated: ${dateStr}`, pageWidth / 2, yPos, { align: 'center' });
+      yPos += 15;
+
+      // Summary section
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Summary', margin, yPos);
+      yPos += 8;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      const totalRelationships = ssimMatrix.flat().filter(Boolean).length;
+      pdf.text(`• Total Ideas Analyzed: ${ideas.length}`, margin, yPos);
+      yPos += 5;
+      pdf.text(`• Total Relationships: ${totalRelationships}`, margin, yPos);
+      yPos += 5;
+      pdf.text(`• Hierarchy Levels: ${levels?.length || 0}`, margin, yPos);
+      yPos += 5;
+      pdf.text(`• Cycles Detected: ${cycles.length}`, margin, yPos);
+      yPos += 15;
+
+      // Network Diagram Section
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Network Diagram', margin, yPos);
+      yPos += 8;
+
+      // Capture diagram as image
+      if (cyInstance.current) {
+        try {
+          const pngData = cyInstance.current.png({ 
+            full: true, 
+            scale: 2,
+            bg: '#fafafa'
+          });
+          
+          // Calculate image dimensions to fit in PDF
+          const imgWidth = pageWidth - (margin * 2);
+          const imgHeight = 100; // Fixed height for diagram
+          
+          pdf.addImage(pngData, 'PNG', margin, yPos, imgWidth, imgHeight);
+          yPos += imgHeight + 10;
+        } catch (imgError) {
+          console.error('Error capturing diagram:', imgError);
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'italic');
+          pdf.text('(Diagram could not be captured)', margin, yPos);
+          yPos += 10;
+        }
+      }
+
+      // Cycles Section (if any)
+      if (cycles.length > 0) {
+        checkNewPage(30);
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Detected Cycles', margin, yPos);
+        yPos += 8;
+
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        cycles.forEach((cycle, index) => {
+          checkNewPage(10);
+          const cycleIdeas = cycle.map(idx => ideas[idx]?.title || `Idea ${idx + 1}`).join(' ↔ ');
+          pdf.text(`Cycle ${index + 1}: ${cycleIdeas}`, margin, yPos);
+          yPos += 5;
+        });
+        yPos += 10;
+      }
+
+      // Hierarchy Levels Section
+      checkNewPage(30);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Hierarchy Levels', margin, yPos);
+      yPos += 8;
+
+      pdf.setFontSize(10);
+      if (levels && levels.length > 0) {
+        levels.forEach((level, levelIndex) => {
+          checkNewPage(10);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(`Level ${levelIndex + 1}:`, margin, yPos);
+          pdf.setFont('helvetica', 'normal');
+          const levelIdeas = level.map(idx => ideas[idx]?.title || `Idea ${idx + 1}`).join(', ');
+          const textLines = pdf.splitTextToSize(levelIdeas, pageWidth - margin * 2 - 25);
+          pdf.text(textLines, margin + 25, yPos);
+          yPos += (textLines.length * 5) + 3;
+        });
+      }
+      yPos += 10;
+
+      // Detailed Node Information Section
+      checkNewPage(30);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Node Details', margin, yPos);
+      yPos += 10;
+
+      ideas.forEach((idea, index) => {
+        // Find level for this idea
+        let nodeLevel = 0;
+        if (levels) {
+          levels.forEach((level, lIndex) => {
+            if (level.includes(index)) {
+              nodeLevel = lIndex + 1;
+            }
+          });
+        }
+
+        // Find if this idea is part of a cycle
+        const partOfCycle = cycles.find(cycle => cycle.includes(index));
+        const cycleInfo = partOfCycle 
+          ? `Part of cycle with: ${partOfCycle.filter(i => i !== index).map(i => ideas[i]?.title).join(', ')}`
+          : 'Not part of any cycle';
+
+        // Find connections
+        const influencesNodes: string[] = [];
+        const influencedByNodes: string[] = [];
+        
+        if (ssimMatrix) {
+          for (let j = 0; j < ssimMatrix.length; j++) {
+            if (ssimMatrix[index][j] && index !== j) {
+              influencesNodes.push(ideas[j]?.title || `Idea ${j + 1}`);
+            }
+            if (ssimMatrix[j][index] && index !== j) {
+              influencedByNodes.push(ideas[j]?.title || `Idea ${j + 1}`);
+            }
+          }
+        }
+
+        // Calculate space needed for this node
+        const estimatedHeight = 35 + (idea.description ? 10 : 0) + 
+          (influencesNodes.length > 0 ? 10 : 0) + 
+          (influencedByNodes.length > 0 ? 10 : 0);
+        
+        checkNewPage(estimatedHeight);
+
+        // Node title
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`${index + 1}. ${idea.title}`, margin, yPos);
+        yPos += 6;
+
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        
+        // Level
+        pdf.text(`Level: ${nodeLevel}`, margin + 5, yPos);
+        yPos += 4;
+
+        // Description if available
+        if (idea.description) {
+          const descLines = pdf.splitTextToSize(`Description: ${idea.description}`, pageWidth - margin * 2 - 10);
+          pdf.text(descLines, margin + 5, yPos);
+          yPos += descLines.length * 4;
+        }
+
+        // Cycle information
+        pdf.text(`Cycle Status: ${cycleInfo}`, margin + 5, yPos);
+        yPos += 4;
+
+        // Influences
+        if (influencesNodes.length > 0) {
+          const influencesText = `Influences: ${influencesNodes.join(', ')}`;
+          const influencesLines = pdf.splitTextToSize(influencesText, pageWidth - margin * 2 - 10);
+          pdf.text(influencesLines, margin + 5, yPos);
+          yPos += influencesLines.length * 4;
+        }
+
+        // Influenced by
+        if (influencedByNodes.length > 0) {
+          const influencedByText = `Influenced by: ${influencedByNodes.join(', ')}`;
+          const influencedByLines = pdf.splitTextToSize(influencedByText, pageWidth - margin * 2 - 10);
+          pdf.text(influencedByLines, margin + 5, yPos);
+          yPos += influencedByLines.length * 4;
+        }
+
+        yPos += 5;
+      });
+
+      // Save PDF
+      const fileName = `vaxo-report-project-${projectId}-${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+
+      toast({
+        title: "PDF Exported",
+        description: "The complete VAXO report has been downloaded.",
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: "Export Error",
+        description: "There was an error generating the PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (!hasVaxoData) {
