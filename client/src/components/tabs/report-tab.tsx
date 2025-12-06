@@ -454,20 +454,27 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         pdf.text('Detected Cycles', margin, yPos);
-        yPos += 8;
+        yPos += 10;
 
         pdf.setFontSize(10);
         cycles.forEach((cycle, index) => {
-          checkNewPage(15);
+          checkNewPage(20);
           pdf.setFont('helvetica', 'bold');
           pdf.text(`Cycle ${index + 1}:`, margin, yPos);
+          yPos += 5;
+          
           pdf.setFont('helvetica', 'normal');
-          const cycleIdeas = cycle.map(idx => ideas[idx]?.title || `Idea ${idx + 1}`).join(' ↔ ');
-          const textLines = pdf.splitTextToSize(cycleIdeas, pageWidth - margin * 2 - 25);
-          pdf.text(textLines, margin + 25, yPos);
-          yPos += (textLines.length * 5) + 3;
+          const cycleIdeas = cycle.map(idx => ideas[idx]?.title || `Idea ${idx + 1}`).join(', ');
+          const maxWidth = pageWidth - margin * 2;
+          const textLines = pdf.splitTextToSize(cycleIdeas, maxWidth);
+          textLines.forEach((line: string) => {
+            checkNewPage(6);
+            pdf.text(line, margin + 5, yPos);
+            yPos += 5;
+          });
+          yPos += 3;
         });
-        yPos += 10;
+        yPos += 7;
       }
 
       // Hierarchy Levels Section
