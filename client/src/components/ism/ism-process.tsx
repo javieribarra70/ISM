@@ -12,6 +12,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { applyTransitiveClosure, areSetsEqual } from "@/lib/matrix-utils";
 
 interface ISMProcessProps {
   isOpen: boolean;
@@ -112,21 +113,6 @@ function buildInitialReachabilityMatrix(
   return matrix;
 }
 
-// Función para aplicar inferencia transitiva a la matriz de alcance
-function applyTransitiveClosure(matrix: boolean[][]): boolean[][] {
-  const n = matrix.length;
-  let result = [...matrix.map((row) => [...row])];
-  
-  for (let k = 0; k < n; k++) {
-    for (let i = 0; i < n; i++) {
-      for (let j = 0; j < n; j++) {
-        result[i][j] = result[i][j] || (result[i][k] && result[k][j]);
-      }
-    }
-  }
-  
-  return result;
-}
 
 // Construir matriz de alcance inicial (para inferencia lógica)
 // Esta función no está duplicada y tiene un nombre único
@@ -230,7 +216,7 @@ function determineLevel(
     const reachSet = reachability.get(ideaIndex);
     const intSet = intersection.get(ideaIndex);
     
-    if (reachSet && intSet && reachSet.size === intSet.size && areSetEqual(reachSet, intSet)) {
+    if (reachSet && intSet && reachSet.size === intSet.size && areSetsEqual(reachSet, intSet)) {
       levelElements.push(ideaIndex);
     }
   });
@@ -238,13 +224,6 @@ function determineLevel(
   return levelElements;
 }
 
-// Función auxiliar para comparar conjuntos
-function areSetEqual(a: Set<number>, b: Set<number>): boolean {
-  if (a.size !== b.size) return false;
-  
-  // Usar Array.from para convertir el Set a un array y luego iterar
-  return Array.from(a).every(item => b.has(item));
-}
 
 export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectContext }: ISMProcessProps) {
   // Debug para seguimiento de renderizaciones

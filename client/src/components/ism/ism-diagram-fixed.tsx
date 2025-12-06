@@ -4,7 +4,7 @@ import dagre from 'cytoscape-dagre';
 import cytoscapeSvg from 'cytoscape-svg';
 import { jsPDF } from 'jspdf';
 import { Idea, Category } from '@shared/schema';
-import { computeTransitiveReduction } from './matrix-reduction';
+import { computeTransitiveReduction } from '@/lib/matrix-utils';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '../ui/button';
 import { Download, RefreshCw } from 'lucide-react';
