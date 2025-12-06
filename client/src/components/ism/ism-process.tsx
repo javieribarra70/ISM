@@ -12,7 +12,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { applyTransitiveClosure, areSetsEqual } from "@/lib/matrix-utils";
+import { applyTransitiveClosure, areSetsEqual, findStronglyConnectedComponents } from "@/lib/matrix-utils";
 
 interface ISMProcessProps {
   isOpen: boolean;
