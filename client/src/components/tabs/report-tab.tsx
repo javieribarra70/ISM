@@ -489,6 +489,68 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       }
       yPos += 10;
 
+      // SSIM Matrix Section
+      checkNewPage(50);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('SSIM Matrix (Structural Self-Interaction Matrix)', margin, yPos);
+      yPos += 8;
+
+      if (ssimMatrix && ideas.length > 0) {
+        const cellSize = Math.min(12, (pageWidth - margin * 2) / (ideas.length + 1));
+        const headerCellWidth = 40;
+        const tableWidth = headerCellWidth + (cellSize * ideas.length);
+        
+        // Check if matrix fits on current page
+        const tableHeight = cellSize * (ideas.length + 1);
+        if (yPos + tableHeight > pageHeight - margin) {
+          pdf.addPage();
+          yPos = margin;
+        }
+
+        pdf.setFontSize(6);
+        
+        // Header row with idea names (abbreviated)
+        pdf.setFont('helvetica', 'bold');
+        for (let j = 0; j < ideas.length; j++) {
+          const headerText = ideas[j].title.substring(0, 8) + (ideas[j].title.length > 8 ? '...' : '');
+          const xPos = margin + headerCellWidth + (j * cellSize);
+          pdf.text(headerText, xPos + 1, yPos + 3, { maxWidth: cellSize - 1 });
+        }
+        yPos += cellSize;
+
+        // Matrix rows
+        for (let i = 0; i < ssimMatrix.length; i++) {
+          // Row header (idea name)
+          pdf.setFont('helvetica', 'bold');
+          const rowHeader = ideas[i].title.substring(0, 15) + (ideas[i].title.length > 15 ? '...' : '');
+          pdf.text(rowHeader, margin, yPos + 3, { maxWidth: headerCellWidth - 2 });
+          
+          // Matrix cells
+          pdf.setFont('helvetica', 'normal');
+          for (let j = 0; j < ssimMatrix[i].length; j++) {
+            const xPos = margin + headerCellWidth + (j * cellSize);
+            const value = ssimMatrix[i][j] ? '1' : '0';
+            
+            // Draw cell background
+            if (ssimMatrix[i][j]) {
+              pdf.setFillColor(187, 247, 208); // Light green for 1
+            } else {
+              pdf.setFillColor(243, 244, 246); // Light gray for 0
+            }
+            pdf.rect(xPos, yPos - 3, cellSize, cellSize, 'F');
+            pdf.setDrawColor(200, 200, 200);
+            pdf.rect(xPos, yPos - 3, cellSize, cellSize, 'S');
+            
+            // Draw value
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(value, xPos + cellSize/2, yPos + 1, { align: 'center' });
+          }
+          yPos += cellSize;
+        }
+        yPos += 10;
+      }
+
       // Detailed Node Information Section
       checkNewPage(30);
       pdf.setFontSize(14);
