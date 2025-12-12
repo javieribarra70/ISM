@@ -310,6 +310,14 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   // Estado para controlar la inicialización del proceso
   const [isInitialized, setIsInitialized] = useState(false);
   
+  // Reset initialization state when modal closes so it can reinitialize on next open
+  useEffect(() => {
+    if (!isOpen) {
+      console.log("🔄 Modal cerrado - reseteando isInitialized para permitir reinicialización");
+      setIsInitialized(false);
+    }
+  }, [isOpen]);
+  
   // Fallback element para cuando el modal no se muestra correctamente
   useEffect(() => {
     const fallback = document.getElementById("ism-process-fallback");
