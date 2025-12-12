@@ -146,14 +146,20 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
 
   // Handle the start VAXO process button - Simplificado
   const handleStartProcess = () => {
-    console.log("=== INICIANDO PROCESO VAXO ===");
+    console.log("🟢🟢🟢 CLICK EN BOTON VAXO 🟢🟢🟢");
+    console.log("Estado actual ANTES de cambio: isISMDialogOpen=" + isISMDialogOpen);
     
     // Simplemente abrir el modal directamente
     setIsStarting(true);
     setPreventAutoClose(true);
     setIsISMDialogOpen(true);
     
-    console.log("📌 Modal VAXO abierto: isISMDialogOpen=true");
+    console.log("📌 setIsISMDialogOpen(true) llamado");
+    
+    // Log después del siguiente render
+    setTimeout(() => {
+      console.log("📌 Estado después de 100ms (debería ser true)");
+    }, 100);
     
     // Resetear estado de loading después de un breve momento
     setTimeout(() => {
