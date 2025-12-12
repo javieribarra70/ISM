@@ -1565,61 +1565,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     onClose();
   };
 
-  // Si no está abierto, no renderizamos nada
-  // Añadamos un useEffect específico para detectar cambios en isOpen
-  useEffect(() => {
-    if (isOpen) {
-      console.log("🔴 EFECTO DETECTÓ isOpen=true - ABRIENDO MODAL");
-      
-      // Hack de emergencia: forzar que el modal permanezca abierto
-      const timer = setTimeout(() => {
-        console.log("🔴 VERIFICACIÓN ADICIONAL DE MODAL ABIERTO");
-        // Si por alguna razón el estado se pierde, este código garantiza que se mantenga abierto
-        const tempOverlay = document.getElementById("temp-overlay");
-        if (tempOverlay) tempOverlay.remove();
-      }, 1500);
-      
-      return () => clearTimeout(timer);
-    } else {
-      console.log("🔴 EFECTO DETECTÓ isOpen=false - CERRANDO MODAL");
-    }
-  }, [isOpen]); // Este efecto se ejecuta solo cuando isOpen cambia
-  
-  // Debugging para determinar si se está renderizando el componente correctamente
-  console.log("ISMProcess render - isOpen:", isOpen);
-  
-  // ELIMINADO el return condicional - SIEMPRE se renderiza el modal, pero se oculta con CSS
-  console.log(isOpen ? "👁️👁️👁️ ISMProcess - ESTÁ abierto, renderizando modal!!!" : "ISMProcess - NO está abierto, pero sigue montado");
-  
-  // Intenta hacer scroll al modal cuando cambia de estado - pero solo una vez
-  useEffect(() => {
-    if (isOpen) {
-      // Evitar actualizaciones infinitas usando un flag de referencia
-      const timeoutId = setTimeout(() => {
-        console.log('🔍 Intentando hacer visible el modal VAXO con scroll...');
-        try {
-          const modalElement = document.getElementById("ism-modal-container");
-          if (modalElement) {
-            modalElement.scrollIntoView({ behavior: 'smooth' });
-            console.log('✅ Modal VAXO desplazado a la vista');
-            
-            // Añadir animación pero sin modificar la clase para evitar re-renderizados
-            modalElement.style.animation = 'pulse 1s';
-            setTimeout(() => {
-              modalElement.style.animation = '';
-            }, 1000);
-          } else {
-            console.log('❌ No se encontró el elemento modal para desplazar');
-          }
-        } catch (error) {
-          console.error('Error al intentar hacer scroll al modal:', error);
-        }
-      }, 300);
-      
-      // Limpiar timeout para evitar memory leaks
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isOpen]);
   
   // Use shadcn Dialog component for proper modal handling
   const getTitle = () => {
