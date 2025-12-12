@@ -128,8 +128,13 @@ export default function NewIdeaModal({
   };
   
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={isOpen} onOpenChange={() => {}}>
+      <DialogContent 
+        className="sm:max-w-[425px]"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        hideCloseButton
+      >
         <DialogHeader>
           <DialogTitle>Add New Idea</DialogTitle>
           <DialogDescription>
