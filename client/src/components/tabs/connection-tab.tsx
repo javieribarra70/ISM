@@ -139,64 +139,23 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   // Estado para controlar qué modal mostrar
   const [showRelationshipsDialog, setShowRelationshipsDialog] = useState(false);
 
-  // Handle the start VAXO process button - Completamente refactorizado
+  // Handle the start VAXO process button - Simplificado
   const handleStartProcess = () => {
-    console.log("=== INICIANDO PROCESO VAXO === (Versión directa a preguntas)");
+    console.log("=== INICIANDO PROCESO VAXO ===");
     
-    // 1. Iniciar el estado de loading para feedback visual inmediato
+    // Simplemente abrir el modal directamente
     setIsStarting(true);
-    
-    // 2. Mostrar overlay de carga inmediatamente
-    // Eliminar overlay existente si hay alguno
-    const existingOverlay = document.getElementById("temp-overlay");
-    if (existingOverlay) {
-      existingOverlay.remove();
-    }
-    
-    // Crear nuevo overlay
-    const overlayElement = document.createElement("div");
-    overlayElement.id = "temp-overlay";
-    overlayElement.style.position = "fixed";
-    overlayElement.style.top = "0";
-    overlayElement.style.left = "0";
-    overlayElement.style.width = "100%";
-    overlayElement.style.height = "100%";
-    overlayElement.style.backgroundColor = "rgba(0,0,0,0.5)";
-    overlayElement.style.display = "flex";
-    overlayElement.style.alignItems = "center";
-    overlayElement.style.justifyContent = "center";
-    overlayElement.style.zIndex = "9998";
-    overlayElement.innerHTML = "<div style='background: white; padding: 20px; border-radius: 8px;'>Abriendo proceso VAXO...</div>";
-    document.body.appendChild(overlayElement);
-    
-    // 3. Generar una clave única para forzar el remontaje del componente
-    const uniqueKey = `ism-process-${Date.now()}`;
-    setIsmInstanceKey(uniqueKey);
-    console.log("🆕 Nueva instancia VAXO con clave:", uniqueKey);
-    
-    // Simplificamos la lógica para evitar cerrar y reabrir el modal
-    // que puede causar problemas con el estado constante isSaving
-    console.log("🔓 Abriendo modal VAXO directamente...");
-    console.log("📌 Estado actual antes de abrir: isISMDialogOpen=", isISMDialogOpen, "isStarting=", isStarting);
-    setPreventAutoClose(true); // Activar prevención de cierre automático
+    setPreventAutoClose(true);
     setIsISMDialogOpen(true);
-    console.log("📌 Modal VAXO debería estar abierto ahora (setIsISMDialogOpen=true)");
     
-    // Quitar overlay y resetear estado de loading después de un tiempo
+    console.log("📌 Modal VAXO abierto: isISMDialogOpen=true");
+    
+    // Resetear estado de loading después de un breve momento
     setTimeout(() => {
-      const tempOverlay = document.getElementById("temp-overlay");
-      if (tempOverlay) tempOverlay.remove();
       setIsStarting(false);
-      
-      // Hacer scroll al modal para asegurar visibilidad
-      const modal = document.getElementById("ism-modal-container");
-      if (modal) {
-        modal.scrollIntoView({ behavior: "smooth" });
-        console.log("✅ Modal VAXO ahora visible");
-      }
-    }, 1000);
+    }, 500);
 
-    // Verificar si hay relaciones existentes con las ideas seleccionadas
+    // Verificar si hay relaciones existentes
     const selectedIds = selectedIdeas.map((idea) => idea.id);
     const relationsForSelectedIdeas = existingRelationships.filter((rel) => {
       const fromId = rel.fromIdeaId || rel.from;
@@ -204,27 +163,13 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
       return selectedIds.includes(fromId) && selectedIds.includes(toId);
     });
 
-    const hasRelations = relationsForSelectedIdeas.length > 0;
-    console.log(
-      `Total relaciones específicas: ${relationsForSelectedIdeas.length}`,
-    );
-
-    // Solo mostramos un diálogo de confirmación si hay relaciones existentes
-    // pero no bloqueamos el proceso - esto permite iniciar ISM siempre
-    if (hasRelations) {
+    if (relationsForSelectedIdeas.length > 0) {
       toast({
         title: "Relaciones VAXO existentes",
         description: `Continuando proceso con ${relationsForSelectedIdeas.length} relaciones existentes.`,
         duration: 3000,
       });
-      // Nota: ELIMINAMOS la apertura del diálogo para evitar bloquear el proceso
-      // setShowRelationshipsDialog(true); // COMENTADO para corregir bloqueo
     }
-
-    // Ya no usamos esta apertura directa porque ahora lo hacemos con retraso
-    console.log(
-      ">>>>> APERTURA DE MODAL SE REALIZA CON TIMEOUT PARA EVITAR PROBLEMAS",
-    );
   };
 
   // Handle the start alternative process button
@@ -244,38 +189,12 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     }, 500);
   };
 
-  // Handle ISM dialog close - modificado para no cerrar durante resultados
+  // Handle ISM dialog close
   const handleISMDialogClose = () => {
-    console.log("ISM Dialog close requested - evaluating if should close");
-    
-    // BLOQUEAR cierre si está en modo de prevención automática
-    if (preventAutoClose) {
-      console.log("🚫 CIERRE BLOQUEADO - Modal en modo de prevención de cierre automático");
-      toast({
-        title: "Proceso en curso",
-        description: "El proceso VAXO está en curso. Usa los botones internos para navegar.",
-        variant: "default",
-        duration: 3000
-      });
-      return;
-    }
-    
-    // IMPORTANTE: Solo cerrar si el usuario realmente quiere cerrar
-    // No cerrar automáticamente cuando se completan las preguntas
-    const shouldActuallyClose = window.confirm(
-      "¿Estás seguro de que quieres cerrar el proceso VAXO? Si has completado las preguntas, puedes ver los resultados."
-    );
-    
-    if (shouldActuallyClose) {
-      console.log("Usuario confirmó cierre - cerrando dialog");
-      setPreventAutoClose(false); // Resetear prevención
-      setTimeout(() => {
-        setIsISMDialogOpen(false);
-        console.log("Dialog closed after user confirmation");
-      }, 100);
-    } else {
-      console.log("Usuario canceló cierre - manteniendo dialog abierto");
-    }
+    console.log("ISM Dialog close requested");
+    setPreventAutoClose(false);
+    setIsISMDialogOpen(false);
+    console.log("Dialog closed");
   };
 
   // Prepare project context information for ISM process
