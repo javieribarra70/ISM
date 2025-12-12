@@ -40,6 +40,8 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     console.log(`🔴 ConnectionTab: isISMDialogOpen changed to: ${isISMDialogOpen}`);
   }, [isISMDialogOpen]);
 
+  // DEBUG: Log isAdmin status - movido después de que selectedIdeas esté definido
+
   // Fetch project users to determine user role
   const { data: projectUsers = [], isLoading: isProjectUsersLoading } =
     useQuery<ProjectUser[]>({
@@ -97,6 +99,11 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   const selectedIdeas = ideas.filter((idea) =>
     selectedIdeaIds.includes(idea.id),
   );
+
+  // DEBUG: Log isAdmin status
+  useEffect(() => {
+    console.log(`🔵 ConnectionTab: isAdmin=${isAdmin}, user.role=${user?.role}, projectUsers.length=${projectUsers.length}, selectedIdeas.length=${selectedIdeas.length}`);
+  }, [isAdmin, user, projectUsers, selectedIdeas.length]);
 
   // Fetch existing relationship data
   const {
