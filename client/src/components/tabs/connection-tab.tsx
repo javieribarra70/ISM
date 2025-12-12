@@ -31,7 +31,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   const [isStarting, setIsStarting] = useState(false);
   const [isISMDialogOpen, setIsISMDialogOpen] = useState(false);
   const [preventAutoClose, setPreventAutoClose] = useState(false);
-  const [ismInstanceKey, setIsmInstanceKey] = useState<string>("");
+  const [ismInstanceKey, setIsmInstanceKey] = useState<string>("ism-process-initial");
   const [isStartingAlternative, setIsStartingAlternative] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -519,7 +519,7 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
 
       {/* ISM Process siempre presente pero controlado por isOpen */}
       <ISMProcess
-        key={ismInstanceKey || `ism-process-${Date.now()}`}
+        key={ismInstanceKey}
         isOpen={isISMDialogOpen}
         onClose={handleISMDialogClose}
         selectedIdeas={selectedIdeas}
