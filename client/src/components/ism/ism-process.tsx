@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info, ArrowRight, ArrowLeft, ArrowLeftRight, Circle, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import ISMDiagram from "./ism-diagram-fixed";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -1998,54 +1999,47 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     }
   }, [isOpen]);
   
-  // Modal personalizado con z-index muy alto - utilizando CSS para controlar visibilidad
+  // Use shadcn Dialog component for proper modal handling
+  const getTitle = () => {
+    switch(stage) {
+      case "intro": return "VAXO Relationship Analysis";
+      case "questions": return "VAXO Relationship Identification";
+      case "ssim": return "SSIM Matrix";
+      case "reachability": return "Reachability Matrix";
+      case "levels": return "Level Partitioning";
+      case "diagram": return "Final ISM Diagram Model";
+      default: return "VAXO Process";
+    }
+  };
+  
+  const getDescription = () => {
+    switch(stage) {
+      case "intro": return "Analyzing relationships between selected ideas.";
+      case "questions": return "Determine the type of relationship between each pair of ideas.";
+      case "ssim": return "View the structural self-interaction matrix.";
+      case "reachability": return "Analyze the initial reachability matrix.";
+      case "levels": return "Explore the identified level hierarchy.";
+      case "diagram": return "";
+      default: return "";
+    }
+  };
+  
   return (
-    <>
-      <div
-        className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 ${
-          (!isOpen && !forceOpen) ? 'hidden' : ''
-        }`}
-        id="ism-modal-container"
-      >
-        <div className="bg-white rounded-lg shadow-lg max-w-4xl max-h-[95vh] h-[95vh] overflow-y-auto w-full"
-             id="ism-modal-content">
-          <div className="p-6">
-            {/* Header personalizado con botón de cerrar */}
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex flex-col space-y-1.5">
-                <h2 className="font-semibold leading-none tracking-tight text-lg">
-                  {stage === "intro" && "VAXO Relationship Analysis"}
-                  {stage === "questions" && "VAXO Relationship Identification"}
-                  {stage === "ssim" && "SSIM Matrix"}
-                  {stage === "reachability" && "Reachability Matrix"}
-                  {stage === "levels" && "Level Partitioning"}
-                  {stage === "diagram" && "Final ISM Diagram Model"}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {stage === "intro" && "Analyzing relationships between selected ideas."}
-                  {stage === "questions" && "Determine the type of relationship between each pair of ideas."}
-                  {stage === "ssim" && "View the structural self-interaction matrix."}
-                  {stage === "reachability" && "Analyze the initial reachability matrix."}
-                  {stage === "levels" && "Explore the identified level hierarchy."}
-                  {stage === "diagram" && ""}
-                </p>
-              </div>
-              <Button variant="ghost" size="icon" onClick={handleCloseAttempt} className="h-8 w-8 rounded-full" title="Close">
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div className="my-4">
-              {renderCurrentStage()}
-            </div>
-            
-            <div className="flex justify-end space-x-2 mt-6">
-              {/* Se ha eliminado el indicador de "procesando" que ya no es necesario */}
-              {renderNavigationButtons()}
-            </div>
-          </div>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{getTitle()}</DialogTitle>
+          <DialogDescription>{getDescription()}</DialogDescription>
+        </DialogHeader>
+        
+        <div className="my-4">
+          {renderCurrentStage()}
         </div>
-      </div>
-    </>
+        
+        <div className="flex justify-end space-x-2 mt-6">
+          {renderNavigationButtons()}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
