@@ -227,484 +227,106 @@ function determineLevel(
 
 
 export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectContext }: ISMProcessProps) {
-  // Debug para seguimiento de renderizaciones
-  console.log(`ISMProcess render - isOpen:`, isOpen);
-  if (!isOpen) {
-    console.log("ISMProcess - NO está abierto, pero sigue montado");
-  } else {
-    console.log("👁️👁️👁️ ISMProcess - ABIERTO Y VISIBLE - debe estar renderizado en pantalla");
-  }
-  // Get current user from auth context
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  // State to store the current stage of the ISM process
   const [stage, setStage] = useState<
     "intro" | "questions" | "ssim" | "reachability" | "levels" | "diagram"
-  >("questions"); // Iniciamos directamente en las preguntas VAXO
+  >("questions");
 
-  // State for the VAXO questions to be asked
   const [questions, setQuestions] = useState<ISMQuestion[]>([]);
-  // Index of the current question
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  // Resulting SSIM matrix
   const [ssimMatrix, setSSIMMatrix] = useState<SSIMCell[]>([]);
-  // Reachability matrix
   const [reachabilityMatrix, setReachabilityMatrix] = useState<boolean[][]>([]);
-  // Final reachability matrix (with transitivity)
   const [finalReachabilityMatrix, setFinalReachabilityMatrix] = useState<boolean[][]>([]);
-  // Element levels
   const [levels, setLevels] = useState<number[][]>([]);
-  // Control de guardado: false para resultados, true para preguntas
   const [isSaving, setIsSaving] = useState(true);
   const [forceOpen, setForceOpen] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Get existing relationships - SIEMPRE habilitado para tener datos en cache
+  const { data: existingRelationships, isLoading: isLoadingRelationships } = useQuery({
+    queryKey: [`/api/projects/${selectedIdeas[0]?.projectId}/relationships`],
+    enabled: selectedIdeas.length > 0 && selectedIdeas[0]?.projectId !== undefined
+  });
+
+  // ÚNICO EFECTO DE INICIALIZACIÓN - Se ejecuta cuando el modal se abre
+  useEffect(() => {
+    if (!isOpen) {
+      // Cuando se cierra, resetear para la próxima apertura
+      setIsInitialized(false);
+      return;
+    }
+    
+    // Si ya está inicializado o está cargando relaciones, no hacer nada
+    if (isInitialized || isLoadingRelationships) {
+      return;
+    }
+    
+    // Inicializar el proceso
+    if (selectedIdeas.length === 0) return;
+    
+    const newQuestions: ISMQuestion[] = [];
+    
+    for (let i = 0; i < selectedIdeas.length - 1; i++) {
+      for (let j = i + 1; j < selectedIdeas.length; j++) {
+        newQuestions.push({
+          ideaI: selectedIdeas[i],
+          ideaJ: selectedIdeas[j],
+          response: null,
+        });
+      }
+    }
+    
+    // Pre-llenar con relaciones existentes
+    if (existingRelationships && Array.isArray(existingRelationships)) {
+      existingRelationships.forEach(rel => {
+        if (rel.fromIdeaId && rel.toIdeaId && rel.relationType && ["V", "A", "X", "O"].includes(rel.relationType)) {
+          const questionIndex = newQuestions.findIndex(
+            q => (q.ideaI.id === rel.fromIdeaId && q.ideaJ.id === rel.toIdeaId) ||
+                 (q.ideaI.id === rel.toIdeaId && q.ideaJ.id === rel.fromIdeaId)
+          );
+          
+          if (questionIndex !== -1) {
+            let response = rel.relationType as RelationType;
+            if (newQuestions[questionIndex].ideaI.id === rel.toIdeaId && newQuestions[questionIndex].ideaJ.id === rel.fromIdeaId) {
+              if (response === RelationType.V) response = RelationType.A;
+              else if (response === RelationType.A) response = RelationType.V;
+            }
+            newQuestions[questionIndex].response = response;
+          }
+        }
+      });
+    }
+    
+    const firstUnansweredIndex = newQuestions.findIndex(q => q.response === null);
+    const answeredCount = newQuestions.filter(q => q.response !== null).length;
+    
+    setQuestions(newQuestions);
+    setCurrentQuestionIndex(firstUnansweredIndex !== -1 ? firstUnansweredIndex : 0);
+    setIsInitialized(true);
+    
+    if (answeredCount > 0 && firstUnansweredIndex !== -1) {
+      toast({
+        title: "Continuando proceso",
+        description: `Se encontraron ${answeredCount} relaciones guardadas. Continuando desde donde se quedó.`,
+        variant: "default",
+        duration: 3000
+      });
+    }
+  }, [isOpen, isLoadingRelationships, existingRelationships, selectedIdeas, isInitialized, toast]);
   
   // Actualizar isSaving basado en la etapa
   useEffect(() => {
     if (stage === "ssim" || stage === "reachability" || stage === "levels" || stage === "diagram") {
-      setIsSaving(false); // Permitir navegación en resultados
-      setForceOpen(true); // Forzar que el modal permanezca abierto
-      console.log("🔒 FORZANDO MODAL A PERMANECER ABIERTO - Mostrando resultados");
+      setIsSaving(false);
+      setForceOpen(true);
     } else {
-      setIsSaving(true); // Bloquear cierre durante preguntas
+      setIsSaving(true);
       setForceOpen(false);
     }
   }, [stage]);
-  
-  // Get existing relationships to check if we need to load previous VAXO responses
-  const { data: existingRelationships, isLoading: isLoadingRelationships, error: relationshipsError } = useQuery({
-    queryKey: [`/api/projects/${selectedIdeas[0]?.projectId}/relationships`],
-    enabled: isOpen && selectedIdeas.length > 0 && selectedIdeas[0]?.projectId !== undefined
-  });
-
-  // Debug en consola para ver qué relaciones se están cargando
-  useEffect(() => {
-    if (existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
-      // Mostrar toda la información de las relaciones para depuración
-      console.log("Relaciones VAXO cargadas (datos completos):", existingRelationships);
-      
-      // Mostrar las relaciones en un formato más legible
-      console.log("Relaciones VAXO cargadas (formato resumen):", existingRelationships.map(r => ({
-        id: r.id,
-        from: r.fromIdeaId,
-        to: r.toIdeaId,
-        type: r.relationType
-      })));
-    } else {
-      console.log("No se encontraron relaciones existentes o el array está vacío");
-    }
-  }, [existingRelationships]);
-  
-  // Display error if there is a problem loading relationships
-  useEffect(() => {
-    if (relationshipsError) {
-      toast({
-        title: "Error loading relationships",
-        description: "Could not load existing VAXO relationships. Starting a new process.",
-        variant: "destructive"
-      });
-      console.error("Error loading relationships:", relationshipsError);
-    }
-  }, [relationshipsError, toast]);
-
-  // Estado para controlar la inicialización del proceso
-  const [isInitialized, setIsInitialized] = useState(false);
-  
-  // Reset initialization state when modal closes so it can reinitialize on next open
-  useEffect(() => {
-    if (!isOpen) {
-      console.log("🔄 Modal cerrado - reseteando isInitialized para permitir reinicialización");
-      setIsInitialized(false);
-    }
-  }, [isOpen]);
-  
-  // Fallback element para cuando el modal no se muestra correctamente
-  useEffect(() => {
-    const fallback = document.getElementById("ism-process-fallback");
-    if (!fallback) return;
-    fallback.style.display = isOpen ? "none" : "block";
-  }, [isOpen]);
-  
-  // Mejora de visibilidad: Cuando el modal se abre, asegura que sea visible en pantalla
-  // y genera preguntas VAXO considerando relaciones existentes
-  useEffect(() => {
-    // Esperar a que las relaciones terminen de cargar (no undefined ni loading)
-    if (isOpen && !isLoadingRelationships && existingRelationships !== undefined) {
-      // Esperar a que las relaciones se hayan cargado antes de generar preguntas
-      if (selectedIdeas.length > 0 && !isInitialized) {
-        console.log("🟢 MODAL ABIERTO Y RELACIONES CARGADAS - GENERANDO PREGUNTAS");
-        
-        // Generar preguntas VAXO
-        const newQuestions: ISMQuestion[] = [];
-        
-        // Generate questions for each pair (i,j) where i < j para evitar duplicados
-        for (let i = 0; i < selectedIdeas.length - 1; i++) {
-          for (let j = i + 1; j < selectedIdeas.length; j++) {
-            newQuestions.push({
-              ideaI: selectedIdeas[i],
-              ideaJ: selectedIdeas[j],
-              response: null,
-            });
-          }
-        }
-        
-        // Pre-fill responses from existing relationships
-        if (existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
-          console.log(`📥 Pre-llenando ${existingRelationships.length} relaciones existentes`);
-          
-          existingRelationships.forEach(rel => {
-            if (rel.fromIdeaId && rel.toIdeaId && rel.relationType && ["V", "A", "X", "O"].includes(rel.relationType)) {
-              const questionIndex = newQuestions.findIndex(
-                q => (q.ideaI.id === rel.fromIdeaId && q.ideaJ.id === rel.toIdeaId) ||
-                     (q.ideaI.id === rel.toIdeaId && q.ideaJ.id === rel.fromIdeaId)
-              );
-              
-              if (questionIndex !== -1) {
-                let response = rel.relationType as RelationType;
-                // Adjust relation direction if needed
-                if (newQuestions[questionIndex].ideaI.id === rel.toIdeaId && newQuestions[questionIndex].ideaJ.id === rel.fromIdeaId) {
-                  if (response === RelationType.V) response = RelationType.A;
-                  else if (response === RelationType.A) response = RelationType.V;
-                }
-                newQuestions[questionIndex].response = response;
-              }
-            }
-          });
-        }
-        
-        if (newQuestions.length > 0) {
-          // Find first unanswered question
-          const firstUnansweredIndex = newQuestions.findIndex(q => q.response === null);
-          const answeredCount = newQuestions.filter(q => q.response !== null).length;
-          
-          console.log(`⭐ Generadas ${newQuestions.length} preguntas, ${answeredCount} ya respondidas`);
-          setQuestions(newQuestions);
-          setCurrentQuestionIndex(firstUnansweredIndex !== -1 ? firstUnansweredIndex : 0);
-          setIsInitialized(true);
-          
-          if (answeredCount > 0 && firstUnansweredIndex !== -1) {
-            toast({
-              title: "Continuando proceso",
-              description: `Se encontraron ${answeredCount} relaciones guardadas. Continuando desde donde se quedó.`,
-              variant: "default",
-              duration: 3000
-            });
-          }
-        }
-      }
-      
-      // Intentar hacer scroll al modal principal
-      const modalElement = document.querySelector(".fixed.inset-0.z-\\[9999\\]");
-      if (modalElement) {
-        modalElement.scrollIntoView({ behavior: "smooth" });
-        console.log("👁 Modal ahora debe estar visible visualmente - forzando scroll");
-      }
-      
-      // También podemos forzar el foco para asegurar accesibilidad
-      setTimeout(() => {
-        const firstFocusableElement = 
-          document.querySelector(".fixed.inset-0.z-\\[9999\\] button") as HTMLElement;
-        if (firstFocusableElement) {
-          firstFocusableElement.focus();
-          console.log("💡 Foco establecido en el primer elemento interactivo del modal");
-        }
-      }, 100);
-    }
-  }, [isOpen, isLoadingRelationships, existingRelationships, isInitialized]);
-  
-  // CORRECCIÓN DE BUG: Nueva lógica para el manejo del estado de inicialización
-  // El problema principal era que el estado se reiniciaba demasiado rápido y
-  // causaba un bucle infinito de actualizaciones
-  // SOLUCIÓN AL BUG: Replanteamiento completo del efecto que controla el ciclo de vida del modal
-  useEffect(() => {
-    console.log(`🔍 Estado del modal: isOpen=${isOpen}, isSaving=${isSaving}, isInitialized=${isInitialized}`);
-    
-    // Para evitar el bucle de actualizaciones, usamos un identificador de timeout
-    let timeoutId: NodeJS.Timeout | null = null;
-    
-    if (isOpen) {
-      // 1. MODAL ABIERTO: Nos aseguramos que isSaving esté activo para prevenir cierre automático
-      console.log("🟢 MODAL ABIERTO - Previniendo cierre automático");
-      
-      // Solo forzamos la etapa "questions" al inicio cuando esté en "intro"
-      // pero NO cuando ya ha avanzado a otra etapa como "ssim"
-      if (stage === "intro") {
-        console.log("⚠️ Cambiando de 'intro' a 'questions' al iniciar:", stage);
-        setStage("questions");
-      }
-      
-      // Las preguntas se generan en el useEffect anterior que también carga las relaciones existentes
-      // Este bloque solo se activa como fallback si hay un problema con la carga
-      if (questions.length === 0 && selectedIdeas.length > 0 && !isLoadingRelationships) {
-        console.log("🔴 FALLBACK: Generando preguntas porque el efecto principal no las creó");
-      }
-      
-      // Solo mostrar mensaje de espera - NO setear isInitialized aquí
-      // El efecto de inicialización principal lo hace después de cargar relaciones
-      if (!isInitialized && isLoadingRelationships) {
-        console.log("⏳ Modal abierto, esperando a que se carguen las relaciones...");
-      }
-      
-      // Resaltamos a nivel visual la apertura del modal con un elemento DOM
-      const container = document.getElementById("ism-modal-container");
-      if (container) {
-        container.classList.add("highlight-animation");
-        setTimeout(() => {
-          container.classList.remove("highlight-animation");
-        }, 2000);
-      }
-      
-      // Intenta hacer scroll al modal para asegurarse que sea visible
-      timeoutId = setTimeout(() => {
-        const modalElement = document.querySelector(".fixed.inset-0.z-\\[9999\\]");
-        if (modalElement) {
-          modalElement.scrollIntoView({ behavior: "smooth" });
-          console.log("🔍 Intentando hacer visible el modal VAXO con scroll...");
-          
-          // También podemos intentar forzar el scroll al elemento interno
-          const modalContent = document.getElementById("ism-modal-container");
-          if (modalContent) {
-            modalContent.scrollIntoView({ behavior: "smooth" });
-            console.log("✅ Modal VAXO desplazado a la vista");
-          }
-        }
-      }, 300);
-    } 
-    else if (!isOpen && isInitialized) {
-      // 2. MODAL CERRADO: No reseteamos el estado inmediatamente para evitar problemas de sincronización
-      console.log("🟠 MODAL CERRADO - Pero manteniendo estado temporalmente");
-      
-      // IMPORTANTE: Ahora que isSaving es una constante, no debemos intentar reinicializar el componente
-      // ya que esto podría causar problemas. Simplemente reportamos el estado.
-      console.log("Estado del modal al cerrarse:", { isOpen, isInitialized, isSaving });
-    }
-    
-    // Limpieza del timeout cuando el componente se desmonta o las dependencias cambian
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        console.log("⚠️ Limpiando timeout de cierre automático");
-      }
-    };
-  }, [isOpen, isInitialized, isSaving, questions.length, selectedIdeas, stage, setStage, isLoadingRelationships]);
-  
-  // Load existing relationships from the database if available - solo en la inicialización
-  useEffect(() => {
-    // Si no está abierto, no hacer nada
-    if (!isOpen) return;
-    
-    // Crear una bandera para evitar actualizaciones de estado después de desmontaje
-    let isMounted = true;
-    
-    // Ahora simplificamos la lógica y evitamos reiniciar el proceso si ya está inicializado
-    // Este enfoque evita ciclos innecesarios de setIsInitialized
-    if (isInitialized) {
-      console.log("⚠️ Proceso VAXO ya inicializado, continuando operación normal.");
-      return () => {
-        isMounted = false;
-      };
-    }
-    
-    // Ya no necesitamos activar isSaving porque ahora es una constante true
-    // if (isMounted && !isSaving) {
-    //   setIsSaving(true);
-    //   console.log("PROTECCIÓN ACTIVADA: isSaving=true durante inicialización");
-    // }
-    
-    // Marcamos como inicializado para evitar reiniciar el proceso
-    setIsInitialized(true);
-    
-    // Función para inicializar el proceso ISM
-    const initializeISMProcess = () => {
-      if (selectedIdeas.length === 0) {
-        console.error("ERROR CRÍTICO: No hay ideas seleccionadas para el proceso ISM");
-        toast({
-          title: "Error de inicialización",
-          description: "No hay ideas seleccionadas para realizar el análisis ISM.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      console.log("Inicializando proceso ISM con ideas seleccionadas...");
-      console.log(`SelectedIdeas (${selectedIdeas.length}):`, selectedIdeas.map(idea => idea.title));
-      
-      try {
-        // Paso 1: Generamos todas las preguntas posibles VAXO
-        const newQuestions: ISMQuestion[] = [];
-        
-        // Generate questions for each pair (i,j) where i < j para evitar duplicados
-        for (let i = 0; i < selectedIdeas.length - 1; i++) {
-          for (let j = i + 1; j < selectedIdeas.length; j++) {
-            newQuestions.push({
-              ideaI: selectedIdeas[i],
-              ideaJ: selectedIdeas[j],
-              response: null,  // Inicialmente todas sin responder
-            });
-          }
-        }
-        
-        console.log(`Generadas ${newQuestions.length} preguntas VAXO para ${selectedIdeas.length} ideas`);
-        
-        // Variables para controlar el estado del proceso
-        let hasExistingRelationships = false;
-        let processStarted = false;
-        
-        // Procesar relaciones existentes si están disponibles
-        if (existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
-          console.log(`Procesando ${existingRelationships.length} relaciones existentes`);
-          
-          // Normalizar las relaciones para manejar diferentes estructuras de datos
-          const validRelationships = existingRelationships.map(rel => ({
-            id: rel.id,
-            fromIdeaId: rel.fromIdeaId || rel.from,
-            toIdeaId: rel.toIdeaId || rel.to,
-            relationType: rel.relationType
-          })).filter(rel => 
-            rel.fromIdeaId && 
-            rel.toIdeaId && 
-            rel.relationType && 
-            ["V", "A", "X", "O"].includes(rel.relationType)
-          );
-          
-          if (validRelationships.length > 0) {
-            // Procesar relaciones válidas
-            const existingSSIM: SSIMCell[] = [];
-            let answeredCount = 0;
-            
-            // Aplicar relaciones existentes a las preguntas
-            validRelationships.forEach(rel => {
-              const fromIdea = selectedIdeas.find(idea => idea.id === rel.fromIdeaId);
-              const toIdea = selectedIdeas.find(idea => idea.id === rel.toIdeaId);
-              
-              if (fromIdea && toIdea) {
-                // Añadir a la matriz SSIM
-                existingSSIM.push({
-                  ideaI: fromIdea.id,
-                  ideaJ: toIdea.id,
-                  relation: rel.relationType as RelationType
-                });
-                
-                // Encontrar y actualizar la pregunta correspondiente
-                const questionIndex = newQuestions.findIndex(
-                  q => (q.ideaI.id === fromIdea.id && q.ideaJ.id === toIdea.id) || 
-                      (q.ideaI.id === toIdea.id && q.ideaJ.id === fromIdea.id)
-                );
-                
-                if (questionIndex !== -1) {
-                  // Ajustar la relación según la dirección
-                  let response = rel.relationType as RelationType;
-                  if (newQuestions[questionIndex].ideaI.id === toIdea.id && newQuestions[questionIndex].ideaJ.id === fromIdea.id) {
-                    if (response === RelationType.V) response = RelationType.A;
-                    else if (response === RelationType.A) response = RelationType.V;
-                  }
-                  
-                  newQuestions[questionIndex].response = response;
-                  answeredCount++;
-                  processStarted = true;
-                }
-              }
-            });
-            
-            // Actualizar la matriz SSIM
-            setSSIMMatrix(existingSSIM);
-            
-            // Determinar la próxima acción basada en las respuestas
-            if (answeredCount > 0) {
-              if (answeredCount === newQuestions.length) {
-                // Todas las preguntas respondidas, avanzar a SSIM
-                setQuestions(newQuestions);
-                
-                // Calcular matrices
-                const initialMatrix = buildInitialReachabilityMatrix(selectedIdeas, existingSSIM);
-                setReachabilityMatrix(initialMatrix);
-                
-                const transitiveMatrix = applyTransitiveClosure(initialMatrix);
-                setFinalReachabilityMatrix(transitiveMatrix);
-                
-                setStage("ssim");
-                toast({
-                  title: "Proceso completado",
-                  description: "Todas las relaciones VAXO ya están definidas.",
-                  variant: "default",
-                  duration: 3000
-                });
-              } else {
-                // Hay preguntas pendientes, continuar desde la primera sin responder
-                const nextUnansweredIndex = newQuestions.findIndex(q => q.response === null);
-                
-                if (nextUnansweredIndex !== -1) {
-                  // CRÍTICO: Primero establecemos todas las variables de estado
-                  setQuestions(newQuestions);
-                  setCurrentQuestionIndex(nextUnansweredIndex);
-                  
-                  // Ya no necesitamos activar isSaving porque ahora es una constante true
-                  // setIsSaving(true);
-                  
-                  // Notificación con aumento de duración
-                  toast({
-                    title: "Continuando proceso",
-                    description: `Se encontraron ${answeredCount} relaciones. Continuando desde donde se quedó.`,
-                    variant: "default",
-                    duration: 5000
-                  });
-                  
-                  // IMPORTANTE: Usamos un retraso para el cambio de etapa
-                  // Esto da tiempo a que los otros estados se establezcan primero
-                  console.log("Preparando cambio a etapa de preguntas con retraso...");
-                  setTimeout(() => {
-                    console.log("Cambiando a etapa de preguntas para continuar con relaciones pendientes");
-                    setStage("questions");
-                  }, 1000); // Retraso considerable para garantizar estabilidad
-                }
-              }
-            }
-          }
-        }
-        
-        // Si no se ha iniciado el proceso, comenzar desde cero
-        if (!processStarted) {
-          setQuestions(newQuestions);
-          setCurrentQuestionIndex(0);
-          setReachabilityMatrix([]);
-          setFinalReachabilityMatrix([]);
-          setLevels([]);
-          setStage("intro");
-        }
-        
-        // Verificar estado final
-        const hasUnansweredQuestions = newQuestions.some(q => q.response === null);
-        
-        // Ya no necesitamos modificar isSaving porque ahora es una constante true
-        if (hasUnansweredQuestions) {
-          console.log("MANTENIENDO isSaving=true porque hay preguntas sin responder");
-          // setIsSaving(true); - Ya no es necesario
-        } else {
-          console.log("No hay preguntas pendientes, pero mantenemos isSaving constante");
-          // setIsSaving(false); - Ya no es necesario
-        }
-      } catch (error) {
-        // Manejo de errores durante la inicialización
-        console.error("ERROR durante la inicialización del proceso ISM:", error);
-        toast({
-          title: "Error de inicialización",
-          description: "Ocurrió un error al preparar el proceso ISM. Inténtelo nuevamente.",
-          variant: "destructive",
-          duration: 5000
-        });
-        
-        // En caso de error, establecer un estado básico
-        setQuestions([]);
-        setStage("intro");
-        // setIsSaving(false); - Ya no es necesario porque ahora isSaving es una constante
-      }
-    };
-    
-    // Ejecutar el proceso de inicialización
-    initializeISMProcess();
-    
-  }, [isOpen, selectedIdeas, existingRelationships, toast, isInitialized]);
 
   // Function to process individual VAXO relationship (in memory only)
   const saveIndividualRelationship = async (ideaI: number, ideaJ: number, relation: RelationType) => {
