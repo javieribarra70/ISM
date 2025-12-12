@@ -35,6 +35,11 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   const [isStartingAlternative, setIsStartingAlternative] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // DEBUG: Log every time isISMDialogOpen changes
+  useEffect(() => {
+    console.log(`🔴 ConnectionTab: isISMDialogOpen changed to: ${isISMDialogOpen}`);
+  }, [isISMDialogOpen]);
+
   // Fetch project users to determine user role
   const { data: projectUsers = [], isLoading: isProjectUsersLoading } =
     useQuery<ProjectUser[]>({

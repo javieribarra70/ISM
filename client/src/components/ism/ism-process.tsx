@@ -227,6 +227,9 @@ function determineLevel(
 
 
 export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectContext }: ISMProcessProps) {
+  // LOG DE DEPURACIÓN AL INICIO DEL COMPONENTE
+  console.log(`🎯 ISMProcess RENDER: isOpen=${isOpen}, selectedIdeas=${selectedIdeas.length}`);
+  
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
