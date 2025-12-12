@@ -246,26 +246,43 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const [isInitialized, setIsInitialized] = useState(false);
   
   // Get existing relationships - SIEMPRE habilitado para tener datos en cache
-  const { data: existingRelationships, isLoading: isLoadingRelationships } = useQuery({
+  const { data: existingRelationships, isLoading: isLoadingRelationships } = useQuery<Relationship[]>({
     queryKey: [`/api/projects/${selectedIdeas[0]?.projectId}/relationships`],
     enabled: selectedIdeas.length > 0 && selectedIdeas[0]?.projectId !== undefined
   });
 
   // ÚNICO EFECTO DE INICIALIZACIÓN - Se ejecuta cuando el modal se abre
   useEffect(() => {
+    console.log(`🔄 useEffect principal: isOpen=${isOpen}, isLoadingRelationships=${isLoadingRelationships}, isInitialized=${isInitialized}`);
+    
     if (!isOpen) {
       // Cuando se cierra, resetear para la próxima apertura
+      console.log("❌ Modal cerrado - reseteando isInitialized");
       setIsInitialized(false);
+      setQuestions([]);
       return;
     }
     
-    // Si ya está inicializado o está cargando relaciones, no hacer nada
-    if (isInitialized || isLoadingRelationships) {
+    // Si ya está inicializado, no hacer nada
+    if (isInitialized) {
+      console.log("✅ Ya inicializado - no hacer nada");
+      return;
+    }
+    
+    // IMPORTANTE: Si está cargando relaciones, esperar
+    if (isLoadingRelationships) {
+      console.log("⏳ Esperando a que se carguen las relaciones existentes...");
       return;
     }
     
     // Inicializar el proceso
-    if (selectedIdeas.length === 0) return;
+    if (selectedIdeas.length === 0) {
+      console.log("⚠️ No hay ideas seleccionadas");
+      return;
+    }
+    
+    console.log(`📋 Inicializando proceso VAXO con ${selectedIdeas.length} ideas`);
+    console.log(`📊 Relaciones existentes: ${existingRelationships?.length || 0}`);
     
     const newQuestions: ISMQuestion[] = [];
     
@@ -279,7 +296,10 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       }
     }
     
+    console.log(`📝 Generadas ${newQuestions.length} preguntas VAXO`);
+    
     // Pre-llenar con relaciones existentes
+    let preFilled = 0;
     if (existingRelationships && Array.isArray(existingRelationships)) {
       existingRelationships.forEach(rel => {
         if (rel.fromIdeaId && rel.toIdeaId && rel.relationType && ["V", "A", "X", "O"].includes(rel.relationType)) {
@@ -295,22 +315,37 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
               else if (response === RelationType.A) response = RelationType.V;
             }
             newQuestions[questionIndex].response = response;
+            preFilled++;
           }
         }
       });
     }
     
+    console.log(`✅ Pre-llenadas ${preFilled} preguntas con relaciones existentes`);
+    
     const firstUnansweredIndex = newQuestions.findIndex(q => q.response === null);
     const answeredCount = newQuestions.filter(q => q.response !== null).length;
+    
+    console.log(`📌 Estableciendo preguntas: ${newQuestions.length} total, ${answeredCount} respondidas`);
+    console.log(`📌 Índice de primera pregunta sin responder: ${firstUnansweredIndex}`);
     
     setQuestions(newQuestions);
     setCurrentQuestionIndex(firstUnansweredIndex !== -1 ? firstUnansweredIndex : 0);
     setIsInitialized(true);
     
+    console.log("✅ Proceso VAXO inicializado correctamente");
+    
     if (answeredCount > 0 && firstUnansweredIndex !== -1) {
       toast({
         title: "Continuando proceso",
         description: `Se encontraron ${answeredCount} relaciones guardadas. Continuando desde donde se quedó.`,
+        variant: "default",
+        duration: 3000
+      });
+    } else if (answeredCount > 0 && firstUnansweredIndex === -1) {
+      toast({
+        title: "Proceso completado anteriormente",
+        description: `Todas las ${answeredCount} relaciones ya fueron respondidas.`,
         variant: "default",
         duration: 3000
       });
@@ -946,41 +981,20 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     }, 500);
   };
 
-  // Render the current stage
-  // Verificar si hay preguntas generadas, si no, intentar generarlas
-  // Este efecto ahora tiene prioridad alta y se ejecuta SIEMPRE que el modal esté abierto
-  useEffect(() => {
-    // Se ejecuta SIEMPRE que el modal esté abierto, independientemente del estado
-    if (isOpen && selectedIdeas.length > 0) {
-      console.log("🔴 MODAL ABIERTO - Generando preguntas VAXO forzadamente");
-      
-      // Generamos preguntas VAXO inmediatamente, siempre que el modal esté abierto
-      const newQuestions: ISMQuestion[] = [];
-      
-      // Generate questions for each pair (i,j) where i < j para evitar duplicados
-      for (let i = 0; i < selectedIdeas.length - 1; i++) {
-        for (let j = i + 1; j < selectedIdeas.length; j++) {
-          newQuestions.push({
-            ideaI: selectedIdeas[i],
-            ideaJ: selectedIdeas[j],
-            response: null,  // Inicialmente todas sin responder
-          });
-        }
-      }
-      
-      // Solo actualizamos si realmente hay preguntas generadas y no había preguntas antes
-      if (newQuestions.length > 0 && questions.length === 0) {
-        console.log(`🔄 Generadas ${newQuestions.length} preguntas VAXO para ${selectedIdeas.length} ideas`);
-        setQuestions(newQuestions);
-        setCurrentQuestionIndex(0);
-        setIsInitialized(true);
-      } else if (questions.length > 0) {
-        console.log(`✅ Ya existen ${questions.length} preguntas, no es necesario regenerar`);
-      }
-    }
-  }, [isOpen, selectedIdeas]);  // Dependencias reducidas para que se ejecute con mayor frecuencia
-
   const renderCurrentStage = () => {
+    // Mostrar estado de carga si las relaciones están siendo cargadas o las preguntas no están listas
+    if (isLoadingRelationships || (!isInitialized && isOpen)) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 space-y-4">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-opacity-50 border-t-primary rounded-full"></div>
+          <p className="text-muted-foreground">Cargando proceso VAXO...</p>
+          <p className="text-sm text-muted-foreground">
+            {isLoadingRelationships ? "Verificando relaciones existentes..." : "Inicializando preguntas..."}
+          </p>
+        </div>
+      );
+    }
+    
     switch (stage) {
       // El caso "intro" ha sido eliminado ya que ahora iniciamos directamente en las preguntas
       case "intro":
@@ -988,6 +1002,14 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         // con el valor "intro" que pueda venir de otros componentes
         return null;
       case "questions":
+        // Verificar que hay preguntas antes de intentar renderizar
+        if (questions.length === 0) {
+          return (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+              <p className="text-muted-foreground">Preparando preguntas VAXO...</p>
+            </div>
+          );
+        }
         // Este es ahora el primer caso, ya que saltamos "intro"
         if (currentQuestionIndex < questions.length) {
           const question = questions[currentQuestionIndex];
