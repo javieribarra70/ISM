@@ -566,6 +566,20 @@ export function registerRoutes(app: Express): Server {
       }
       
       const projectId = parseInt(req.params.projectId);
+      const { fromIdeaId, toIdeaId, relationType } = req.body;
+      
+      // Check for existing relationship between these two ideas (in either direction)
+      const existingRelationships = await storage.getProjectRelationships(projectId);
+      const existingRel = existingRelationships.find(
+        r => (r.fromIdeaId === fromIdeaId && r.toIdeaId === toIdeaId) ||
+             (r.fromIdeaId === toIdeaId && r.toIdeaId === fromIdeaId)
+      );
+      
+      if (existingRel) {
+        // Delete existing relationship before creating new one (upsert behavior)
+        await storage.deleteRelationship(existingRel.id);
+        console.log(`Deleted existing relationship ${existingRel.id} for upsert`);
+      }
       
       const relationshipData = insertRelationshipSchema.parse({
         ...req.body,

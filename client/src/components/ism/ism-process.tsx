@@ -318,14 +318,15 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   }, [isOpen]);
   
   // Mejora de visibilidad: Cuando el modal se abre, asegura que sea visible en pantalla
-  // y genera preguntas VAXO inmediatamente
+  // y genera preguntas VAXO considerando relaciones existentes
   useEffect(() => {
-    if (isOpen) {
-      // PRIMERO: Generar las preguntas VAXO inmediatamente cuando el modal se abre
-      if (selectedIdeas.length > 0) {
-        console.log("🟢 MODAL ABIERTO Y HAY IDEAS SELECCIONADAS - GENERANDO PREGUNTAS DE INMEDIATO");
+    // Esperar a que las relaciones terminen de cargar (no undefined ni loading)
+    if (isOpen && !isLoadingRelationships && existingRelationships !== undefined) {
+      // Esperar a que las relaciones se hayan cargado antes de generar preguntas
+      if (selectedIdeas.length > 0 && !isInitialized) {
+        console.log("🟢 MODAL ABIERTO Y RELACIONES CARGADAS - GENERANDO PREGUNTAS");
         
-        // Forzar la generación de preguntas aquí
+        // Generar preguntas VAXO
         const newQuestions: ISMQuestion[] = [];
         
         // Generate questions for each pair (i,j) where i < j para evitar duplicados
@@ -334,20 +335,57 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             newQuestions.push({
               ideaI: selectedIdeas[i],
               ideaJ: selectedIdeas[j],
-              response: null,  // Inicialmente todas sin responder
+              response: null,
             });
           }
         }
         
+        // Pre-fill responses from existing relationships
+        if (existingRelationships && Array.isArray(existingRelationships) && existingRelationships.length > 0) {
+          console.log(`📥 Pre-llenando ${existingRelationships.length} relaciones existentes`);
+          
+          existingRelationships.forEach(rel => {
+            if (rel.fromIdeaId && rel.toIdeaId && rel.relationType && ["V", "A", "X", "O"].includes(rel.relationType)) {
+              const questionIndex = newQuestions.findIndex(
+                q => (q.ideaI.id === rel.fromIdeaId && q.ideaJ.id === rel.toIdeaId) ||
+                     (q.ideaI.id === rel.toIdeaId && q.ideaJ.id === rel.fromIdeaId)
+              );
+              
+              if (questionIndex !== -1) {
+                let response = rel.relationType as RelationType;
+                // Adjust relation direction if needed
+                if (newQuestions[questionIndex].ideaI.id === rel.toIdeaId && newQuestions[questionIndex].ideaJ.id === rel.fromIdeaId) {
+                  if (response === RelationType.V) response = RelationType.A;
+                  else if (response === RelationType.A) response = RelationType.V;
+                }
+                newQuestions[questionIndex].response = response;
+              }
+            }
+          });
+        }
+        
         if (newQuestions.length > 0) {
-          console.log(`⭐ URGENTE: Generando ${newQuestions.length} preguntas para mostrar inmediatamente`);
+          // Find first unanswered question
+          const firstUnansweredIndex = newQuestions.findIndex(q => q.response === null);
+          const answeredCount = newQuestions.filter(q => q.response !== null).length;
+          
+          console.log(`⭐ Generadas ${newQuestions.length} preguntas, ${answeredCount} ya respondidas`);
           setQuestions(newQuestions);
-          setCurrentQuestionIndex(0);
+          setCurrentQuestionIndex(firstUnansweredIndex !== -1 ? firstUnansweredIndex : 0);
           setIsInitialized(true);
+          
+          if (answeredCount > 0 && firstUnansweredIndex !== -1) {
+            toast({
+              title: "Continuando proceso",
+              description: `Se encontraron ${answeredCount} relaciones guardadas. Continuando desde donde se quedó.`,
+              variant: "default",
+              duration: 3000
+            });
+          }
         }
       }
       
-      // SEGUNDO: Intentar hacer scroll al modal principal
+      // Intentar hacer scroll al modal principal
       const modalElement = document.querySelector(".fixed.inset-0.z-\\[9999\\]");
       if (modalElement) {
         modalElement.scrollIntoView({ behavior: "smooth" });
@@ -356,7 +394,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       
       // También podemos forzar el foco para asegurar accesibilidad
       setTimeout(() => {
-        // Buscar un elemento interno del modal para darle foco
         const firstFocusableElement = 
           document.querySelector(".fixed.inset-0.z-\\[9999\\] button") as HTMLElement;
         if (firstFocusableElement) {
@@ -365,7 +402,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         }
       }, 100);
     }
-  }, [isOpen]);
+  }, [isOpen, isLoadingRelationships, existingRelationships, isInitialized]);
   
   // CORRECCIÓN DE BUG: Nueva lógica para el manejo del estado de inicialización
   // El problema principal era que el estado se reiniciaba demasiado rápido y
@@ -388,32 +425,16 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         setStage("questions");
       }
       
-      // Generar preguntas inmediatamente si el modal está abierto y no hay preguntas
-      if (questions.length === 0 && selectedIdeas.length > 0) {
-        console.log("🔴 EFECTO DETECTÓ isOpen=true - ABRIENDO MODAL");
-        
-        // Crear preguntas VAXO
-        const newQuestions: ISMQuestion[] = [];
-        for (let i = 0; i < selectedIdeas.length - 1; i++) {
-          for (let j = i + 1; j < selectedIdeas.length; j++) {
-            newQuestions.push({
-              ideaI: selectedIdeas[i],
-              ideaJ: selectedIdeas[j],
-              response: null,  // Inicialmente todas sin responder
-            });
-          }
-        }
-        
-        console.log(`⭐ CRÍTICO: Generando ${newQuestions.length} preguntas VAXO en apertura`);
-        setQuestions(newQuestions);
-        setCurrentQuestionIndex(0);
-        setIsInitialized(true);
+      // Las preguntas se generan en el useEffect anterior que también carga las relaciones existentes
+      // Este bloque solo se activa como fallback si hay un problema con la carga
+      if (questions.length === 0 && selectedIdeas.length > 0 && !isLoadingRelationships) {
+        console.log("🔴 FALLBACK: Generando preguntas porque el efecto principal no las creó");
       }
       
-      // Si el modal está abierto pero no inicializado, mostramos un mensaje explícito
-      if (!isInitialized) {
-        console.log("⏳ Modal abierto pero pendiente de inicialización");
-        setIsInitialized(true);
+      // Solo mostrar mensaje de espera - NO setear isInitialized aquí
+      // El efecto de inicialización principal lo hace después de cargar relaciones
+      if (!isInitialized && isLoadingRelationships) {
+        console.log("⏳ Modal abierto, esperando a que se carguen las relaciones...");
       }
       
       // Resaltamos a nivel visual la apertura del modal con un elemento DOM
@@ -457,7 +478,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         console.log("⚠️ Limpiando timeout de cierre automático");
       }
     };
-  }, [isOpen, isInitialized, isSaving, questions.length, selectedIdeas, stage, setStage]);
+  }, [isOpen, isInitialized, isSaving, questions.length, selectedIdeas, stage, setStage, isLoadingRelationships]);
   
   // Load existing relationships from the database if available - solo en la inicialización
   useEffect(() => {
@@ -803,7 +824,25 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         
         console.log(`Procesando relación de pregunta ${currentQuestionIndex + 1}: ${currentQuestion.ideaI.title} -> ${currentQuestion.ideaJ.title} (${response})`);
         
-        // NO guardar en base de datos - mantener solo en memoria como solicitado
+        // Guardar en base de datos en tiempo real
+        const projectId = selectedIdeas[0]?.projectId;
+        if (projectId) {
+          try {
+            await apiRequest('POST', `/api/projects/${projectId}/relationships`, {
+              fromIdeaId: currentQuestion.ideaI.id,
+              toIdeaId: currentQuestion.ideaJ.id,
+              relationType: response
+            });
+            console.log(`✅ Relación VAXO guardada en BD: ${currentQuestion.ideaI.id} -> ${currentQuestion.ideaJ.id} = ${response}`);
+          } catch (saveError) {
+            console.error('Error guardando relación VAXO:', saveError);
+            toast({
+              title: "Error al guardar",
+              description: "No se pudo guardar la relación. El progreso podría perderse.",
+              variant: "destructive"
+            });
+          }
+        }
         
         // Infer logical relationships if possible
         const inferredQuestions = applyLogicalInference(updatedQuestions, currentQuestionIndex);
