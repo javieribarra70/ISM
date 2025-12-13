@@ -23,24 +23,18 @@ interface ProjectUser {
 
 interface ConnectionTabProps {
   projectId: number;
+  isISMDialogOpen: boolean;
+  setIsISMDialogOpen: (open: boolean) => void;
 }
 
-export default function ConnectionTab({ projectId }: ConnectionTabProps) {
+export default function ConnectionTab({ projectId, isISMDialogOpen, setIsISMDialogOpen }: ConnectionTabProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isStarting, setIsStarting] = useState(false);
-  const [isISMDialogOpen, setIsISMDialogOpen] = useState(false);
   const [preventAutoClose, setPreventAutoClose] = useState(false);
   const [ismInstanceKey, setIsmInstanceKey] = useState<string>("ism-process-initial");
   const [isStartingAlternative, setIsStartingAlternative] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-
-  // DEBUG: Log every time isISMDialogOpen changes
-  useEffect(() => {
-    console.log(`🔴 ConnectionTab: isISMDialogOpen changed to: ${isISMDialogOpen}`);
-  }, [isISMDialogOpen]);
-
-  // DEBUG: Log isAdmin status - movido después de que selectedIdeas esté definido
 
   // Fetch project users to determine user role
   const { data: projectUsers = [], isLoading: isProjectUsersLoading } =
@@ -100,11 +94,6 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
     selectedIdeaIds.includes(idea.id),
   );
 
-  // DEBUG: Log isAdmin status
-  useEffect(() => {
-    console.log(`🔵 ConnectionTab: isAdmin=${isAdmin}, user.role=${user?.role}, projectUsers.length=${projectUsers.length}, selectedIdeas.length=${selectedIdeas.length}`);
-  }, [isAdmin, user, projectUsers, selectedIdeas.length]);
-
   // Fetch existing relationship data
   const {
     data: existingRelationships = [],
@@ -117,82 +106,54 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   // Verificar si hay relaciones VAXO existentes para estas ideas
   const hasExistingVaxoRelationships = useMemo(() => {
     if (!existingRelationships || !selectedIdeas.length) {
-      console.log("No hay relaciones o ideas seleccionadas");
       return false;
     }
 
-    // Obtiene los IDs de las ideas seleccionadas
     const selectedIds = selectedIdeas.map((idea) => idea.id);
-    console.log("IDs de ideas seleccionadas:", selectedIds);
 
-    // Filtra las relaciones que involucran solo ideas seleccionadas
-    const relationsForSelectedIdeas = existingRelationships.filter((rel) => {
-      const fromId = rel.fromIdeaId || rel.from;
-      const toId = rel.toIdeaId || rel.to;
-      const matches =
-        selectedIds.includes(fromId) && selectedIds.includes(toId);
-      if (matches) {
-        console.log(`Relación coincidente: ${fromId} -> ${toId}`);
-      }
-      return matches;
-    });
-
-    const result = relationsForSelectedIdeas.length > 0;
-    console.log(
-      `¿Hay relaciones para las ideas seleccionadas? ${result ? "SÍ" : "NO"}`,
-    );
-    console.log(
-      `Total relaciones filtradas: ${relationsForSelectedIdeas.length}`,
-    );
-
-    return result;
-  }, [existingRelationships, selectedIdeas]);
-
-  // Estado para controlar qué modal mostrar
-  const [showRelationshipsDialog, setShowRelationshipsDialog] = useState(false);
-
-  // Handle the start VAXO process button - Simplificado
-  const handleStartProcess = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    console.log("🟢🟢🟢 CLICK EN BOTON VAXO 🟢🟢🟢");
-    console.log("Estado actual ANTES de cambio: isISMDialogOpen=" + isISMDialogOpen);
-    console.log("hasExistingVaxoRelationships=" + hasExistingVaxoRelationships);
-    console.log("existingRelationships.length=" + existingRelationships.length);
-    
-    // Simplemente abrir el modal directamente
-    setIsStarting(true);
-    setPreventAutoClose(true);
-    
-    // Usar requestAnimationFrame para asegurar que el estado se establezca después del render
-    requestAnimationFrame(() => {
-      console.log("📌 Estableciendo isISMDialogOpen=true en requestAnimationFrame");
-      setIsISMDialogOpen(true);
-      
-      // Log después del siguiente render
-      setTimeout(() => {
-        console.log("📌 Estado después de 100ms (debería ser true)");
-      }, 100);
-    });
-    
-    // Resetear estado de loading después de un breve momento
-    setTimeout(() => {
-      setIsStarting(false);
-    }, 500);
-
-    // Verificar si hay relaciones existentes
-    const selectedIds = selectedIdeas.map((idea) => idea.id);
     const relationsForSelectedIdeas = existingRelationships.filter((rel) => {
       const fromId = rel.fromIdeaId || rel.from;
       const toId = rel.toIdeaId || rel.to;
       return selectedIds.includes(fromId) && selectedIds.includes(toId);
     });
 
-    if (relationsForSelectedIdeas.length > 0) {
+    return relationsForSelectedIdeas.length > 0;
+  }, [existingRelationships, selectedIdeas]);
+
+  // Estado para controlar qué modal mostrar
+  const [showRelationshipsDialog, setShowRelationshipsDialog] = useState(false);
+
+  // Handle the start VAXO process button - State is now lifted to parent component
+  const handleStartProcess = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log("🟢 CLICK EN BOTON VAXO - State lifted to parent");
+    
+    // Set loading state briefly
+    setIsStarting(true);
+    setPreventAutoClose(true);
+    
+    // Open the dialog directly - state is now in parent, won't be reset by re-renders
+    setIsISMDialogOpen(true);
+    
+    // Reset loading state after a brief moment
+    setTimeout(() => {
+      setIsStarting(false);
+    }, 300);
+
+    // Show toast if there are existing relationships
+    if (hasExistingVaxoRelationships) {
+      const selectedIds = selectedIdeas.map((idea) => idea.id);
+      const count = existingRelationships.filter((rel) => {
+        const fromId = rel.fromIdeaId || rel.from;
+        const toId = rel.toIdeaId || rel.to;
+        return selectedIds.includes(fromId) && selectedIds.includes(toId);
+      }).length;
+      
       toast({
         title: "Relaciones VAXO existentes",
-        description: `Continuando proceso con ${relationsForSelectedIdeas.length} relaciones existentes.`,
+        description: `Continuando proceso con ${count} relaciones existentes.`,
         duration: 3000,
       });
     }

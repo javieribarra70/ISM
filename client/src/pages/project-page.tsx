@@ -34,6 +34,7 @@ export default function ProjectPage() {
   const [lastPolled, setLastPolled] = useState<Date>(new Date());
   const [ideaToEdit, setIdeaToEdit] = useState<Idea | null>(null);
   const [isEditIdeaModalOpen, setIsEditIdeaModalOpen] = useState(false);
+  const [isISMDialogOpen, setIsISMDialogOpen] = useState(false);
   // Estado para controlar la pestaña activa - debe estar aquí con los otros estados
   // Intentar recordar la última pestaña activa usando sessionStorage
   const getInitialTab = () => {
@@ -533,7 +534,11 @@ export default function ProjectPage() {
             </TabsContent>
             
             <TabsContent value="connection" className="mt-0 p-4">
-              <ConnectionTab projectId={parsedProjectId} />
+              <ConnectionTab 
+                projectId={parsedProjectId} 
+                isISMDialogOpen={isISMDialogOpen}
+                setIsISMDialogOpen={setIsISMDialogOpen}
+              />
             </TabsContent>
             
             <TabsContent value="report" className="mt-0 p-4">
