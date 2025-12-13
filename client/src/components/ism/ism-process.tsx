@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Idea, Relationship } from "@shared/schema";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -233,6 +233,18 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  
+  // Ref to track when dialog was opened to prevent immediate close
+  const openTimeRef = useRef<number>(0);
+  const MIN_OPEN_TIME = 500; // Minimum ms the dialog should stay open
+  
+  // Update open time when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      openTimeRef.current = Date.now();
+      console.log(`📌 Dialog opened at ${openTimeRef.current}`);
+    }
+  }, [isOpen]);
   
   const [stage, setStage] = useState<
     "intro" | "questions" | "ssim" | "reachability" | "levels" | "diagram"
@@ -1627,8 +1639,27 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     }
   };
   
+  // Safe close handler that prevents immediate closing
+  const handleDialogOpenChange = (open: boolean) => {
+    console.log(`🔄 Dialog onOpenChange called: open=${open}, isOpen=${isOpen}`);
+    
+    if (!open) {
+      const timeSinceOpen = Date.now() - openTimeRef.current;
+      console.log(`⏱️ Time since dialog opened: ${timeSinceOpen}ms`);
+      
+      // Only allow close if the dialog has been open for at least MIN_OPEN_TIME
+      if (timeSinceOpen < MIN_OPEN_TIME) {
+        console.log(`🛡️ Blocking premature close (opened ${timeSinceOpen}ms ago, minimum is ${MIN_OPEN_TIME}ms)`);
+        return; // Block the close
+      }
+      
+      console.log(`✅ Allowing dialog close after ${timeSinceOpen}ms`);
+      onClose();
+    }
+  };
+  
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{getTitle()}</DialogTitle>
