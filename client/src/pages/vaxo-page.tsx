@@ -17,11 +17,23 @@ export default function VaxoPage() {
     : [];
 
   const handleBack = () => {
-    setLocation(`/projects/${projectId}`);
+    console.log("Back button clicked, navigating to:", `/projects/${projectId}`);
+    try {
+      setLocation(`/projects/${projectId}`);
+    } catch (e) {
+      console.error("Navigation error:", e);
+      window.location.href = `/projects/${projectId}`;
+    }
   };
 
   const handleComplete = () => {
-    setLocation(`/projects/${projectId}`);
+    console.log("Complete callback, navigating to:", `/projects/${projectId}`);
+    try {
+      setLocation(`/projects/${projectId}`);
+    } catch (e) {
+      console.error("Navigation error:", e);
+      window.location.href = `/projects/${projectId}`;
+    }
   };
 
   if (!projectId || projectId === 0) {
@@ -43,7 +55,13 @@ export default function VaxoPage() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
         <div className="mb-6">
-          <Button variant="ghost" onClick={handleBack} className="gap-2">
+          <Button 
+            type="button"
+            variant="ghost" 
+            onClick={handleBack} 
+            className="gap-2"
+            data-testid="button-back-to-project"
+          >
             <ArrowLeft className="h-4 w-4" />
             Back to Project
           </Button>
