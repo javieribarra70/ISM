@@ -2,16 +2,14 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Idea, SelectedIdea, Project } from "@shared/schema";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { PlayCircle, X } from "lucide-react";
+import { PlayCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import ISMProcess from "@/components/ism/ism-process";
-import { useLocation } from "wouter";
 
 // Interface for ProjectUser
 interface ProjectUser {
@@ -31,8 +29,6 @@ export default function ConnectionTab({ projectId, isISMDialogOpen, setIsISMDial
   const { toast } = useToast();
   const { user } = useAuth();
   const [isStarting, setIsStarting] = useState(false);
-  const [preventAutoClose, setPreventAutoClose] = useState(false);
-  const [ismInstanceKey, setIsmInstanceKey] = useState<string>("ism-process-initial");
   const [isStartingAlternative, setIsStartingAlternative] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -120,24 +116,18 @@ export default function ConnectionTab({ projectId, isISMDialogOpen, setIsISMDial
     return relationsForSelectedIdeas.length > 0;
   }, [existingRelationships, selectedIdeas]);
 
-  // Estado para controlar qué modal mostrar
-  const [showRelationshipsDialog, setShowRelationshipsDialog] = useState(false);
-
-  // Handle the start VAXO process button - State is now lifted to parent component
+  // Handle the start VAXO process button - State is lifted to parent component
   const handleStartProcess = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log("🟢 CLICK EN BOTON VAXO - State lifted to parent");
-    
     // Set loading state briefly
     setIsStarting(true);
-    setPreventAutoClose(true);
     
-    // Open the dialog directly - state is now in parent, won't be reset by re-renders
+    // Open the dialog directly - state is in parent, won't be reset by re-renders
     setIsISMDialogOpen(true);
     
-    // Reset loading state after a brief moment
+    // Reset loading state
     setTimeout(() => {
       setIsStarting(false);
     }, 300);
@@ -176,12 +166,9 @@ export default function ConnectionTab({ projectId, isISMDialogOpen, setIsISMDial
     }, 500);
   };
 
-  // Handle ISM dialog close
+  // Handle ISM dialog close - only closes when user explicitly requests it
   const handleISMDialogClose = () => {
-    console.log("ISM Dialog close requested");
-    setPreventAutoClose(false);
     setIsISMDialogOpen(false);
-    console.log("Dialog closed");
   };
 
   // Prepare project context information for ISM process
@@ -309,123 +296,8 @@ export default function ConnectionTab({ projectId, isISMDialogOpen, setIsISMDial
         </div>
       </div>
 
-      {/* Diálogo de relaciones existentes */}
-      {showRelationshipsDialog && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">
-                Recuperación de Sesión VAXO
-              </h2>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setShowRelationshipsDialog(false);
-                  console.log("Dialog de relaciones cerrado por usuario");
-                }}
-                className="h-8 w-8 rounded-full"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="space-y-4">
-              <p className="text-base">
-                Se han detectado{" "}
-                <strong>
-                  {
-                    existingRelationships.filter((r) => {
-                      const fromId = r.fromIdeaId || r.from;
-                      const toId = r.toIdeaId || r.to;
-                      const selectedIds = selectedIdeas.map((idea) => idea.id);
-                      return (
-                        selectedIds.includes(fromId) &&
-                        selectedIds.includes(toId)
-                      );
-                    }).length
-                  }
-                </strong>{" "}
-                relaciones VAXO previas para estas ideas. Estas relaciones ya no se modificarán en la base de datos, solo se trabajará en memoria.
-              </p>
-
-              <Alert>
-                <AlertTitle>Sesión VAXO Interrumpida</AlertTitle>
-                <AlertDescription>
-                  El sistema ha detectado una sesión VAXO previa que no se
-                  completó. Para continuar, puede iniciar un nuevo proceso
-                  (todas las relaciones se procesarán solo en memoria).
-                </AlertDescription>
-              </Alert>
-
-              <div className="flex justify-end space-x-2 mt-6">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowRelationshipsDialog(false);
-                    console.log("Dialog de relaciones cancelado por usuario");
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={async () => {
-                    toast({
-                      title: "Comenzando nuevo proceso",
-                      description:
-                        "Preparando sistema para comenzar sesión VAXO...",
-                      duration: 3000,
-                    });
-
-                    try {
-                      // Ya no eliminamos relaciones existentes de la base de datos
-                      // Solo logueamos para depuración
-                      console.log(
-                        `Proceso VAXO reiniciado sin eliminar relaciones de base de datos (todo en memoria)`,
-                      );
-
-                      // Cerrar este diálogo
-                      setShowRelationshipsDialog(false);
-
-                      // Generamos un nuevo key para forzar la recreación del componente
-                      const newKey = `ism-process-${Date.now()}`;
-                      setIsmInstanceKey(newKey);
-                      console.log(
-                        "Nuevo key generado para reinicio del proceso:",
-                        newKey,
-                      );
-
-                      console.log(
-                        "🔓 Forzando apertura del modal, estado actual:",
-                        {
-                          isISMDialogOpen,
-                          ismInstanceKey,
-                        },
-                      );
-                      setIsISMDialogOpen(true);
-                    } catch (error) {
-                      console.error("Error al reiniciar proceso:", error);
-                      toast({
-                        title: "Error",
-                        description:
-                          "Ocurrió un error al iniciar un nuevo proceso VAXO.",
-                        variant: "destructive",
-                        duration: 5000,
-                      });
-                    }
-                  }}
-                >
-                  Comenzar Nuevo Proceso
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ISM Process siempre presente pero controlado por isOpen */}
+      {/* ISM Process - controlled by isOpen prop from parent */}
       <ISMProcess
-        key={ismInstanceKey}
         isOpen={isISMDialogOpen}
         onClose={handleISMDialogClose}
         selectedIdeas={selectedIdeas}

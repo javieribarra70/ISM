@@ -1,0 +1,77 @@
+Tengo un bug en una app React (Vite) con shadcn/Radix Dialog relacionado con la apertura y permanencia del modal del proceso VAXO (ISM).
+Quiero que analices únicamente el flujo de apertura/cierre del modal VAXO, sin tocar autenticación, estilos ni lógica del algoritmo ISM.
+
+Contexto técnico
+
+El modal del proceso vive en client/src/components/ism/ism-process.tsx y usa <Dialog open={isOpen} onOpenChange={...}>.
+
+El estado que controla su apertura está en client/src/components/tabs/connection-tab.tsx (isISMDialogOpen).
+
+Cuando no existen relaciones, el botón VAXO abre el modal correctamente.
+
+Cuando ya existen relaciones, aparece un toast notificando que se continuará el proceso, pero el modal VAXO no permanece abierto o no llega a mostrarse.
+
+Problemas sospechados
+
+El modal se cierra automáticamente por:
+
+click fuera del diálogo
+
+tecla ESC
+
+onOpenChange de Radix Dialog
+sin pasar por la lógica de cierre controlado del proceso.
+
+Existe lógica duplicada/confusa:
+
+toasts sobre “relaciones existentes”
+
+un estado showRelationshipsDialog declarado pero nunca activado
+
+El modal del proceso VAXO puede cerrarse sin que el usuario lo decida explícitamente.
+
+Lo que necesito que hagas
+
+Audita y limpia el flujo de apertura/cierre del modal VAXO:
+
+Identifica todas las funciones que abren o cierran el proceso VAXO.
+
+Elimina duplicaciones o flujos muertos relacionados con “relaciones existentes”.
+
+Asegura que el modal VAXO no se cierre automáticamente:
+
+Bloquea cierre por click fuera y ESC (onInteractOutside, onEscapeKeyDown) o redirígelos a la lógica de cierre controlado.
+
+El modal solo debe cerrarse cuando el usuario lo decida explícitamente (botón, confirmación).
+
+Define un flujo claro cuando ya existen relaciones:
+
+O bien:
+
+mostrar un diálogo intermedio (“Continuar proceso” / “Comenzar nuevo”), y solo después abrir ISMProcess
+
+O bien:
+
+abrir directamente ISMProcess en modo “continuar”, sin diálogos fantasmas.
+
+No deben existir estados o componentes que nunca se activan.
+
+Mantén el alcance limitado:
+
+NO modificar el algoritmo ISM
+
+NO tocar backend
+
+NO cambiar diseño visual
+
+Solo React state, handlers y configuración del Dialog
+
+Criterios de éxito
+
+El botón VAXO siempre abre el modal del proceso, haya o no relaciones previas.
+
+Si existen relaciones, el proceso continúa sin que el modal se cierre solo.
+
+No existen funciones o estados muertos relacionados con la apertura del proceso.
+
+El flujo de apertura/cierre del proceso VAXO es único, explícito y predecible.
