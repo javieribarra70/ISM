@@ -9,9 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { PlayCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import ISMProcess from "@/components/ism/ism-process";
 
-// Interface for ProjectUser
 interface ProjectUser {
   id: number;
   projectId: number;
@@ -21,11 +19,22 @@ interface ProjectUser {
 
 interface ConnectionTabProps {
   projectId: number;
-  isISMDialogOpen: boolean;
   setIsISMDialogOpen: (open: boolean) => void;
+  setVaxoSelectedIdeas: (ideas: Idea[]) => void;
+  setVaxoProjectContext: (ctx: {
+    context: string;
+    triggeringQuestion: string;
+    relation: string;
+    restriction: string;
+  } | null) => void;
 }
 
-export default function ConnectionTab({ projectId, isISMDialogOpen, setIsISMDialogOpen }: ConnectionTabProps) {
+export default function ConnectionTab({ 
+  projectId, 
+  setIsISMDialogOpen,
+  setVaxoSelectedIdeas,
+  setVaxoProjectContext
+}: ConnectionTabProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isStarting, setIsStarting] = useState(false);
@@ -121,12 +130,17 @@ export default function ConnectionTab({ projectId, isISMDialogOpen, setIsISMDial
     e.preventDefault();
     e.stopPropagation();
     
-    console.log("🔘 VAXO Button clicked! Current isISMDialogOpen:", isISMDialogOpen);
+    console.log("🔘 VAXO Button clicked!");
+    console.log("📦 Setting payload: selectedIdeas=", selectedIdeas.length, ", projectContext=", projectContext);
     
     // Set loading state briefly
     setIsStarting(true);
     
-    // Open the dialog directly - state is in parent, won't be reset by re-renders
+    // IMPORTANT: Set the payload BEFORE opening the dialog
+    setVaxoSelectedIdeas(selectedIdeas);
+    setVaxoProjectContext(projectContext);
+    
+    // Now open the dialog - state is in parent, won't be reset by tab re-renders
     console.log("📤 Calling setIsISMDialogOpen(true)...");
     setIsISMDialogOpen(true);
     console.log("✅ setIsISMDialogOpen(true) called");
@@ -134,10 +148,9 @@ export default function ConnectionTab({ projectId, isISMDialogOpen, setIsISMDial
     // Reset loading state
     setTimeout(() => {
       setIsStarting(false);
-      console.log("⏱️ After 300ms, isISMDialogOpen should be:", isISMDialogOpen);
     }, 300);
 
-    // Show toast if there are existing relationships
+    // Show toast if there are existing relationships (informative only)
     if (hasExistingVaxoRelationships) {
       const selectedIds = selectedIdeas.map((idea) => idea.id);
       const count = existingRelationships.filter((rel) => {
@@ -169,11 +182,6 @@ export default function ConnectionTab({ projectId, isISMDialogOpen, setIsISMDial
     setTimeout(() => {
       setIsStartingAlternative(false);
     }, 500);
-  };
-
-  // Handle ISM dialog close - only closes when user explicitly requests it
-  const handleISMDialogClose = () => {
-    setIsISMDialogOpen(false);
   };
 
   // Prepare project context information for ISM process
@@ -300,14 +308,6 @@ export default function ConnectionTab({ projectId, isISMDialogOpen, setIsISMDial
           ))}
         </div>
       </div>
-
-      {/* ISM Process - controlled by isOpen prop from parent */}
-      <ISMProcess
-        isOpen={isISMDialogOpen}
-        onClose={handleISMDialogClose}
-        selectedIdeas={selectedIdeas}
-        projectContext={projectContext}
-      />
     </>
   );
 }

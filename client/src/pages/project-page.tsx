@@ -17,6 +17,7 @@ import SettingsTab from "@/components/tabs/settings-tab";
 import ContextTab from "@/components/tabs/context-tab";
 import ConnectionTab from "@/components/tabs/connection-tab";
 import ReportTab from "@/components/tabs/report-tab";
+import ISMProcess from "@/components/ism/ism-process";
 import { Avatars } from "@/components/avatars";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +36,13 @@ export default function ProjectPage() {
   const [ideaToEdit, setIdeaToEdit] = useState<Idea | null>(null);
   const [isEditIdeaModalOpen, setIsEditIdeaModalOpen] = useState(false);
   const [isISMDialogOpen, setIsISMDialogOpen] = useState(false);
+  const [vaxoSelectedIdeas, setVaxoSelectedIdeas] = useState<Idea[]>([]);
+  const [vaxoProjectContext, setVaxoProjectContext] = useState<{
+    context: string;
+    triggeringQuestion: string;
+    relation: string;
+    restriction: string;
+  } | null>(null);
   
   // Debug logging for isISMDialogOpen state changes
   useEffect(() => {
@@ -542,8 +550,9 @@ export default function ProjectPage() {
             <TabsContent value="connection" className="mt-0 p-4">
               <ConnectionTab 
                 projectId={parsedProjectId} 
-                isISMDialogOpen={isISMDialogOpen}
                 setIsISMDialogOpen={setIsISMDialogOpen}
+                setVaxoSelectedIdeas={setVaxoSelectedIdeas}
+                setVaxoProjectContext={setVaxoProjectContext}
               />
             </TabsContent>
             
@@ -610,6 +619,13 @@ export default function ProjectPage() {
         }}
         isUpdating={updateIdeaMutation.isPending}
         projectCategories={projectCategories}
+      />
+      
+      <ISMProcess
+        isOpen={isISMDialogOpen}
+        onClose={() => setIsISMDialogOpen(false)}
+        selectedIdeas={vaxoSelectedIdeas}
+        projectContext={vaxoProjectContext}
       />
     </div>
   );
