@@ -188,18 +188,20 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
 
   const { data: existingRelationships = [], isLoading: isRelationshipsLoading } = useQuery<Relationship[]>({
     queryKey: [`/api/projects/${projectId}/relationships`],
-    enabled: !!projectId && !isInitialized,
+    enabled: !!projectId,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnMount: !isInitialized,
+    refetchInterval: false,
   });
 
   const { data: selectedIdeasData = [], isLoading: isSelectedIdeasLoading } = useQuery<any[]>({
     queryKey: [`/api/projects/${projectId}/selected-ideas`],
-    enabled: !!projectId && preselectedIdeaIds.length === 0 && !isInitialized,
+    enabled: !!projectId && preselectedIdeaIds.length === 0,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnMount: !isInitialized,
+    refetchInterval: false,
   });
 
   useEffect(() => {
