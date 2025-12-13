@@ -186,22 +186,18 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
     refetchOnMount: false,
   });
 
-  const { data: existingRelationships = [], isLoading: isRelationshipsLoading } = useQuery<Relationship[]>({
+  const { data: existingRelationships = [], isLoading: isRelationshipsLoading, isFetching: isRelationshipsFetching } = useQuery<Relationship[]>({
     queryKey: [`/api/projects/${projectId}/relationships`],
     enabled: !!projectId,
-    staleTime: Infinity,
+    staleTime: 0,
     refetchOnWindowFocus: false,
-    refetchOnMount: !isInitialized,
-    refetchInterval: false,
   });
 
-  const { data: selectedIdeasData = [], isLoading: isSelectedIdeasLoading } = useQuery<any[]>({
+  const { data: selectedIdeasData = [], isLoading: isSelectedIdeasLoading, isFetching: isSelectedIdeasFetching } = useQuery<any[]>({
     queryKey: [`/api/projects/${projectId}/selected-ideas`],
     enabled: !!projectId && preselectedIdeaIds.length === 0,
-    staleTime: Infinity,
+    staleTime: 0,
     refetchOnWindowFocus: false,
-    refetchOnMount: !isInitialized,
-    refetchInterval: false,
   });
 
   useEffect(() => {
@@ -216,13 +212,23 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
   }, [project]);
 
   useEffect(() => {
-    if (isIdeasLoading || isRelationshipsLoading || isSelectedIdeasLoading || isProjectLoading) {
+    const isAnyLoading = isIdeasLoading || isRelationshipsLoading || isSelectedIdeasLoading || isProjectLoading;
+    const isAnyFetching = isRelationshipsFetching || isSelectedIdeasFetching;
+    
+    if (isAnyLoading || isAnyFetching) {
       return;
     }
 
     if (isInitialized) {
       return;
     }
+    
+    console.log("VAXO Wizard initializing with:", {
+      allIdeasCount: allIdeas.length,
+      existingRelationshipsCount: existingRelationships.length,
+      selectedIdeasDataCount: selectedIdeasData.length,
+      preselectedIdeaIds
+    });
 
     let ideasToUse: Idea[] = [];
     
@@ -297,7 +303,7 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
         duration: 3000
       });
     }
-  }, [isIdeasLoading, isRelationshipsLoading, isSelectedIdeasLoading, isProjectLoading, allIdeas, existingRelationships, selectedIdeasData, preselectedIdeaIds, isInitialized, toast]);
+  }, [isIdeasLoading, isRelationshipsLoading, isSelectedIdeasLoading, isProjectLoading, isRelationshipsFetching, isSelectedIdeasFetching, allIdeas, existingRelationships, selectedIdeasData, preselectedIdeaIds, isInitialized, toast]);
 
   const answerQuestion = async (response: RelationType) => {
     try {
