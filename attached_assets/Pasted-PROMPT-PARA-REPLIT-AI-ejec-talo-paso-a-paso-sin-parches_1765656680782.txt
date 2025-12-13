@@ -1,0 +1,196 @@
+PROMPT PARA REPLIT AI (ejecútalo paso a paso, sin parches)
+
+Tengo un bug en React (Vite + shadcn/Radix Dialog): el modal del proceso VAXO/ISM no aparece cuando ya existen relaciones, aunque sí aparecen toasts indicando “Relaciones VAXO existentes”.
+
+Diagnóstico probable (no lo ignores)
+
+El modal <ISMProcess/> está renderizado dentro de ConnectionTab. Cuando hay relaciones existentes, el árbol de Tabs o el contenido del tab puede remontearse/desmontarse, y entonces el componente que contiene el Dialog no llega a montarse o se destruye inmediatamente. Parchar onEscapeKeyDown o onInteractOutside NO resuelve el problema si el componente se desmonta.
+
+Objetivo
+
+Hacer que el modal VAXO siempre se abra y permanezca visible, con o sin relaciones, evitando cierres por unmount de tabs y eliminando duplicación/confusión de flujos.
+
+PLAN ESTRATÉGICO: EJECUTA ESTAS TAREAS EN ORDEN, UNA POR UNA
+TAREA 1: Instrumentación para confirmar el bug (NO cambies nada todavía)
+
+En client/src/pages/project-page.tsx, agrega logs en un useEffect:
+
+useEffect(() => {
+  console.log("PROJECT-PAGE isISMDialogOpen =", isISMDialogOpen);
+}, [isISMDialogOpen]);
+
+
+En client/src/components/ism/ism-process.tsx, agrega un log en render:
+
+console.log("ISMProcess RENDER isOpen =", isOpen);
+
+
+Reproduce el bug:
+
+Caso A: sin relaciones existentes (debe abrir)
+
+Caso B: con relaciones existentes (hoy falla)
+
+Condición de confirmación:
+
+Si PROJECT-PAGE isISMDialogOpen = true pero NO aparece ISMProcess RENDER isOpen = true, entonces el componente no se monta (unmount/tab issue).
+No avances a la TAREA 2 sin confirmar.
+
+TAREA 2: Mover el ownership del modal fuera del Tab (cambio estructural, no parche)
+Regla:
+
+NUNCA renderizar <ISMProcess/> dentro de un tab.
+Debe vivir en project-page.tsx (o un nivel superior estable) para no desmontarse.
+
+Implementación:
+
+En project-page.tsx, crea estado adicional para “payload” del proceso (lo mínimo necesario):
+
+vaxoSelectedIdeas
+
+vaxoProjectContext (o projectId/metadata según tu app)
+
+Ejemplo:
+
+const [isISMDialogOpen, setIsISMDialogOpen] = useState(false);
+const [vaxoSelectedIdeas, setVaxoSelectedIdeas] = useState<any[]>([]);
+const [vaxoProjectContext, setVaxoProjectContext] = useState<any>(null);
+
+
+Renderiza el modal una sola vez al final de project-page.tsx (zona de modales):
+
+<ISMProcess
+  isOpen={isISMDialogOpen}
+  onClose={() => setIsISMDialogOpen(false)}
+  selectedIdeas={vaxoSelectedIdeas}
+  projectContext={vaxoProjectContext}
+/>
+
+
+Elimina <ISMProcess/> de ConnectionTab completamente.
+ConnectionTab ya NO debe renderizar el modal.
+
+TAREA 3: Convertir ConnectionTab en un “trigger limpio” (sin UI modal interna)
+
+En client/src/components/tabs/connection-tab.tsx:
+
+Cambia props para recibir setters del padre (project-page):
+
+setIsISMDialogOpen
+
+setVaxoSelectedIdeas
+
+setVaxoProjectContext
+
+Ejemplo de props:
+
+type Props = {
+  projectId: number;
+  isISMDialogOpen: boolean;
+  setIsISMDialogOpen: (v: boolean) => void;
+  setVaxoSelectedIdeas: (ideas: any[]) => void;
+  setVaxoProjectContext: (ctx: any) => void;
+};
+
+
+En el handler del botón VAXO, antes de abrir, fija el payload:
+
+const handleStartProcess = () => {
+  setVaxoSelectedIdeas(selectedIdeas);
+  setVaxoProjectContext(projectContext);
+  setIsISMDialogOpen(true);
+};
+
+
+Mantén el toast informativo si hay relaciones, pero NO uses el toast como “flujo”.
+El toast NO debe “prometer que abrirá una ventana”. Solo debe informar.
+
+TAREA 4: Asegurar que ISMProcess NO dependa de estados internos raros
+
+En client/src/components/ism/ism-process.tsx:
+
+Asegura que se reinicializa correctamente cuando:
+
+isOpen pasa a true
+
+selectedIdeas cambia
+
+projectContext cambia
+
+Implementa un useEffect:
+
+useEffect(() => {
+  if (!isOpen) return;
+  // inicializa o carga relaciones y prepara etapas
+  // NO cierres el modal automáticamente
+}, [isOpen, selectedIdeas, projectContext]);
+
+
+NO uses key para remontear el componente salvo que sea estrictamente necesario.
+Si había un key={ismInstanceKey} en el render anterior, elimínalo o justifícalo, porque puede forzar un remount inesperado.
+
+TAREA 5: Cierre controlado (solo cuando el usuario lo decide)
+
+En el <Dialog> de Radix, evita que onOpenChange cierre automáticamente si no quieres eso.
+Patrón recomendado:
+
+open={isOpen}
+
+onOpenChange={(open) => { if (!open) requestClose(); }} donde requestClose() usa tu lógica de confirmación.
+
+Y bloquea cierres accidentales:
+
+<DialogContent
+  onEscapeKeyDown={(e) => e.preventDefault()}
+  onInteractOutside={(e) => e.preventDefault()}
+>
+
+
+Si ya existe lógica de “confirmar cierre”, requestClose() debe ser la única vía para cerrar:
+
+const requestClose = () => {
+  // si hay cambios sin guardar, mostrar confirmación
+  // si el usuario confirma -> onClose()
+};
+
+TAREA 6: Limpieza de flujos muertos (no dejes basura)
+
+Elimina cualquier estado muerto tipo showRelationshipsDialog si no se usa.
+
+Elimina toasts o strings que digan “se abrirá la ventana” si no existe un flujo real aparte.
+
+Deja un solo flujo:
+
+botón abre modal
+
+ISMProcess precarga si hay relaciones
+
+usuario continúa
+
+Criterios de éxito (deben cumplirse todos)
+
+Con y sin relaciones existentes:
+
+Click en botón VAXO => isISMDialogOpen cambia a true en project-page.tsx.
+
+ISMProcess RENDER isOpen=true aparece en consola.
+
+El modal se ve en pantalla siempre.
+
+El modal ya no depende del tab montado.
+
+No existen componentes modales duplicados.
+
+No hay cierre inesperado por remount/unmount.
+
+Entregable esperado
+
+Al terminar, devuelve:
+
+Lista de archivos modificados
+
+Resumen exacto de cambios por archivo
+
+Confirmación con logs del Caso A y Caso B
+
+Fin. Ejecuta exactamente en ese orden. No hagas parches aislados. No toques backend.
