@@ -170,6 +170,9 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
     relation: string;
     restriction: string;
   } | null>(null);
+  
+  const initializationRef = useRef(false);
+  const totalQuestionsRef = useRef(0);
 
   const { data: project, isLoading: isProjectLoading } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
@@ -189,16 +192,18 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
 
   const { data: existingRelationships = [], isLoading: isRelationshipsLoading, isFetching: isRelationshipsFetching } = useQuery<Relationship[]>({
     queryKey: [`/api/projects/${projectId}/relationships`],
-    enabled: !!projectId,
-    staleTime: 0,
+    enabled: !!projectId && !initializationRef.current,
+    staleTime: Infinity,
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const { data: selectedIdeasData = [], isLoading: isSelectedIdeasLoading, isFetching: isSelectedIdeasFetching } = useQuery<any[]>({
     queryKey: [`/api/projects/${projectId}/selected-ideas`],
-    enabled: !!projectId && preselectedIdeaIds.length === 0,
-    staleTime: 0,
+    enabled: !!projectId && preselectedIdeaIds.length === 0 && !initializationRef.current,
+    staleTime: Infinity,
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   useEffect(() => {
@@ -213,7 +218,7 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
   }, [project]);
 
   useEffect(() => {
-    if (isInitialized) {
+    if (isInitialized || initializationRef.current) {
       return;
     }
 
@@ -246,6 +251,7 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
     }
 
     if (ideasToUse.length < 2) {
+      initializationRef.current = true;
       setIsInitialized(true);
       setStage("questions");
       return;
@@ -287,10 +293,12 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
     }
 
     const firstUnansweredIndex = newQuestions.findIndex(q => q.response === null);
-    const answeredCount = newQuestions.filter(q => q.response !== null).length;
+    
+    totalQuestionsRef.current = newQuestions.length;
     
     setQuestions(newQuestions);
     setCurrentQuestionIndex(firstUnansweredIndex !== -1 ? firstUnansweredIndex : 0);
+    initializationRef.current = true;
     setIsInitialized(true);
     setStage("questions");
     
@@ -630,7 +638,7 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold">Influence Relationship</h3>
                   <Badge variant="outline">
-                    Question {currentQuestionIndex + 1} of {questions.length}
+                    Question {currentQuestionIndex + 1} of {totalQuestionsRef.current || questions.length}
                   </Badge>
                 </div>
                 
@@ -724,11 +732,11 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
                 <div className="w-full bg-muted rounded-full h-2">
                   <div 
                     className="bg-primary h-2 rounded-full transition-all duration-300" 
-                    style={{ width: `${((questions.filter(q => q.response !== null).length) / questions.length) * 100}%` }}
+                    style={{ width: `${((questions.filter(q => q.response !== null).length) / (totalQuestionsRef.current || questions.length)) * 100}%` }}
                   />
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {questions.filter(q => q.response !== null).length} of {questions.length} relationships defined
+                  {questions.filter(q => q.response !== null).length} of {totalQuestionsRef.current || questions.length} relationships defined
                 </p>
               </div>
             </div>
