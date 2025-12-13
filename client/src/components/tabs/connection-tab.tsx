@@ -152,21 +152,29 @@ export default function ConnectionTab({ projectId }: ConnectionTabProps) {
   const [showRelationshipsDialog, setShowRelationshipsDialog] = useState(false);
 
   // Handle the start VAXO process button - Simplificado
-  const handleStartProcess = () => {
+  const handleStartProcess = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     console.log("🟢🟢🟢 CLICK EN BOTON VAXO 🟢🟢🟢");
     console.log("Estado actual ANTES de cambio: isISMDialogOpen=" + isISMDialogOpen);
+    console.log("hasExistingVaxoRelationships=" + hasExistingVaxoRelationships);
+    console.log("existingRelationships.length=" + existingRelationships.length);
     
     // Simplemente abrir el modal directamente
     setIsStarting(true);
     setPreventAutoClose(true);
-    setIsISMDialogOpen(true);
     
-    console.log("📌 setIsISMDialogOpen(true) llamado");
-    
-    // Log después del siguiente render
-    setTimeout(() => {
-      console.log("📌 Estado después de 100ms (debería ser true)");
-    }, 100);
+    // Usar requestAnimationFrame para asegurar que el estado se establezca después del render
+    requestAnimationFrame(() => {
+      console.log("📌 Estableciendo isISMDialogOpen=true en requestAnimationFrame");
+      setIsISMDialogOpen(true);
+      
+      // Log después del siguiente render
+      setTimeout(() => {
+        console.log("📌 Estado después de 100ms (debería ser true)");
+      }, 100);
+    });
     
     // Resetear estado de loading después de un breve momento
     setTimeout(() => {
