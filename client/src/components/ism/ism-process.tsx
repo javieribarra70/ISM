@@ -1641,20 +1641,27 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   
   // Safe close handler that prevents immediate closing
   const handleDialogOpenChange = (open: boolean) => {
-    console.log(`🔄 Dialog onOpenChange called: open=${open}, isOpen=${isOpen}`);
+    console.log(`🔄 Dialog onOpenChange called: open=${open}, isOpen=${isOpen}, openTimeRef=${openTimeRef.current}`);
     
     if (!open) {
-      const timeSinceOpen = Date.now() - openTimeRef.current;
-      console.log(`⏱️ Time since dialog opened: ${timeSinceOpen}ms`);
-      
-      // Only allow close if the dialog has been open for at least MIN_OPEN_TIME
-      if (timeSinceOpen < MIN_OPEN_TIME) {
-        console.log(`🛡️ Blocking premature close (opened ${timeSinceOpen}ms ago, minimum is ${MIN_OPEN_TIME}ms)`);
-        return; // Block the close
+      // If the parent wants the dialog open (isOpen=true) but Radix is trying to close it
+      if (isOpen) {
+        const timeSinceOpen = Date.now() - openTimeRef.current;
+        console.log(`⏱️ Time since dialog opened: ${timeSinceOpen}ms`);
+        
+        // Block premature close - either if ref wasn't set yet OR if not enough time passed
+        if (openTimeRef.current === 0 || timeSinceOpen < MIN_OPEN_TIME) {
+          console.log(`🛡️ Blocking premature close (openTimeRef=${openTimeRef.current}, timeSinceOpen=${timeSinceOpen}ms)`);
+          return; // Block the close - parent still wants it open
+        }
+        
+        console.log(`✅ Allowing dialog close after ${timeSinceOpen}ms`);
       }
-      
-      console.log(`✅ Allowing dialog close after ${timeSinceOpen}ms`);
       onClose();
+    } else {
+      // Dialog is opening - set the open time immediately
+      openTimeRef.current = Date.now();
+      console.log(`📌 Dialog opening, setting openTimeRef=${openTimeRef.current}`);
     }
   };
   
