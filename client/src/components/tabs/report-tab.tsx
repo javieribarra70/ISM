@@ -433,9 +433,37 @@ export default function ReportTab({ projectId }: ReportTabProps) {
             bg: '#fafafa'
           });
           
-          // Calculate image dimensions to fit in PDF
-          const imgWidth = pageWidth - (margin * 2);
-          const imgHeight = 100; // Fixed height for diagram
+          // Calculate image dimensions preserving aspect ratio
+          const maxImgWidth = pageWidth - (margin * 2);
+          const maxImgHeight = 120;
+          
+          // Create temporary image to get actual dimensions
+          const img = new Image();
+          img.src = pngData;
+          
+          // Wait for image to load to get dimensions
+          await new Promise<void>((resolve) => {
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+            // Fallback timeout
+            setTimeout(() => resolve(), 100);
+          });
+          
+          // Calculate scaled dimensions preserving aspect ratio
+          let imgWidth = maxImgWidth;
+          let imgHeight = maxImgHeight;
+          
+          if (img.naturalWidth && img.naturalHeight) {
+            const aspectRatio = img.naturalWidth / img.naturalHeight;
+            // Fit within max dimensions while preserving aspect ratio
+            if (maxImgWidth / aspectRatio <= maxImgHeight) {
+              imgWidth = maxImgWidth;
+              imgHeight = maxImgWidth / aspectRatio;
+            } else {
+              imgHeight = maxImgHeight;
+              imgWidth = maxImgHeight * aspectRatio;
+            }
+          }
           
           pdf.addImage(pngData, 'PNG', margin, yPos, imgWidth, imgHeight);
           yPos += imgHeight + 10;
