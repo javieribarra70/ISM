@@ -4,6 +4,7 @@ import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
 import ProjectPage from "@/pages/project-page";
+import VaxoPage from "@/pages/vaxo-page";
 import AdminPage from "@/pages/admin-page";
 import SettingsPage from "@/pages/settings-page";
 import { ProjectsProvider } from "@/hooks/use-projects";
@@ -19,6 +20,7 @@ function App() {
           <ProjectsProvider>
             <Switch>
               <ProtectedRoute path="/" component={HomePage} />
+              <ProtectedRoute path="/projects/:projectId/vaxo" component={VaxoPage} />
               <ProtectedRoute path="/projects/:projectId" component={ProjectPage} />
               <ProtectedRoute path="/admin" component={AdminPage} />
               <Route path="/auth" component={AuthPage} />

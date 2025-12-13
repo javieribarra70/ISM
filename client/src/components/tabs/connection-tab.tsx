@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Idea, SelectedIdea, Project } from "@shared/schema";
@@ -19,22 +20,12 @@ interface ProjectUser {
 
 interface ConnectionTabProps {
   projectId: number;
-  setIsISMDialogOpen: (open: boolean) => void;
-  setVaxoSelectedIdeas: (ideas: Idea[]) => void;
-  setVaxoProjectContext: (ctx: {
-    context: string;
-    triggeringQuestion: string;
-    relation: string;
-    restriction: string;
-  } | null) => void;
 }
 
 export default function ConnectionTab({ 
-  projectId, 
-  setIsISMDialogOpen,
-  setVaxoSelectedIdeas,
-  setVaxoProjectContext
+  projectId
 }: ConnectionTabProps) {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
   const [isStarting, setIsStarting] = useState(false);
@@ -125,31 +116,21 @@ export default function ConnectionTab({
     return relationsForSelectedIdeas.length > 0;
   }, [existingRelationships, selectedIdeas]);
 
-  // Handle the start VAXO process button - State is lifted to parent component
+  // Handle the start VAXO process button - Navigate to dedicated page
   const handleStartProcess = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log("🔘 VAXO Button clicked!");
-    console.log("📦 Setting payload: selectedIdeas=", selectedIdeas.length, ", projectContext=", projectContext);
+    console.log("🔘 VAXO Button clicked! Navigating to VAXO page...");
     
-    // Set loading state briefly
     setIsStarting(true);
     
-    // IMPORTANT: Set the payload BEFORE opening the dialog
-    setVaxoSelectedIdeas(selectedIdeas);
-    setVaxoProjectContext(projectContext);
+    // Build URL with selected idea IDs
+    const ids = selectedIdeas.map(idea => idea.id).join(",");
+    const url = `/projects/${projectId}/vaxo?ideas=${encodeURIComponent(ids)}`;
     
-    // Now open the dialog - state is in parent, won't be reset by tab re-renders
-    console.log("📤 Calling setIsISMDialogOpen(true)...");
-    setIsISMDialogOpen(true);
-    console.log("✅ setIsISMDialogOpen(true) called");
+    console.log("📤 Navigating to:", url);
     
-    // Reset loading state
-    setTimeout(() => {
-      setIsStarting(false);
-    }, 300);
-
     // Show toast if there are existing relationships (informative only)
     if (hasExistingVaxoRelationships) {
       const selectedIds = selectedIdeas.map((idea) => idea.id);
@@ -160,11 +141,19 @@ export default function ConnectionTab({
       }).length;
       
       toast({
-        title: "Relaciones VAXO existentes",
-        description: `Continuando proceso con ${count} relaciones existentes.`,
+        title: "Existing VAXO relationships",
+        description: `Continuing process with ${count} existing relationships.`,
         duration: 3000,
       });
     }
+    
+    // Navigate to the VAXO page
+    setLocation(url);
+    
+    // Reset loading state
+    setTimeout(() => {
+      setIsStarting(false);
+    }, 300);
   };
 
   // Handle the start alternative process button

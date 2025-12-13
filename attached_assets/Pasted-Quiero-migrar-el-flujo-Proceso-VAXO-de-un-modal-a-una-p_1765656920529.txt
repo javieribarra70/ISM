@@ -1,0 +1,150 @@
+Quiero migrar el flujo “Proceso VAXO” de un modal a una página dedicada. El bug actual es que el modal no aparece cuando ya existen relaciones; no quiero más parches sobre Radix Dialog, quiero cambio estructural.
+
+Objetivo final
+
+Al presionar el botón “VAXO” en ConnectionTab, en lugar de abrir un modal, navegará a una nueva ruta:
+
+/projects/:projectId/vaxo
+
+Esa página mostrará el wizard completo del proceso VAXO (antes ISMProcess) sin depender de tabs/modals.
+
+Debe funcionar tanto si hay relaciones existentes como si no.
+
+PASO 1: Crear ruta y página nueva (sin tocar lógica todavía)
+
+Crear archivo: client/src/pages/vaxo-page.tsx
+
+Debe leer projectId desde la URL (Wouter).
+
+Debe renderizar un placeholder por ahora: “VAXO page for project X”.
+
+Ejemplo:
+
+import { useRoute } from "wouter";
+
+export default function VaxoPage() {
+  const [match, params] = useRoute("/projects/:projectId/vaxo");
+  const projectId = params?.projectId;
+  return <div>VAXO page for project {projectId}</div>;
+}
+
+
+Registrar ruta en el router principal (donde se declaran las rutas en app).
+
+Agregar:
+
+<Route path="/projects/:projectId/vaxo" component={VaxoPage} />
+
+No avanzar si la ruta no funciona.
+
+PASO 2: Extraer el “motor” del proceso a un componente sin modal
+
+Actualmente client/src/components/ism/ism-process.tsx mezcla Dialog + wizard.
+
+Crear componente nuevo: client/src/components/ism/vaxo-wizard.tsx
+
+Mover ahí todo lo que sea:
+
+etapas del proceso
+
+preguntas
+
+carga de relaciones existentes
+
+matrices / niveles / diagrama
+
+El nuevo componente NO debe usar <Dialog> ni overlay.
+
+Props mínimas:
+
+type VaxoWizardProps = {
+  projectId: number;
+  preselectedIdeaIds?: number[];
+};
+
+
+En ism-process.tsx, reemplazar el contenido por:
+
+Dialog + <VaxoWizard ... />
+para no romper el modal existente si alguien lo usa todavía.
+
+Ejemplo:
+
+<VaxoWizard projectId={projectIdFromContext} preselectedIdeaIds={...} />
+
+
+No modificar el algoritmo ni matrix-utils.ts.
+
+PASO 3: Implementar VaxoPage real usando VaxoWizard
+
+En vaxo-page.tsx:
+
+Parsear projectId.
+
+Parsear querystring ideas opcional (lista CSV).
+
+Si existe: convertir a number[] para preselectedIdeaIds.
+
+Renderizar:
+
+<VaxoWizard projectId={Number(projectId)} preselectedIdeaIds={ideaIds} />
+
+PASO 4: Migrar el botón VAXO del tab a navegación
+
+En client/src/components/tabs/connection-tab.tsx:
+
+Importar useLocation de Wouter.
+
+Reemplazar lógica que abre modal (setIsISMDialogOpen(true)) por navegación a la página:
+
+Ejemplo:
+
+import { useLocation } from "wouter";
+
+const [, setLocation] = useLocation();
+
+const handleStartProcess = () => {
+  const ids = selectedIdeas.map(i => i.id).join(",");
+  setLocation(`/projects/${projectId}/vaxo?ideas=${encodeURIComponent(ids)}`);
+};
+
+
+Dejar el toast informativo si hay relaciones, pero NO debe controlar el flujo.
+
+PASO 5: Limpieza mínima
+
+Eliminar estados muertos del modal en ConnectionTab si ya no se usan:
+
+isISMDialogOpen, handleISMDialogClose, preventAutoClose, etc.
+
+Asegurar que la nueva página VAXO no muestra el layout de tabs/admin si el usuario entra por la ruta directa (dependerá de la estructura de tu app).
+
+PASO 6: Criterios de éxito (verifica antes de terminar)
+
+Desde ConnectionTab:
+
+Click VAXO navega a /projects/:id/vaxo?...
+
+Se ve el wizard.
+
+Con relaciones existentes:
+
+El wizard carga relaciones y muestra etapa correspondiente.
+
+No depende de modales ni tabs, no desaparece.
+
+Sin relaciones:
+
+Inicia desde el inicio normalmente.
+
+Entregables
+
+Lista de archivos creados/modificados.
+
+Confirmación de que la ruta funciona.
+
+Confirmación de que el botón navega correctamente.
+
+Confirmación de que el wizard se ve en la nueva página.
+
+No hagas parches en Radix Dialog como solución principal. El objetivo es mover el flujo a página dedicada.

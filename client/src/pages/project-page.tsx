@@ -17,7 +17,6 @@ import SettingsTab from "@/components/tabs/settings-tab";
 import ContextTab from "@/components/tabs/context-tab";
 import ConnectionTab from "@/components/tabs/connection-tab";
 import ReportTab from "@/components/tabs/report-tab";
-import ISMProcess from "@/components/ism/ism-process";
 import { Avatars } from "@/components/avatars";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -35,19 +34,6 @@ export default function ProjectPage() {
   const [lastPolled, setLastPolled] = useState<Date>(new Date());
   const [ideaToEdit, setIdeaToEdit] = useState<Idea | null>(null);
   const [isEditIdeaModalOpen, setIsEditIdeaModalOpen] = useState(false);
-  const [isISMDialogOpen, setIsISMDialogOpen] = useState(false);
-  const [vaxoSelectedIdeas, setVaxoSelectedIdeas] = useState<Idea[]>([]);
-  const [vaxoProjectContext, setVaxoProjectContext] = useState<{
-    context: string;
-    triggeringQuestion: string;
-    relation: string;
-    restriction: string;
-  } | null>(null);
-  
-  // Debug logging for isISMDialogOpen state changes
-  useEffect(() => {
-    console.log("📊 PROJECT-PAGE: isISMDialogOpen changed to:", isISMDialogOpen);
-  }, [isISMDialogOpen]);
   
   // Estado para controlar la pestaña activa - debe estar aquí con los otros estados
   // Intentar recordar la última pestaña activa usando sessionStorage
@@ -549,10 +535,7 @@ export default function ProjectPage() {
             
             <TabsContent value="connection" className="mt-0 p-4">
               <ConnectionTab 
-                projectId={parsedProjectId} 
-                setIsISMDialogOpen={setIsISMDialogOpen}
-                setVaxoSelectedIdeas={setVaxoSelectedIdeas}
-                setVaxoProjectContext={setVaxoProjectContext}
+                projectId={parsedProjectId}
               />
             </TabsContent>
             
@@ -619,13 +602,6 @@ export default function ProjectPage() {
         }}
         isUpdating={updateIdeaMutation.isPending}
         projectCategories={projectCategories}
-      />
-      
-      <ISMProcess
-        isOpen={isISMDialogOpen}
-        onClose={() => setIsISMDialogOpen(false)}
-        selectedIdeas={vaxoSelectedIdeas}
-        projectContext={vaxoProjectContext}
       />
     </div>
   );
