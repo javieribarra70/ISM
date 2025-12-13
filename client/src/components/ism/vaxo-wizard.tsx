@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Idea, Relationship, Project } from "@shared/schema";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -162,6 +162,7 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
   const [finalReachabilityMatrix, setFinalReachabilityMatrix] = useState<boolean[][]>([]);
   const [levels, setLevels] = useState<number[][]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  const hasShownToastRef = useRef(false);
   const [selectedIdeas, setSelectedIdeas] = useState<Idea[]>([]);
   const [projectContext, setProjectContext] = useState<{
     context: string;
@@ -288,22 +289,25 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
     setIsInitialized(true);
     setStage("questions");
     
-    if (answeredCount > 0 && firstUnansweredIndex !== -1) {
-      toast({
-        title: "Continuing process",
-        description: `Found ${answeredCount} saved relationships. Continuing from where you left off.`,
-        variant: "default",
-        duration: 3000
-      });
-    } else if (answeredCount > 0 && firstUnansweredIndex === -1) {
-      toast({
-        title: "Process previously completed",
-        description: `All ${answeredCount} relationships were already answered.`,
-        variant: "default",
-        duration: 3000
-      });
+    if (!hasShownToastRef.current) {
+      hasShownToastRef.current = true;
+      if (answeredCount > 0 && firstUnansweredIndex !== -1) {
+        toast({
+          title: "Continuing process",
+          description: `Found ${answeredCount} saved relationships. Continuing from where you left off.`,
+          variant: "default",
+          duration: 3000
+        });
+      } else if (answeredCount > 0 && firstUnansweredIndex === -1) {
+        toast({
+          title: "Process previously completed",
+          description: `All ${answeredCount} relationships were already answered.`,
+          variant: "default",
+          duration: 3000
+        });
+      }
     }
-  }, [isIdeasLoading, isRelationshipsLoading, isSelectedIdeasLoading, isProjectLoading, isRelationshipsFetching, isSelectedIdeasFetching, allIdeas, existingRelationships, selectedIdeasData, preselectedIdeaIds, isInitialized, toast]);
+  }, [isIdeasLoading, isRelationshipsLoading, isSelectedIdeasLoading, isProjectLoading, isRelationshipsFetching, isSelectedIdeasFetching, allIdeas, existingRelationships, selectedIdeasData, preselectedIdeaIds, isInitialized]);
 
   const answerQuestion = async (response: RelationType) => {
     try {
