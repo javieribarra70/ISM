@@ -985,15 +985,26 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   };
 
   const renderCurrentStage = () => {
-    // Mostrar estado de carga si las relaciones están siendo cargadas o las preguntas no están listas
-    if (isLoadingRelationships || (!isInitialized && isOpen)) {
+    // SOLO mostrar carga mientras la query está cargando Y no tenemos datos en cache
+    // isLoading en TanStack Query v5 significa "cargando sin datos en cache"
+    if (isLoadingRelationships) {
       return (
         <div className="flex flex-col items-center justify-center py-12 space-y-4">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-opacity-50 border-t-primary rounded-full"></div>
           <p className="text-muted-foreground">Cargando proceso VAXO...</p>
           <p className="text-sm text-muted-foreground">
-            {isLoadingRelationships ? "Verificando relaciones existentes..." : "Inicializando preguntas..."}
+            Verificando relaciones existentes...
           </p>
+        </div>
+      );
+    }
+    
+    // Si el modal está abierto pero aún no hay preguntas, inicializar
+    if (isOpen && questions.length === 0 && selectedIdeas.length > 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 space-y-4">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-opacity-50 border-t-primary rounded-full"></div>
+          <p className="text-muted-foreground">Preparando preguntas VAXO...</p>
         </div>
       );
     }
