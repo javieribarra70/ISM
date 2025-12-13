@@ -242,46 +242,6 @@ export default function Workspace({
                 </marker>
               </defs>
               
-              {/* Existing relationships */}
-              {relationships.map(rel => {
-                const fromIdea = findIdeaById(rel.fromIdeaId);
-                const toIdea = findIdeaById(rel.toIdeaId);
-                
-                if (!fromIdea || !toIdea) return null;
-                
-                const x1 = parseInt(fromIdea.positionX) + 120; // middle of card
-                const y1 = parseInt(fromIdea.positionY) + 60;
-                const x2 = parseInt(toIdea.positionX) + 120;
-                const y2 = parseInt(toIdea.positionY) + 60;
-                
-                return (
-                  <g key={rel.id}>
-                    {/* Línea de fondo más gruesa para mejorar visibilidad */}
-                    <line 
-                      className="relationship-line-background"
-                      x1={x1}
-                      y1={y1}
-                      x2={x2}
-                      y2={y2}
-                      stroke="#ffffff"
-                      strokeWidth="4"
-                      opacity="0.6"
-                    />
-                    {/* Línea principal de la relación */}
-                    <line 
-                      className="relationship-line"
-                      x1={x1}
-                      y1={y1}
-                      x2={x2}
-                      y2={y2}
-                      stroke="#2196F3"
-                      strokeWidth="2"
-                      strokeDasharray="5,5"
-                      markerEnd="url(#arrowhead)"
-                    />
-                  </g>
-                );
-              })}
               
               {/* Currently drawing line */}
               {isDrawingLine && connectingFrom !== null && (
