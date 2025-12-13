@@ -121,15 +121,20 @@ export default function ConnectionTab({ projectId, isISMDialogOpen, setIsISMDial
     e.preventDefault();
     e.stopPropagation();
     
+    console.log("🔘 VAXO Button clicked! Current isISMDialogOpen:", isISMDialogOpen);
+    
     // Set loading state briefly
     setIsStarting(true);
     
     // Open the dialog directly - state is in parent, won't be reset by re-renders
+    console.log("📤 Calling setIsISMDialogOpen(true)...");
     setIsISMDialogOpen(true);
+    console.log("✅ setIsISMDialogOpen(true) called");
     
     // Reset loading state
     setTimeout(() => {
       setIsStarting(false);
+      console.log("⏱️ After 300ms, isISMDialogOpen should be:", isISMDialogOpen);
     }, 300);
 
     // Show toast if there are existing relationships

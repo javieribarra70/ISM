@@ -35,6 +35,12 @@ export default function ProjectPage() {
   const [ideaToEdit, setIdeaToEdit] = useState<Idea | null>(null);
   const [isEditIdeaModalOpen, setIsEditIdeaModalOpen] = useState(false);
   const [isISMDialogOpen, setIsISMDialogOpen] = useState(false);
+  
+  // Debug logging for isISMDialogOpen state changes
+  useEffect(() => {
+    console.log("📊 PROJECT-PAGE: isISMDialogOpen changed to:", isISMDialogOpen);
+  }, [isISMDialogOpen]);
+  
   // Estado para controlar la pestaña activa - debe estar aquí con los otros estados
   // Intentar recordar la última pestaña activa usando sessionStorage
   const getInitialTab = () => {
