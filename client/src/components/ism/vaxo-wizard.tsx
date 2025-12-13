@@ -162,7 +162,7 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
   const [finalReachabilityMatrix, setFinalReachabilityMatrix] = useState<boolean[][]>([]);
   const [levels, setLevels] = useState<number[][]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
-  const hasShownToastRef = useRef(false);
+  const [loadingStatus, setLoadingStatus] = useState<string>("Starting...");
   const [selectedIdeas, setSelectedIdeas] = useState<Idea[]>([]);
   const [projectContext, setProjectContext] = useState<{
     context: string;
@@ -213,23 +213,28 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
   }, [project]);
 
   useEffect(() => {
-    const isAnyLoading = isIdeasLoading || isRelationshipsLoading || isSelectedIdeasLoading || isProjectLoading;
-    const isAnyFetching = isRelationshipsFetching || isSelectedIdeasFetching;
-    
-    if (isAnyLoading || isAnyFetching) {
-      return;
-    }
-
     if (isInitialized) {
       return;
     }
+
+    if (isProjectLoading) {
+      setLoadingStatus("Loading project data...");
+      return;
+    }
+    if (isIdeasLoading) {
+      setLoadingStatus("Loading ideas...");
+      return;
+    }
+    if (isRelationshipsLoading || isRelationshipsFetching) {
+      setLoadingStatus(`Loading relationships... (${existingRelationships.length} found)`);
+      return;
+    }
+    if (isSelectedIdeasLoading || isSelectedIdeasFetching) {
+      setLoadingStatus("Loading selected ideas...");
+      return;
+    }
     
-    console.log("VAXO Wizard initializing with:", {
-      allIdeasCount: allIdeas.length,
-      existingRelationshipsCount: existingRelationships.length,
-      selectedIdeasDataCount: selectedIdeasData.length,
-      preselectedIdeaIds
-    });
+    setLoadingStatus("Processing data...");
 
     let ideasToUse: Idea[] = [];
     
@@ -289,24 +294,6 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
     setIsInitialized(true);
     setStage("questions");
     
-    if (!hasShownToastRef.current) {
-      hasShownToastRef.current = true;
-      if (answeredCount > 0 && firstUnansweredIndex !== -1) {
-        toast({
-          title: "Continuing process",
-          description: `Found ${answeredCount} saved relationships. Continuing from where you left off.`,
-          variant: "default",
-          duration: 3000
-        });
-      } else if (answeredCount > 0 && firstUnansweredIndex === -1) {
-        toast({
-          title: "Process previously completed",
-          description: `All ${answeredCount} relationships were already answered.`,
-          variant: "default",
-          duration: 3000
-        });
-      }
-    }
   }, [isIdeasLoading, isRelationshipsLoading, isSelectedIdeasLoading, isProjectLoading, isRelationshipsFetching, isSelectedIdeasFetching, allIdeas, existingRelationships, selectedIdeasData, preselectedIdeaIds, isInitialized]);
 
   const answerQuestion = async (response: RelationType) => {
@@ -588,14 +575,19 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
   };
 
   const renderCurrentStage = () => {
-    if (stage === "loading" || isIdeasLoading || isRelationshipsLoading || isSelectedIdeasLoading || isProjectLoading) {
+    if (stage === "loading" || !isInitialized) {
       return (
         <div className="flex flex-col items-center justify-center py-12 space-y-4">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-opacity-50 border-t-primary rounded-full"></div>
           <p className="text-muted-foreground">Loading VAXO process...</p>
-          <p className="text-sm text-muted-foreground">
-            Verifying existing relationships...
-          </p>
+          <p className="text-sm text-muted-foreground">{loadingStatus}</p>
+          <div className="text-xs text-muted-foreground/60 mt-4 space-y-1">
+            <p>Project: {isProjectLoading ? "loading..." : "ready"}</p>
+            <p>Ideas: {isIdeasLoading ? "loading..." : `${allIdeas.length} loaded`}</p>
+            <p>Relationships: {isRelationshipsLoading || isRelationshipsFetching ? "loading..." : `${existingRelationships.length} loaded`}</p>
+            <p>Selected: {isSelectedIdeasLoading || isSelectedIdeasFetching ? "loading..." : `${selectedIdeasData.length} loaded`}</p>
+            <p>Initialized: {isInitialized ? "yes" : "no"}</p>
+          </div>
         </div>
       );
     }
