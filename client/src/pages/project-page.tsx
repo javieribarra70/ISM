@@ -10,7 +10,6 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import NewIdeaModal from "@/components/modals/new-idea-modal";
 import EditIdeaModal from "@/components/modals/edit-idea-modal";
 import InviteUsersModal from "@/components/modals/invite-users-modal";
-import NewCategoryModal from "@/components/modals/new-category-modal";
 import CategoriesTab from "@/components/tabs/categories-tab";
 import SelectorTab from "@/components/tabs/selector-tab";
 import SettingsTab from "@/components/tabs/settings-tab";
@@ -29,7 +28,6 @@ export default function ProjectPage() {
   const { user, isLoading: isLoadingUser } = useAuth();
   const { toast } = useToast();
   const [isNewIdeaModalOpen, setIsNewIdeaModalOpen] = useState(false);
-  const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [lastPolled, setLastPolled] = useState<Date>(new Date());
   const [ideaToEdit, setIdeaToEdit] = useState<Idea | null>(null);
@@ -238,46 +236,6 @@ export default function ProjectPage() {
     },
   });
 
-  // Create a new category
-  const createCategoryMutation = useMutation({
-    mutationFn: async (data: { name: string; description?: string; color: string }) => {
-      const response = await apiRequest("POST", `/api/projects/${parsedProjectId}/categories`, {
-        ...data,
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      // Guardar explícitamente "categories" como la pestaña activa en sessionStorage
-      try {
-        sessionStorage.setItem(`project_${projectId}_active_tab`, "categories");
-        console.log("Persistiendo pestaña activa: categories en sessionStorage");
-      } catch (e) {
-        console.error("Error al guardar pestaña en sessionStorage:", e);
-      }
-      
-      // Primer paso: Invalidar la consulta para forzar una recarga
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${parsedProjectId}/categories`] });
-      
-      // Segundo paso: Cerrar el modal
-      setIsNewCategoryModalOpen(false);
-      
-      // Tercer paso: Forzar que se muestre la pestaña de categorías con retraso
-      // Usar setTimeout con un retraso más largo para asegurar que todos los cambios de estado se completen
-      setTimeout(() => {
-        // Asegurarse de que la pestaña activa sea "categories" explícitamente
-        setActiveTab("categories");
-        console.log("Estableciendo pestaña activa a 'categories' después de crear categoría");
-      }, 200);
-    },
-    onError: (error: Error) => {
-      console.error("Error al crear categoría:", error);
-      toast({
-        title: "Error al crear categoría",
-        description: "Ha ocurrido un error al crear la categoría. Inténtalo de nuevo.",
-        variant: "destructive",
-      });
-    }
-  });
 
   // Update idea
   const updateIdeaMutation = useMutation({
@@ -575,15 +533,6 @@ export default function ProjectPage() {
         }}
       />
 
-      <NewCategoryModal
-        isOpen={isNewCategoryModalOpen}
-        onClose={() => setIsNewCategoryModalOpen(false)}
-        onSaveCategory={(categoryData) => {
-          console.log("Category created, submitting:", categoryData);
-          createCategoryMutation.mutate(categoryData);
-        }}
-        isSubmitting={createCategoryMutation.isPending}
-      />
       
       <EditIdeaModal
         isOpen={isEditIdeaModalOpen}
