@@ -17,6 +17,7 @@ interface NewCategoryModalProps {
   isSubmitting: boolean;
   category?: Category | null;
   isEditMode?: boolean;
+  resetKey?: number;
 }
 
 // Schema to validate the form
@@ -40,7 +41,8 @@ export default function NewCategoryModal({
   onSaveCategory,
   isSubmitting,
   category,
-  isEditMode = false
+  isEditMode = false,
+  resetKey = 0
 }: NewCategoryModalProps) {
   // Form configuration with react-hook-form and zod
   const form = useForm<z.infer<typeof formSchema>>({
@@ -78,8 +80,23 @@ export default function NewCategoryModal({
     }
   }, [category, form, isOpen]);
 
+  // Reset form when resetKey changes (after successful save in create mode)
+  useEffect(() => {
+    if (resetKey > 0 && !isEditMode && isOpen) {
+      form.reset({
+        name: "",
+        description: "",
+        color: generateRandomColorValue(),
+      });
+    }
+  }, [resetKey, isEditMode, isOpen, form]);
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    onSaveCategory(values);
+    onSaveCategory({
+      name: values.name,
+      description: values.description,
+      color: values.color,
+    });
   };
 
   const generateRandomColor = () => {

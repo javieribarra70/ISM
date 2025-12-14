@@ -29,6 +29,7 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [formResetKey, setFormResetKey] = useState(0);
   
   // Función auxiliar para mantener pestaña de categorías
   const persistCategoriesTab = useCallback(() => {
@@ -65,12 +66,7 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
         title: "Category added",
         description: "The category has been created successfully",
       });
-      setIsNewCategoryModalOpen(false);
-      setTimeout(() => {
-        setCurrentCategory(null);
-        setIsEditMode(false);
-        setIsNewCategoryModalOpen(true);
-      }, 100);
+      setFormResetKey(prev => prev + 1);
       persistCategoriesTab();
     },
     onError: (error: Error) => {
@@ -280,6 +276,7 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
         isSubmitting={createCategoryMutation.isPending || updateCategoryMutation.isPending}
         category={currentCategory}
         isEditMode={isEditMode}
+        resetKey={formResetKey}
       />
 
       {/* Delete category confirmation dialog */}
