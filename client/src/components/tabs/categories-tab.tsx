@@ -35,9 +35,12 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
     const storageKey = `project_${projectId}_reopen_category_modal`;
     const shouldReopen = sessionStorage.getItem(storageKey);
     if (shouldReopen === 'true') {
-      sessionStorage.removeItem(storageKey);
-      setFormResetKey(prev => prev + 1);
-      setIsNewCategoryModalOpen(true);
+      const timer = setTimeout(() => {
+        sessionStorage.removeItem(storageKey);
+        setFormResetKey(prev => prev + 1);
+        setIsNewCategoryModalOpen(true);
+      }, 300);
+      return () => clearTimeout(timer);
     }
   }, [projectId]);
   
