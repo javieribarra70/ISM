@@ -44,11 +44,10 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
   // Obtener las categorías del proyecto
   const { data: categories, isLoading, refetch: refetchCategories } = useQuery<Category[]>({
     queryKey: [`/api/projects/${projectId}/categories`],
-    staleTime: 0, // Sin caché
+    staleTime: 30000,
     retry: 3,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     refetchOnMount: true,
-    refetchInterval: 3000 // Refrescar cada 3 segundos
   });
 
   // Mutación para crear categoría
