@@ -52,7 +52,16 @@ export default function NewCategoryModal({
     },
   });
 
-  // Update form when selected category changes
+  const generateRandomColorValue = () => {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+  };
+
+  // Update form when selected category changes or modal opens
   useEffect(() => {
     if (category) {
       form.reset({
@@ -60,14 +69,14 @@ export default function NewCategoryModal({
         description: category.description || "",
         color: category.color || "#E2E8F0",
       });
-    } else {
+    } else if (isOpen) {
       form.reset({
         name: "",
         description: "",
-        color: "#E2E8F0",
+        color: generateRandomColorValue(),
       });
     }
-  }, [category, form]);
+  }, [category, form, isOpen]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     onSaveCategory(values);
@@ -180,7 +189,7 @@ export default function NewCategoryModal({
                 onClick={onClose}
                 disabled={isSubmitting}
               >
-                Cancel
+                Close
               </Button>
               <Button 
                 type="submit" 
@@ -190,10 +199,10 @@ export default function NewCategoryModal({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isEditMode ? 'Saving...' : 'Creating...'}
+                    {isEditMode ? 'Saving...' : 'Adding...'}
                   </>
                 ) : (
-                  isEditMode ? 'Save Changes' : 'Create Category'
+                  isEditMode ? 'Save Changes' : 'Add Category'
                 )}
               </Button>
             </DialogFooter>

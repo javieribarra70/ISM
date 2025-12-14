@@ -60,14 +60,17 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/categories`] });
-      // Forzar una recarga inmediata de las categorías
       refetchCategories();
       toast({
-        title: "Categoría creada",
-        description: "La categoría ha sido creada correctamente",
+        title: "Category added",
+        description: "The category has been created successfully",
       });
       setIsNewCategoryModalOpen(false);
-      // Asegurar que la pestaña permanezca en categorías
+      setTimeout(() => {
+        setCurrentCategory(null);
+        setIsEditMode(false);
+        setIsNewCategoryModalOpen(true);
+      }, 100);
       persistCategoriesTab();
     },
     onError: (error: Error) => {
