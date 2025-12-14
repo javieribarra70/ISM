@@ -61,13 +61,11 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/categories`] });
-      refetchCategories();
       toast({
         title: "Category added",
         description: "The category has been created successfully",
       });
       setFormResetKey(prev => prev + 1);
-      persistCategoriesTab();
     },
     onError: (error: Error) => {
       console.error("Error al crear categoría:", error);
