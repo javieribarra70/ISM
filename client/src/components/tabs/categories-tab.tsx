@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,16 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [formResetKey, setFormResetKey] = useState(0);
-  const keepModalOpenRef = useRef(false);
+  
+  useEffect(() => {
+    const storageKey = `project_${projectId}_reopen_category_modal`;
+    const shouldReopen = sessionStorage.getItem(storageKey);
+    if (shouldReopen === 'true') {
+      sessionStorage.removeItem(storageKey);
+      setFormResetKey(prev => prev + 1);
+      setIsNewCategoryModalOpen(true);
+    }
+  }, [projectId]);
   
   // Función auxiliar para mantener pestaña de categorías
   const persistCategoriesTab = useCallback(() => {
@@ -65,16 +74,8 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
         title: "Category added",
         description: "The category has been created successfully",
       });
-      keepModalOpenRef.current = true;
+      sessionStorage.setItem(`project_${projectId}_reopen_category_modal`, 'true');
       refetchCategories();
-      // Use setTimeout to reopen modal after any re-renders settle
-      setTimeout(() => {
-        if (keepModalOpenRef.current) {
-          setFormResetKey(prev => prev + 1);
-          setIsNewCategoryModalOpen(true);
-          keepModalOpenRef.current = false;
-        }
-      }, 500);
     },
     onError: (error: Error) => {
       console.error("Error al crear categoría:", error);
@@ -275,6 +276,7 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
       <NewCategoryModal 
         isOpen={isNewCategoryModalOpen}
         onClose={() => {
+          sessionStorage.removeItem(`project_${projectId}_reopen_category_modal`);
           setIsNewCategoryModalOpen(false);
           setCurrentCategory(null);
           setIsEditMode(false);
