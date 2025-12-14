@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [formResetKey, setFormResetKey] = useState(0);
+  const keepModalOpenRef = useRef(false);
   
   // Función auxiliar para mantener pestaña de categorías
   const persistCategoriesTab = useCallback(() => {
@@ -60,12 +61,18 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/categories`] });
       toast({
         title: "Category added",
         description: "The category has been created successfully",
       });
       setFormResetKey(prev => prev + 1);
+      keepModalOpenRef.current = true;
+      refetchCategories().then(() => {
+        if (keepModalOpenRef.current) {
+          setIsNewCategoryModalOpen(true);
+          keepModalOpenRef.current = false;
+        }
+      });
     },
     onError: (error: Error) => {
       console.error("Error al crear categoría:", error);
