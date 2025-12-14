@@ -65,14 +65,16 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
         title: "Category added",
         description: "The category has been created successfully",
       });
-      setFormResetKey(prev => prev + 1);
       keepModalOpenRef.current = true;
-      refetchCategories().then(() => {
+      refetchCategories();
+      // Use setTimeout to reopen modal after any re-renders settle
+      setTimeout(() => {
         if (keepModalOpenRef.current) {
+          setFormResetKey(prev => prev + 1);
           setIsNewCategoryModalOpen(true);
           keepModalOpenRef.current = false;
         }
-      });
+      }, 500);
     },
     onError: (error: Error) => {
       console.error("Error al crear categoría:", error);
