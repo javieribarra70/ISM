@@ -70,10 +70,6 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
       return res.json();
     },
     onSuccess: async () => {
-      toast({
-        title: "Category added",
-        description: "The category has been created successfully",
-      });
       sessionStorage.setItem(storageKey, 'true');
       setFormResetKey(prev => prev + 1);
       await refetchCategories();
@@ -100,10 +96,6 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/categories`] });
       // Forzar una recarga inmediata de las categorías
       refetchCategories();
-      toast({
-        title: "Categoría actualizada",
-        description: "La categoría ha sido actualizada correctamente",
-      });
       setIsNewCategoryModalOpen(false);
       setCurrentCategory(null);
       setIsEditMode(false);
@@ -131,10 +123,6 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
     onSuccess: () => {
       console.log("Categoría eliminada con éxito");
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/categories`] });
-      toast({
-        title: "Categoría eliminada",
-        description: "La categoría ha sido eliminada correctamente",
-      });
       setCategoryToDelete(null);
       // Asegurar que la pestaña permanezca en categorías
       persistCategoriesTab();
