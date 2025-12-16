@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -25,24 +25,21 @@ interface CategoriesTabProps {
 
 export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTabProps) {
   const { toast } = useToast();
-  const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(false);
+  const storageKey = `project_${projectId}_reopen_category_modal`;
+  
+  const getInitialModalState = () => {
+    try {
+      return sessionStorage.getItem(storageKey) === 'true';
+    } catch {
+      return false;
+    }
+  };
+  
+  const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(getInitialModalState);
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-  const [formResetKey, setFormResetKey] = useState(0);
-  
-  useEffect(() => {
-    const storageKey = `project_${projectId}_reopen_category_modal`;
-    const shouldReopen = sessionStorage.getItem(storageKey);
-    if (shouldReopen === 'true') {
-      const timer = setTimeout(() => {
-        sessionStorage.removeItem(storageKey);
-        setFormResetKey(prev => prev + 1);
-        setIsNewCategoryModalOpen(true);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [projectId]);
+  const [formResetKey, setFormResetKey] = useState(() => getInitialModalState() ? 1 : 0);
   
   // Función auxiliar para mantener pestaña de categorías
   const persistCategoriesTab = useCallback(() => {
@@ -72,13 +69,15 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
       });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Category added",
         description: "The category has been created successfully",
       });
-      sessionStorage.setItem(`project_${projectId}_reopen_category_modal`, 'true');
-      refetchCategories();
+      sessionStorage.setItem(storageKey, 'true');
+      setFormResetKey(prev => prev + 1);
+      await refetchCategories();
+      setIsNewCategoryModalOpen(true);
     },
     onError: (error: Error) => {
       console.error("Error al crear categoría:", error);
@@ -279,7 +278,7 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
       <NewCategoryModal 
         isOpen={isNewCategoryModalOpen}
         onClose={() => {
-          sessionStorage.removeItem(`project_${projectId}_reopen_category_modal`);
+          sessionStorage.removeItem(storageKey);
           setIsNewCategoryModalOpen(false);
           setCurrentCategory(null);
           setIsEditMode(false);
