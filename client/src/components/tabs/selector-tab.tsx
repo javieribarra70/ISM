@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
 import { Idea, IdeaVote } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -20,7 +19,6 @@ interface SelectorTabProps {
 
 export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProps) {
   const { user, isLoading: isUserLoading } = useAuth();
-  const { toast } = useToast();
   const [selectedIdeas, setSelectedIdeas] = useState<number[]>([]);
   const [votingLimit, setVotingLimit] = useState<number>(0);
   // Estado para las ideas seleccionadas por el administrador para el proceso de conexión
@@ -111,18 +109,9 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
       // Refetch votes after toggling
       refetchUserVotes();
       refetchAllVotes();
-      
-      toast({
-        title: "Vote Registered",
-        description: "Your vote has been updated successfully."
-      });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: `Failed to register vote: ${error.message}`,
-        variant: "destructive"
-      });
+      console.error("Failed to register vote:", error.message);
     }
   });
 
@@ -131,13 +120,8 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
     // Check if already selected
     const isSelected = selectedIdeas.includes(ideaId);
     
-    // If not selected and we've reached the limit, show error
+    // If not selected and we've reached the limit, don't allow
     if (!isSelected && selectedIdeas.length >= votingLimit) {
-      toast({
-        title: "Voting Limit Reached",
-        description: `You can only select up to ${votingLimit} ideas.`,
-        variant: "destructive"
-      });
       return;
     }
     
@@ -220,26 +204,9 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
       // Refetch selected ideas after toggling
       console.log(`[CLIENT] Selection toggle success, refetching selected ideas`);
       refetchSelectedIdeas();
-      
-      toast({
-        title: "Selection Updated",
-        description: "Your idea selection has been updated.",
-      });
     },
     onError: (error: Error) => {
       console.error(`[CLIENT] Selection toggle mutation error:`, error);
-      
-      // Enhanced error messaging
-      let errorMessage = error.message;
-      if (errorMessage.includes("502")) {
-        errorMessage = "Server is experiencing issues (502 Bad Gateway). Please try again later.";
-      }
-      
-      toast({
-        title: "Error",
-        description: `Failed to update selection: ${errorMessage}`,
-        variant: "destructive"
-      });
     }
   });
 
@@ -389,18 +356,9 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
                     setConnectionIdeas([]);
                     // Refresh data from server
                     refetchSelectedIdeas();
-                    
-                    toast({
-                      title: "Selection Cleared",
-                      description: "All selected ideas have been cleared from the connection process.",
-                    });
                   })
                   .catch(error => {
-                    toast({
-                      title: "Error",
-                      description: `Failed to clear selection: ${error.message}`,
-                      variant: "destructive"
-                    });
+                    console.error("Failed to clear selection:", error.message);
                   });
               }}
               disabled={connectionIdeas.length === 0}
