@@ -11,7 +11,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import ISMDiagram from "./ism-diagram-fixed";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { applyTransitiveClosure, areSetsEqual, findStronglyConnectedComponents } from "@/lib/matrix-utils";
 
@@ -232,7 +231,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
   
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   
   // Ref to track when dialog was opened to prevent immediate close
   const openTimeRef = useRef<number>(0);
@@ -351,21 +349,11 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     console.log("✅ Proceso VAXO inicializado correctamente");
     
     if (answeredCount > 0 && firstUnansweredIndex !== -1) {
-      toast({
-        title: "Continuando proceso",
-        description: `Se encontraron ${answeredCount} relaciones guardadas. Continuando desde donde se quedó.`,
-        variant: "default",
-        duration: 3000
-      });
+      console.log(`Continuando proceso: Se encontraron ${answeredCount} relaciones guardadas`);
     } else if (answeredCount > 0 && firstUnansweredIndex === -1) {
-      toast({
-        title: "Proceso completado anteriormente",
-        description: `Todas las ${answeredCount} relaciones ya fueron respondidas.`,
-        variant: "default",
-        duration: 3000
-      });
+      console.log(`Proceso completado anteriormente: Todas las ${answeredCount} relaciones ya fueron respondidas`);
     }
-  }, [isOpen, isLoadingRelationships, existingRelationships, selectedIdeas, isInitialized, toast]);
+  }, [isOpen, isLoadingRelationships, existingRelationships, selectedIdeas, isInitialized]);
   
   // Actualizar isSaving basado en la etapa
   useEffect(() => {
@@ -473,13 +461,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           // Cambiar etapa
           setStage("ssim");
           
-          // Notificar al usuario
-          toast({
-            title: "Proceso completado",
-            description: "Todas las relaciones VAXO establecidas. Mostrando matriz SSIM.",
-            variant: "default",
-            duration: 3000
-          });
+          console.log("Proceso completado: Todas las relaciones VAXO establecidas. Mostrando matriz SSIM.");
         }, 500);
       } else {
         console.log(`Quedan ${questions.filter(q => q.response === null).length} preguntas sin responder`);
@@ -517,11 +499,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
             console.log(`✅ Relación VAXO guardada en BD: ${currentQuestion.ideaI.id} -> ${currentQuestion.ideaJ.id} = ${response}`);
           } catch (saveError) {
             console.error('Error guardando relación VAXO:', saveError);
-            toast({
-              title: "Error al guardar",
-              description: "No se pudo guardar la relación. El progreso podría perderse.",
-              variant: "destructive"
-            });
           }
         }
         
@@ -621,21 +598,11 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
           // Forzar que el modal permanezca abierto
           console.log("🔒 FORZANDO MODAL A PERMANECER ABIERTO PARA MOSTRAR RESULTADOS");
           
-          toast({
-            title: "Proceso completado",
-            description: "Resultados guardados. Ve a la pestaña Report para ver el análisis completo.",
-            variant: "default",
-            duration: 5000
-          });
+          console.log("Proceso completado: Resultados guardados. Ve a la pestaña Report para ver el análisis completo.");
         }
       }
     } catch (error) {
       console.error("Error al procesar respuesta:", error);
-      toast({
-        title: "Error al procesar respuesta",
-        description: "Ocurrió un error al guardar la relación. Por favor intente nuevamente.",
-        variant: "destructive"
-      });
     } finally {
       // Ya no necesitamos verificar preguntas sin responder para gestionar isSaving
       const stillHasUnansweredQuestions = questions.some(q => q.response === null);
@@ -808,22 +775,12 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         console.log(`Relación en memoria: ${rel.ideaI} -> ${rel.ideaJ} (${rel.relation})`);
       });
       
-      toast({
-        title: "Relationships processed in memory",
-        description: "The VAXO relationships have been processed and stored in memory. No database changes were made.",
-        variant: "default",
-        duration: 5000
-      });
+      console.log("Relationships processed in memory. The VAXO relationships have been processed and stored in memory.");
       
       // Avanzar al siguiente paso automáticamente
       setStage("ssim");
     } catch (error) {
       console.error("Error processing VAXO relationships:", error);
-      toast({
-        title: "Error processing relationships",
-        description: "There was a problem processing the VAXO relationships.",
-        variant: "destructive"
-      });
     } finally {
       // Ya no necesitamos verificar preguntas sin responder para gestionar isSaving
       const hasUnansweredQuestions = questions.some(q => q.response === null);
@@ -894,12 +851,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     
     console.log("Creando matriz de alcance inicial...");
     
-    // Mostrar feedback al usuario
-    toast({
-      title: "Procesando matriz",
-      description: "Generando matriz de alcance inicial...",
-      duration: 3000,
-    });
+    console.log("Procesando matriz: Generando matriz de alcance inicial...");
     
     // Crear la matriz con un pequeño retraso para permitir que la UI se actualice
     setTimeout(() => {
@@ -918,12 +870,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     // Ya no necesitamos activar isSaving porque ahora es una constante true
     // setIsSaving(true);
     
-    // Mostrar feedback al usuario
-    toast({
-      title: "Aplicando clausura transitiva",
-      description: "Procesando relaciones indirectas entre ideas...",
-      duration: 3000,
-    });
+    console.log("Aplicando clausura transitiva: Procesando relaciones indirectas entre ideas...");
     
     // Aplicar clausura transitiva después de un retraso para que la UI se actualice
     setTimeout(() => {
@@ -970,12 +917,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     // Ya no necesitamos activar isSaving porque ahora es una constante true
     // setIsSaving(true);
     
-    // Mostrar feedback al usuario
-    toast({
-      title: "Generando diagrama ISM",
-      description: "Preparando visualización del modelo estructural...",
-      duration: 3000,
-    });
+    console.log("Generando diagrama ISM: Preparando visualización del modelo estructural...");
     
     // Retrasamos el cambio para que la UI tenga tiempo de actualizarse
     setTimeout(() => {
@@ -1342,12 +1284,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       // Si estamos iniciando el proceso, verificamos si hay al menos una pregunta
       if (questions.length === 0) {
         console.error("ERROR CRÍTICO: No hay preguntas que responder");
-        toast({
-          title: "Error de inicialización",
-          description: "No se pudieron generar las preguntas necesarias. Inténtelo de nuevo.",
-          variant: "destructive",
-          duration: 5000
-        });
         return;
       }
       
@@ -1357,13 +1293,7 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
         setCurrentQuestionIndex(0);
       }
       
-      // Mensaje para el usuario
-      toast({
-        title: "Iniciando proceso VAXO",
-        description: `Preparando ${questions.length} preguntas sobre relaciones entre ideas...`,
-        variant: "default",
-        duration: 3000,
-      });
+      console.log(`Iniciando proceso VAXO: Preparando ${questions.length} preguntas sobre relaciones entre ideas...`);
       
       // CORRECCIÓN CRÍTICA: Cambiar a etapa questions en un setTimeout para garantizar estabilidad
       setTimeout(() => {
@@ -1377,12 +1307,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     // PROTECCIÓN: Si hay preguntas sin responder, solo permitimos cambios a la etapa "questions" o "intro"
     if (hasUnansweredQuestions && targetStage !== "intro" && targetStage !== "questions") {
       console.log(`BLOQUEO DE SEGURIDAD: No se permite cambiar a ${targetStage} mientras haya preguntas sin responder`);
-      toast({
-        title: "Acción no permitida",
-        description: "Debe completar todas las preguntas VAXO pendientes antes de continuar",
-        variant: "destructive",
-        duration: 5000,
-      });
       
       // Forzar el cambio a la etapa de preguntas para continuar el proceso
       setTimeout(() => {
@@ -1393,20 +1317,12 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
       return; // Importante: no seguir con el cambio de etapa solicitado
     }
     
-    // Mostrar notificación específica según el estado de destino
+    // Log específico según el estado de destino
     if (targetStage === "questions" && stage !== "questions") {
       if (hasUnansweredQuestions) {
-        toast({
-          title: "Continuando proceso ISM",
-          description: "Hay preguntas pendientes por responder. Continuando desde donde quedó.",
-          duration: 5000,
-        });
+        console.log("Continuando proceso ISM: Hay preguntas pendientes por responder.");
       } else {
-        toast({
-          title: "Cargando relaciones VAXO",
-          description: "Preparando preguntas existentes...",
-          duration: 5000,
-        });
+        console.log("Cargando relaciones VAXO: Preparando preguntas existentes...");
       }
     }
     
@@ -1556,12 +1472,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     // BLOQUEAR cierre cuando estamos mostrando resultados
     if (stage === "ssim" || stage === "reachability" || stage === "levels" || stage === "diagram") {
       console.log("🚫 BLOQUEANDO CIERRE - Mostrando resultados, usar botones de navegación");
-      toast({
-        title: "Resultados disponibles",
-        description: "Usa los botones de navegación para explorar los resultados o volver a las preguntas.",
-        variant: "default",
-        duration: 3000
-      });
       return;
     }
     
@@ -1569,12 +1479,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     // pero mantenemos una comprobación de inicialización por seguridad
     if (isInitialized === false) {
       console.log("Bloqueando cierre - el componente aún está inicializándose");
-      toast({
-        title: "Inicializando proceso",
-        description: "Por favor espera a que termine la inicialización del proceso.",
-        variant: "default",
-        duration: 3000
-      });
       return;
     }
     
@@ -1594,15 +1498,6 @@ export default function ISMProcess({ isOpen, onClose, selectedIdeas, projectCont
     
     // Proceso de cierre
     console.log("Iniciando proceso para cerrar el modal de forma segura");
-    
-    // Mostramos una notificación explícita para que el usuario sepa que su acción
-    // está siendo procesada (mejora UX y da tiempo a la operación)
-    toast({
-      title: "Cerrando proceso",
-      description: "Guardando estado y cerrando...",
-      variant: "default",
-      duration: 2000
-    });
     
     // Eliminar cualquier overlay temporal que pueda estar mostrándose
     const tempOverlay = document.getElementById("temp-overlay");
