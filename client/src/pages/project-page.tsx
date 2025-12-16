@@ -27,7 +27,23 @@ export default function ProjectPage() {
   const [location, navigate] = useLocation();
   const { user, isLoading: isLoadingUser } = useAuth();
   const { toast } = useToast();
-  const [isNewIdeaModalOpen, setIsNewIdeaModalOpen] = useState(false);
+  
+  // Storage key para persistir el estado del modal de ideas
+  const ideaModalStorageKey = `project_${projectId}_new_idea_modal_open`;
+  
+  // Inicializar el estado del modal desde sessionStorage
+  const [isNewIdeaModalOpen, setIsNewIdeaModalOpen] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(ideaModalStorageKey);
+      if (saved === 'true') {
+        sessionStorage.removeItem(ideaModalStorageKey);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  });
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [lastPolled, setLastPolled] = useState<Date>(new Date());
   const [ideaToEdit, setIdeaToEdit] = useState<Idea | null>(null);
@@ -206,9 +222,11 @@ export default function ProjectPage() {
       
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      sessionStorage.setItem(ideaModalStorageKey, 'true');
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${parsedProjectId}/ideas`] });
-      setIsNewIdeaModalOpen(false);
+      await refetchIdeas();
+      setIsNewIdeaModalOpen(true);
     },
   });
 
@@ -266,11 +284,6 @@ export default function ProjectPage() {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${parsedProjectId}/ideas`] });
       setIsEditIdeaModalOpen(false);
       setIdeaToEdit(null);
-      
-      toast({
-        title: "Idea actualizada",
-        description: "La idea ha sido actualizada exitosamente.",
-      });
     },
     onError: (error: Error) => {
       console.error("Error al actualizar idea:", error);
@@ -330,10 +343,7 @@ export default function ProjectPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${parsedProjectId}/ideas`] });
-      toast({
-        title: "Idea eliminada",
-        description: "La idea ha sido eliminada con éxito.",
-      });
+      refetchIdeas();
     },
     onError: (error: Error) => {
       console.error("Error al eliminar idea:", error);
@@ -513,7 +523,10 @@ export default function ProjectPage() {
       {/* Modals */}
       <NewIdeaModal 
         isOpen={isNewIdeaModalOpen}
-        onClose={() => setIsNewIdeaModalOpen(false)}
+        onClose={() => {
+          sessionStorage.removeItem(ideaModalStorageKey);
+          setIsNewIdeaModalOpen(false);
+        }}
         onCreateIdea={(ideaData) => createIdeaMutation.mutate({
           ...ideaData,
           projectId: parsedProjectId,
