@@ -123,6 +123,8 @@ export default function CategoriesTab({ projectId, setActiveTab }: CategoriesTab
     onSuccess: () => {
       console.log("Categoría eliminada con éxito");
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/categories`] });
+      // Forzar una recarga inmediata de las categorías
+      refetchCategories();
       setCategoryToDelete(null);
       // Asegurar que la pestaña permanezca en categorías
       persistCategoriesTab();
