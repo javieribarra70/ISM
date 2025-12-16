@@ -31,15 +31,10 @@ export default function ProjectPage() {
   // Storage key para persistir el estado del modal de ideas
   const ideaModalStorageKey = `project_${projectId}_new_idea_modal_open`;
   
-  // Inicializar el estado del modal desde sessionStorage
+  // Inicializar el estado del modal desde sessionStorage (NO borrar el flag aquí por StrictMode)
   const [isNewIdeaModalOpen, setIsNewIdeaModalOpen] = useState(() => {
     try {
-      const saved = sessionStorage.getItem(ideaModalStorageKey);
-      if (saved === 'true') {
-        sessionStorage.removeItem(ideaModalStorageKey);
-        return true;
-      }
-      return false;
+      return sessionStorage.getItem(ideaModalStorageKey) === 'true';
     } catch {
       return false;
     }
@@ -222,11 +217,11 @@ export default function ProjectPage() {
       
       return response.json();
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       sessionStorage.setItem(ideaModalStorageKey, 'true');
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${parsedProjectId}/ideas`] });
-      await refetchIdeas();
       setIsNewIdeaModalOpen(true);
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${parsedProjectId}/ideas`] });
+      refetchIdeas();
     },
   });
 
