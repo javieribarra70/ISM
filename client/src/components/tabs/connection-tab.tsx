@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Idea, SelectedIdea, Project } from "@shared/schema";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -26,7 +25,6 @@ export default function ConnectionTab({
   projectId
 }: ConnectionTabProps) {
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
   const { user } = useAuth();
   const [isStarting, setIsStarting] = useState(false);
   const [isStartingAlternative, setIsStartingAlternative] = useState(false);
@@ -116,6 +114,34 @@ export default function ConnectionTab({
     return relationsForSelectedIdeas.length > 0;
   }, [existingRelationships, selectedIdeas]);
 
+  // Verificar si el proceso VAXO está completado
+  // El proceso está completo cuando el número de relaciones existentes >= número total de pares
+  // Para N ideas, el total de pares es: N * (N-1) / 2
+  const isVaxoProcessCompleted = useMemo(() => {
+    if (!existingRelationships || selectedIdeas.length < 2) {
+      return false;
+    }
+
+    const n = selectedIdeas.length;
+    const totalPairs = (n * (n - 1)) / 2;
+    
+    const selectedIds = selectedIdeas.map((idea) => idea.id);
+    
+    // Contar relaciones únicas (cada par de ideas solo cuenta una vez)
+    const uniquePairs = new Set<string>();
+    existingRelationships.forEach((rel) => {
+      const fromId = rel.fromIdeaId || rel.from;
+      const toId = rel.toIdeaId || rel.to;
+      if (selectedIds.includes(fromId) && selectedIds.includes(toId)) {
+        // Ordenar IDs para crear una clave única por par
+        const pairKey = [fromId, toId].sort((a, b) => a - b).join('-');
+        uniquePairs.add(pairKey);
+      }
+    });
+
+    return uniquePairs.size >= totalPairs;
+  }, [existingRelationships, selectedIdeas]);
+
   // Handle the start VAXO process button - Navigate to dedicated page
   const handleStartProcess = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -131,7 +157,7 @@ export default function ConnectionTab({
     
     console.log("📤 Navigating to:", url);
     
-    // Show toast if there are existing relationships (informative only)
+    // Log if there are existing relationships (informative only)
     if (hasExistingVaxoRelationships) {
       const selectedIds = selectedIdeas.map((idea) => idea.id);
       const count = existingRelationships.filter((rel) => {
@@ -140,11 +166,7 @@ export default function ConnectionTab({
         return selectedIds.includes(fromId) && selectedIds.includes(toId);
       }).length;
       
-      toast({
-        title: "Existing VAXO relationships",
-        description: `Continuing process with ${count} existing relationships.`,
-        duration: 3000,
-      });
+      console.log(`Continuing process with ${count} existing relationships.`);
     }
     
     // Navigate to the VAXO page
@@ -161,11 +183,8 @@ export default function ConnectionTab({
     // Set starting state to show loading UI
     setIsStartingAlternative(true);
 
-    // Por ahora simplemente muestra un mensaje toast, pero se puede extender
-    toast({
-      title: "Start Voting Process",
-      description: "Iniciando el proceso de votación...",
-    });
+    // Por ahora simplemente log, pero se puede extender
+    console.log("Iniciando el proceso de votación...");
 
     // Reset the starting state after a short delay
     setTimeout(() => {
@@ -249,11 +268,12 @@ export default function ConnectionTab({
                 disabled={
                   isStarting ||
                   isStartingAlternative ||
-                  selectedIdeas.length < 2
+                  selectedIdeas.length < 2 ||
+                  isVaxoProcessCompleted
                 }
               >
                 <PlayCircle className="h-5 w-5" />
-                {isStarting ? "Starting..." : "Start VAXO Process"}
+                {isVaxoProcessCompleted ? "VAXO Completed" : isStarting ? "Starting..." : "Start VAXO Process"}
               </Button>
             )}
             {/* Mostrar el botón de votación para todos */}
@@ -262,16 +282,26 @@ export default function ConnectionTab({
               className="gap-2"
               variant="outline"
               disabled={
-                isStarting || isStartingAlternative || selectedIdeas.length < 2
+                isStarting || isStartingAlternative || selectedIdeas.length < 2 || isVaxoProcessCompleted
               }
             >
               <PlayCircle className="h-5 w-5" />
-              {isStartingAlternative ? "Starting..." : "Start Voting Process"}
+              {isVaxoProcessCompleted ? "Process Completed" : isStartingAlternative ? "Starting..." : "Start Voting Process"}
             </Button>
           </div>
         </div>
 
         <Separator className="mb-4" />
+
+        {/* Mensaje cuando el proceso VAXO está completado */}
+        {isVaxoProcessCompleted && (
+          <Alert className="mb-4 bg-green-50 border-green-200">
+            <AlertTitle className="text-green-800">VAXO Process Completed</AlertTitle>
+            <AlertDescription className="text-green-700">
+              All relationships have been established. Go to the <strong>Report</strong> tab to view the complete analysis and ISM diagram.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="mb-4">
           <Badge variant="outline" className="mb-2">

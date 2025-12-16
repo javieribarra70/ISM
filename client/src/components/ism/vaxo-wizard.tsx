@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import ISMDiagram from "./ism-diagram-fixed";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { applyTransitiveClosure, areSetsEqual, findStronglyConnectedComponents } from "@/lib/matrix-utils";
 
@@ -149,7 +148,6 @@ function determineLevel(
 export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onComplete }: VaxoWizardProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   
   const [stage, setStage] = useState<
     "loading" | "questions" | "ssim" | "reachability" | "levels" | "diagram"
@@ -320,11 +318,6 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
             });
           } catch (saveError) {
             console.error('Error saving VAXO relationship:', saveError);
-            toast({
-              title: "Error saving",
-              description: "Could not save the relationship. Progress might be lost.",
-              variant: "destructive"
-            });
           }
         }
         
@@ -397,21 +390,11 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
           
           setStage("ssim");
           
-          toast({
-            title: "Process completed",
-            description: "Results saved. Go to the Report tab to see the full analysis.",
-            variant: "default",
-            duration: 5000
-          });
+          console.log("Process completed: Results saved. Go to the Report tab to see the full analysis.");
         }
       }
     } catch (error) {
       console.error("Error processing response:", error);
-      toast({
-        title: "Error processing response",
-        description: "An error occurred while saving the relationship. Please try again.",
-        variant: "destructive"
-      });
     }
   };
 
@@ -491,11 +474,7 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
   };
 
   const proceedToReachabilityMatrix = () => {
-    toast({
-      title: "Processing matrix",
-      description: "Generating initial reachability matrix...",
-      duration: 3000,
-    });
+    console.log("Processing matrix: Generating initial reachability matrix...");
     
     setTimeout(() => {
       const initialMatrix = buildInitialReachabilityMatrix(selectedIdeas, ssimMatrix);
@@ -505,11 +484,7 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
   };
 
   const applyTransitiveClosureAndProceed = () => {
-    toast({
-      title: "Applying transitive closure",
-      description: "Processing indirect relationships between ideas...",
-      duration: 3000,
-    });
+    console.log("Applying transitive closure: Processing indirect relationships between ideas...");
     
     setTimeout(() => {
       const transitiveMatrix = applyTransitiveClosure(reachabilityMatrix);
@@ -541,11 +516,7 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
   };
 
   const proceedToDiagram = () => {
-    toast({
-      title: "Generating ISM diagram",
-      description: "Preparing structural model visualization...",
-      duration: 3000,
-    });
+    console.log("Generating ISM diagram: Preparing structural model visualization...");
     
     setTimeout(() => {
       if (finalReachabilityMatrix.length > 0 && levels.length === 0) {
