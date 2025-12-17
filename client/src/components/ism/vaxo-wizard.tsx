@@ -306,7 +306,8 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
   // Auto-detect when all relationships are completed and transition to SSIM matrix
   useEffect(() => {
     // Only run auto-completion once, and only if we're still in questions stage
-    if (!isInitialized || stage !== "questions" || questions.length === 0 || autoCompletedRef.current) {
+    // Also ensure selectedIdeas is populated before attempting to build matrices
+    if (!isInitialized || stage !== "questions" || questions.length === 0 || selectedIdeas.length === 0 || autoCompletedRef.current) {
       return;
     }
 
@@ -693,7 +694,7 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold">Influence Relationship</h3>
                   <Badge variant="outline">
-                    Question {Math.min(questions.filter(q => q.response !== null).length + 1, totalQuestionsRef.current || questions.length)} of {totalQuestionsRef.current || questions.length}
+                    {questions.filter(q => q.response !== null).length} of {totalQuestionsRef.current || questions.length} completed
                   </Badge>
                 </div>
                 
