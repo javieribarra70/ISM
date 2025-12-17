@@ -5,7 +5,7 @@ import Sidebar from "@/components/sidebar";
 import Workspace from "@/components/workspace";
 import { Button } from "@/components/ui/button";
 import { Project, Idea, Relationship, ProjectUser, Category } from "@shared/schema";
-import { Loader2, Share2, Users, UserPlus, Settings } from "lucide-react";
+import { Loader2, Users, Settings } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import NewIdeaModal from "@/components/modals/new-idea-modal";
 import EditIdeaModal from "@/components/modals/edit-idea-modal";
@@ -395,27 +395,8 @@ export default function ProjectPage() {
               </p>
             </div>
             
-            <div className="flex space-x-3">
-              {/* Collaborators */}
-              <div className="flex items-center">
-                <Avatars users={projectUsers?.map(pu => pu.user) || []} />
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="ml-2"
-                  onClick={() => setIsInviteModalOpen(true)}
-                >
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Invite
-                </Button>
-              </div>
-              
-              {/* Share button */}
-              <Button size="sm" className="bg-primary text-white">
-                <Share2 className="h-4 w-4 mr-2" />
-                Share
-              </Button>
+            <div className="flex items-center">
+              <Avatars users={projectUsers?.map(pu => pu.user) || []} />
             </div>
           </div>
           
