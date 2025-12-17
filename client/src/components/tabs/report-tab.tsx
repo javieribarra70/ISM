@@ -9,6 +9,7 @@ import cytoscape from "cytoscape";
 import dagre from "cytoscape-dagre";
 import { jsPDF } from "jspdf";
 import { removeTransitiveRedundancies, findStronglyConnectedComponents } from "@/lib/matrix-utils";
+import ISMDiagram from "@/components/ism/ism-diagram-fixed";
 
 interface ReportTabProps {
   projectId: number;
@@ -776,41 +777,37 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       </div>
 
       {/* Final ISM Diagram Model */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Final ISM Diagram Model</CardTitle>
-          <CardDescription>
-            Interactive visualization of idea relationships and hierarchy levels. Click on nodes to highlight connections.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4">
-            <div className="flex flex-wrap gap-2 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <span>Level 1</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-                <span>Level 2</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                <span>Level 3</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <span>Level 4+</span>
-              </div>
-            </div>
-          </div>
-          <div
-            ref={cyRef}
-            className="w-full h-96 border border-gray-200 rounded-lg"
-            style={{ background: '#fafafa' }}
-          />
-        </CardContent>
-      </Card>
+      {vaxoResults && vaxoResults.selectedIdeas && vaxoResults.levels && vaxoResults.reachabilityMatrix && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Final ISM Diagram Model</CardTitle>
+            <CardDescription>
+              Interactive visualization of idea relationships and hierarchy levels.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ISMDiagram
+              ideas={vaxoResults.selectedIdeas.map(idea => ({
+                id: idea.id,
+                title: idea.title,
+                projectId: projectId,
+                description: idea.description || '',
+                clarification: '',
+                createdAt: new Date(),
+                createdBy: 0,
+                categoryId: idea.categoryId || 0,
+                category: '',
+                updatedAt: new Date(),
+                positionX: '0',
+                positionY: '0'
+              }))}
+              levels={vaxoResults.levels}
+              finalReachabilityMatrix={vaxoResults.reachabilityMatrix}
+              projectId={projectId}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* SSIM Matrix */}
       <Card>
