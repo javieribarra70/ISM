@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import cytoscapeSvg from 'cytoscape-svg';
@@ -9,6 +9,11 @@ import { computeTransitiveReduction } from '@/lib/matrix-utils';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '../ui/button';
 import { Download, RefreshCw } from 'lucide-react';
+
+// Export interface for ref methods
+export interface ISMDiagramRef {
+  captureImage: () => Promise<string | null>;
+}
 
 // Register the extensions
 cytoscape.use(dagre);
@@ -31,12 +36,32 @@ interface ISMDiagramProps {
   };
 }
 
-const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, projectInfo }: ISMDiagramProps) => {
+const ISMDiagram = forwardRef<ISMDiagramRef, ISMDiagramProps>(({ ideas, levels, finalReachabilityMatrix, projectId, projectInfo }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+
+  // Expose captureImage method to parent components via ref
+  useImperativeHandle(ref, () => ({
+    captureImage: async (): Promise<string | null> => {
+      if (!wrapperRef.current) return null;
+      try {
+        const dataUrl = await toPng(wrapperRef.current, {
+          backgroundColor: '#ffffff',
+          pixelRatio: 2,
+          style: {
+            overflow: 'visible',
+          },
+        });
+        return dataUrl;
+      } catch (error) {
+        console.error('Error capturing diagram:', error);
+        return null;
+      }
+    }
+  }));
   
   // States for legend positions (make them draggable)
   const [projectInfoPosition, setProjectInfoPosition] = useState({ x: 4, y: 4 });
@@ -740,6 +765,6 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
       </div>
     </div>
   );
-};
+});
 
 export default ISMDiagram;
