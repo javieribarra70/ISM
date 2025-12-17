@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BarChart3, FileText, Network, Download } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { findStronglyConnectedComponents } from "@/lib/matrix-utils";
-import ISMDiagram, { ISMDiagramRef } from "@/components/ism/ism-diagram-fixed";
+import ISMDiagram from "@/components/ism/ism-diagram-fixed";
 
 interface ReportTabProps {
   projectId: number;
@@ -39,7 +39,6 @@ export default function ReportTab({ projectId }: ReportTabProps) {
   const [hasVaxoData, setHasVaxoData] = useState(false);
   const [vaxoResults, setVaxoResults] = useState<VaxoResults | null>(null);
   const { toast } = useToast();
-  const ismDiagramRef = useRef<ISMDiagramRef>(null);
 
   // Fetch all ideas
   const { data: allIdeas = [] } = useQuery<Idea[]>({
@@ -204,57 +203,18 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       pdf.text(`• Cycles Detected: ${cycles.length}`, margin, yPos);
       yPos += 15;
 
-      // Final ISM Diagram Model Section - Capture and include the diagram
+      // Final ISM Diagram Model Section
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Final ISM Diagram Model', margin, yPos);
       yPos += 8;
 
-      // Try to capture the diagram image from the ISMDiagram component
-      let diagramImageData: string | null = null;
-      if (ismDiagramRef.current) {
-        try {
-          diagramImageData = await ismDiagramRef.current.captureImage();
-        } catch (error) {
-          console.error('Error capturing diagram:', error);
-        }
-      }
-
-      if (diagramImageData) {
-        // Add captured diagram to PDF
-        const img = new Image();
-        img.src = diagramImageData;
-        
-        await new Promise<void>((resolve) => {
-          img.onload = () => resolve();
-        });
-        
-        const imgAspectRatio = img.width / img.height;
-        let imgWidth = pageWidth - margin * 2;
-        let imgHeight = imgWidth / imgAspectRatio;
-        
-        // Ensure image fits on current page or add new page
-        if (yPos + imgHeight > pageHeight - margin) {
-          // If image is too tall, scale it to fit
-          if (imgHeight > pageHeight - margin * 2 - 20) {
-            imgHeight = pageHeight - margin * 2 - 20;
-            imgWidth = imgHeight * imgAspectRatio;
-          }
-          pdf.addPage();
-          yPos = margin;
-        }
-        
-        pdf.addImage(diagramImageData, 'PNG', margin, yPos, imgWidth, imgHeight);
-        yPos += imgHeight + 10;
-      } else {
-        // Fallback message if diagram couldn't be captured
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'italic');
-        pdf.setTextColor(100, 100, 100);
-        pdf.text('Note: Diagram could not be captured. Use the "Download PDF" button on the diagram for a separate export.', margin, yPos);
-        pdf.setTextColor(0, 0, 0);
-        yPos += 10;
-      }
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'italic');
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('Note: Use the "Download PDF" button on the diagram to export the high-definition ISM diagram separately.', margin, yPos);
+      pdf.setTextColor(0, 0, 0);
+      yPos += 15;
 
       // Cycles Section (if any)
       if (cycles.length > 0) {
@@ -695,7 +655,6 @@ export default function ReportTab({ projectId }: ReportTabProps) {
           </CardHeader>
           <CardContent>
             <ISMDiagram
-              ref={ismDiagramRef}
               ideas={vaxoResults.selectedIdeas.map(idea => {
                 // Get full idea info from allIdeas to obtain category
                 const fullIdea = allIdeas.find(ai => ai.id === idea.id);
