@@ -1,6 +1,5 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { PlusCircle } from "lucide-react";
 
 interface User {
   id: number;
@@ -57,17 +56,6 @@ export function Avatars({ users, maxVisible = 3 }: AvatarsProps) {
             </TooltipContent>
           </Tooltip>
         )}
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Avatar className="h-8 w-8 border-2 border-white bg-gray-100 flex items-center justify-center">
-              <PlusCircle className="h-4 w-4 text-gray-500" />
-            </Avatar>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Add collaborators</p>
-          </TooltipContent>
-        </Tooltip>
       </TooltipProvider>
     </div>
   );
