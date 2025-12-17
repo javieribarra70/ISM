@@ -210,6 +210,10 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       const diagramWrapper = document.getElementById('ism-diagram-wrapper');
       if (diagramWrapper) {
         try {
+          // Scroll the diagram into view and wait for it to be fully rendered
+          diagramWrapper.scrollIntoView({ behavior: 'instant', block: 'center' });
+          await new Promise(resolve => setTimeout(resolve, 500)); // Wait for render
+          
           // Capture the diagram exactly as displayed (same as Download PDF button)
           const diagramDataUrl = await toPng(diagramWrapper, {
             backgroundColor: '#ffffff',
@@ -217,6 +221,9 @@ export default function ReportTab({ projectId }: ReportTabProps) {
             style: {
               overflow: 'visible',
             },
+            cacheBust: true, // Force fresh capture
+            skipAutoScale: true,
+            includeQueryParams: true,
           });
           
           // Create temporary image to get dimensions
