@@ -351,6 +351,11 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
         cyRef.current.destroy();
         cyRef.current = null;
       }
+      // Also clean up level labels
+      if (containerRef.current) {
+        const labels = containerRef.current.querySelectorAll('.level-label');
+        labels.forEach(label => label.remove());
+      }
     };
   }, []);
   
@@ -389,6 +394,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
             id: `node-${idea.id}`,
             label: idea.title,
             influenceLevel: influenceLevel,
+            level: levelNum, // Store the level number for level labels
             levelColor: getLevelColor(levelNum),
             categoryColor: categoryColor,
             category: idea.category
@@ -631,10 +637,75 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
       wheelSensitivity: 0.2 // Reduce zoom sensitivity
     });
     
+    // Function to add level labels to the diagram
+    const addLevelLabels = () => {
+      if (!containerRef.current) return;
+      
+      // Remove existing level labels
+      const existingLabels = containerRef.current.querySelectorAll('.level-label');
+      existingLabels.forEach(label => label.remove());
+      
+      // Get nodes grouped by level
+      const nodesByLevel: { [key: number]: cytoscape.NodeSingular[] } = {};
+      cy.nodes().forEach((node) => {
+        const level = node.data('level');
+        if (level !== undefined) {
+          if (!nodesByLevel[level]) nodesByLevel[level] = [];
+          nodesByLevel[level].push(node);
+        }
+      });
+      
+      // Add labels for each level
+      Object.keys(nodesByLevel).forEach((levelStr) => {
+        const level = parseInt(levelStr);
+        const nodesInLevel = nodesByLevel[level];
+        
+        if (nodesInLevel.length > 0) {
+          // Get the leftmost position of nodes in this level
+          let minX = Infinity;
+          let avgY = 0;
+          
+          nodesInLevel.forEach(node => {
+            const pos = node.renderedPosition();
+            minX = Math.min(minX, pos.x);
+            avgY += pos.y;
+          });
+          
+          avgY /= nodesInLevel.length;
+          
+          // Create level label
+          const label = document.createElement('div');
+          label.className = 'level-label';
+          label.style.position = 'absolute';
+          label.style.left = Math.max(10, minX - 90) + 'px';
+          label.style.top = (avgY - 12) + 'px';
+          label.style.fontSize = '14px';
+          label.style.fontWeight = 'bold';
+          label.style.color = '#374151';
+          label.style.backgroundColor = '#f9fafb';
+          label.style.padding = '4px 8px';
+          label.style.borderRadius = '4px';
+          label.style.border = '1px solid #e5e7eb';
+          label.style.zIndex = '1000';
+          label.style.pointerEvents = 'none';
+          label.textContent = `Level ${level + 1}`;
+          
+          containerRef.current?.appendChild(label);
+        }
+      });
+    };
+    
     // Add handler to adjust size after rendering
     cy.on('layoutstop', () => {
       cy.fit();
       cy.center();
+      // Add level labels after layout is complete
+      setTimeout(() => addLevelLabels(), 100);
+    });
+    
+    // Also update labels when viewport changes
+    cy.on('viewport', () => {
+      addLevelLabels();
     });
     
     // Save the reference
