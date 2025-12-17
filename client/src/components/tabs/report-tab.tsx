@@ -418,10 +418,10 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       pdf.text(`• Cycles Detected: ${cycles.length}`, margin, yPos);
       yPos += 15;
 
-      // Network Diagram Section
+      // Final ISM Diagram Model Section
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Network Diagram', margin, yPos);
+      pdf.text('Final ISM Diagram Model', margin, yPos);
       yPos += 8;
 
       // Capture diagram as image
@@ -429,7 +429,7 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         try {
           const pngData = cyInstance.current.png({ 
             full: true, 
-            scale: 2,
+            scale: 4, // High definition
             bg: '#fafafa'
           });
           
@@ -775,10 +775,10 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         </Card>
       </div>
 
-      {/* Network Diagram */}
+      {/* Final ISM Diagram Model */}
       <Card>
         <CardHeader>
-          <CardTitle>Network Diagram</CardTitle>
+          <CardTitle>Final ISM Diagram Model</CardTitle>
           <CardDescription>
             Interactive visualization of idea relationships and hierarchy levels. Click on nodes to highlight connections.
           </CardDescription>
