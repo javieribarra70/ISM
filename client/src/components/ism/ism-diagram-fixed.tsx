@@ -3,6 +3,7 @@ import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import cytoscapeSvg from 'cytoscape-svg';
 import { jsPDF } from 'jspdf';
+import { toPng } from 'html-to-image';
 import { Idea, Category } from '@shared/schema';
 import { computeTransitiveReduction } from '@/lib/matrix-utils';
 import { useQuery } from '@tanstack/react-query';
@@ -32,6 +33,7 @@ interface ISMDiagramProps {
 
 const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, projectInfo }: ISMDiagramProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -75,312 +77,71 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
     setVisibleCategories(visibleCats);
   }, [ideas, categories]);
   
-  // Function to download the diagram as PDF
-  const handleDownloadPDF = () => {
-    if (!cyRef.current) return;
+  // Function to download the diagram as PDF - captures UI exactly as displayed
+  const handleDownloadPDF = async () => {
+    if (!wrapperRef.current) return;
     
     setIsDownloading(true);
     
     try {
-      // Generate the SVG string from Cytoscape graph
-      const svg = (cyRef.current as any).svg({ scale: 2, full: true, bg: 'white' });
+      // Use html-to-image to capture the entire wrapper (diagram + legends + level labels)
+      const dataUrl = await toPng(wrapperRef.current, {
+        backgroundColor: '#ffffff',
+        pixelRatio: 2, // High resolution
+        style: {
+          // Ensure all elements are visible
+          overflow: 'visible',
+        },
+      });
       
-      // Create a new jsPDF instance
+      // Create a temporary image to get dimensions
+      const img = new Image();
+      img.src = dataUrl;
+      
+      await new Promise<void>((resolve) => {
+        img.onload = () => resolve();
+      });
+      
+      // Create PDF
       const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
       });
       
-      // Create a temporary image element to convert SVG to Canvas
-      const img = new Image();
-      const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(svgBlob);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgAspectRatio = img.width / img.height;
       
-      img.onload = () => {
-        // Create a canvas and draw the image
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-          
-          // Convert canvas to image data URL
-          const imgData = canvas.toDataURL('image/png');
-          
-          // Calculate dimensions to fit in PDF
-          const pdfWidth = pdf.internal.pageSize.getWidth();
-          const pdfHeight = pdf.internal.pageSize.getHeight();
-          const imgAspectRatio = img.width / img.height;
-          
-          let imgWidth = pdfWidth - 20; // margins
-          let imgHeight = imgWidth / imgAspectRatio;
-          
-          // Ensure the image fits in the page, leaving space for title
-          if (imgHeight > pdfHeight - 30) { // Extra space for title
-            imgHeight = pdfHeight - 30;
-            imgWidth = imgHeight * imgAspectRatio;
-          }
-          
-          // Add a title "Final ISM Diagram Model" at the top center
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(16);
-          pdf.setTextColor(0, 0, 0); // Black
-          pdf.text('Final ISM Diagram Model', pdfWidth / 2, 15, { align: 'center' });
-          
-          // Add the image to the PDF
-          pdf.addImage(
-            imgData, 
-            'PNG', 
-            (pdfWidth - imgWidth) / 2, // center horizontally
-            (pdfHeight - imgHeight) / 2 + 5, // center vertically, move down a bit for title
-            imgWidth, 
-            imgHeight
-          );
-          
-          // Draw the legends directly on the PDF
-          const margin = 10;
-          const titleHeight = 5;
-          const itemHeight = 5;
-          
-          // 1. Project Info Legend - Use the current position from UI
-          if (projectInfo) {
-            // Calculate relative position for PDF based on current UI position
-            // First convert from pixels to PDF units (mm)
-            // Assuming 72 DPI conversion (approximate)
-            const pxToMm = 0.352778; // Conversion factor from pixels to mm
-            
-            // Calculate the relative position in PDF coordinates
-            // projectInfoPosition is in screen pixels
-            const projectLegendX = Math.max(margin, projectInfoPosition.x * pxToMm);
-            const projectLegendY = Math.max(margin, projectInfoPosition.y * pxToMm);
-            const projectLegendWidth = 100; // Adjusted width to fit text without excesive space
-            
-            // Calculate project legend height
-            let projectItemsCount = 2; // Name and Created always shown
-            if (projectInfo.description) projectItemsCount++;
-            const projectTotalHeight = titleHeight + (projectItemsCount * 2 * itemHeight); // Double the height for line breaks
-            
-            // Draw project info background
-            pdf.setFillColor(255, 255, 255); // white
-            pdf.setDrawColor(226, 232, 240); // light gray border
-            pdf.roundedRect(projectLegendX, projectLegendY, projectLegendWidth, projectTotalHeight, 1, 1, 'FD');
-            
-            // Project info title
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(8);
-            pdf.setTextColor(75, 85, 99); // gray
-            pdf.text('Project Information', projectLegendX + 4, projectLegendY + 4);
-            
-            // Current Y position tracker
-            let currentY = projectLegendY + titleHeight + 2;
-            
-            // Name field
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(7);
-            pdf.text('Name:', projectLegendX + 4, currentY);
-            currentY += itemHeight;
-            
-            pdf.setFont('helvetica', 'normal');
-            pdf.text(projectInfo.name, projectLegendX + 8, currentY);
-            currentY += itemHeight + 1;
-            
-            // Description field (if exists)
-            if (projectInfo.description) {
-              pdf.setFont('helvetica', 'bold');
-              pdf.text('Description:', projectLegendX + 4, currentY);
-              currentY += itemHeight;
-              
-              pdf.setFont('helvetica', 'normal');
-              // Use full description with text wrapping for long descriptions
-              const desc = projectInfo.description;
-              const splitDesc = pdf.splitTextToSize(desc, projectLegendWidth - 20); // Increased margin for text
-              pdf.text(splitDesc, projectLegendX + 8, currentY);
-              
-              // Adjust currentY based on number of lines in the description
-              currentY += (splitDesc.length - 1) * 4;
-              currentY += itemHeight + 1;
-            }
-            
-            // Created field
-            pdf.setFont('helvetica', 'bold');
-            pdf.text('Created:', projectLegendX + 4, currentY);
-            currentY += itemHeight;
-            
-            pdf.setFont('helvetica', 'normal');
-            const date = new Date(projectInfo.createdAt).toLocaleDateString();
-            pdf.text(date, projectLegendX + 8, currentY);
-          }
-          
-          // 2. Categories Legend - Use position from UI
-          const categoriesLegendWidth = 60; // Optimal width for category names
-          
-          // Calculate position based on UI position (convert from pixels to PDF units)
-          const pxToMm = 0.352778; // Conversion factor from pixels to mm
-          
-          // Determine X position based on categoriesPosition
-          let categoriesLegendX: number;
-          if (categoriesPosition.x === 'right') {
-            // If anchored to right side
-            categoriesLegendX = pdfWidth - categoriesLegendWidth - margin;
-          } else {
-            // If absolute position
-            categoriesLegendX = Math.max(margin, categoriesPosition.x * pxToMm);
-          }
-          
-          // Y position is always a number
-          const categoriesLegendY = Math.max(margin, categoriesPosition.y * pxToMm);
-          
-          // Filter the categories that are used
-          const usedCategoryNames = new Set<string>();
-          ideas.forEach(idea => {
-            if (idea.category) {
-              usedCategoryNames.add(idea.category);
-            }
-          });
-          
-          // Filter only the categories used in the diagram
-          const pdfVisibleCategories = categories.filter(cat => usedCategoryNames.has(cat.name));
-          
-          // Set background for categories legend
-          pdf.setFillColor(255, 255, 255); // white
-          pdf.setDrawColor(226, 232, 240); // light gray border
-          
-          // Calculate dynamic height to account for potentially multi-line category names
-          let categoryItemsHeight = 0;
-          if (pdfVisibleCategories.length > 0) {
-            pdfVisibleCategories.forEach(category => {
-              const splitName = pdf.splitTextToSize(category.name, categoriesLegendWidth - 16);
-              categoryItemsHeight += Math.max(itemHeight, (splitName.length * 4));
-            });
-          } else {
-            categoryItemsHeight = itemHeight;
-          }
-          
-          const categoriesHeight = titleHeight + categoryItemsHeight + 2;
-          pdf.roundedRect(categoriesLegendX, categoriesLegendY, categoriesLegendWidth, categoriesHeight, 1, 1, 'FD');
-          
-          // Add categories title
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(8);
-          pdf.setTextColor(75, 85, 99); // gray
-          pdf.text('Categories', categoriesLegendX + 4, categoriesLegendY + 4);
-          
-          // Add category items
-          if (pdfVisibleCategories.length > 0) {
-            // Track the current vertical position
-            let currentItemY = categoriesLegendY + titleHeight + 2;
-            
-            pdfVisibleCategories.forEach((category) => {
-              // Draw colored square
-              const color = category.color || '#cbd5e1';
-              const r = parseInt(color.slice(1, 3), 16);
-              const g = parseInt(color.slice(3, 5), 16);
-              const b = parseInt(color.slice(5, 7), 16);
-              pdf.setFillColor(r, g, b);
-              pdf.rect(categoriesLegendX + 4, currentItemY + 1, 3, 3, 'F');
-              
-              // Draw category name with text wrapping for long names
-              pdf.setFont('helvetica', 'normal');
-              pdf.setFontSize(7);
-              pdf.setTextColor(75, 85, 99); // #4b5563
-              const splitName = pdf.splitTextToSize(category.name, categoriesLegendWidth - 16);
-              pdf.text(splitName, categoriesLegendX + 10, currentItemY + 3);
-              
-              // Calculate height for this category and update position for next one
-              const categoryHeight = Math.max(itemHeight, (splitName.length * 4));
-              currentItemY += categoryHeight;
-            });
-          } else {
-            // If no categories, show a message
-            const itemY = categoriesLegendY + titleHeight + 2;
-            pdf.setFont('helvetica', 'italic');
-            pdf.setFontSize(7);
-            pdf.setTextColor(75, 85, 99); // #4b5563
-            pdf.text('No categories found', categoriesLegendX + 4, itemY + 3);
-          }
-          
-          // 3. Draw level labels directly on the diagram based on actual Cytoscape node positions
-          if (levels && levels.length > 0 && cyRef.current) {
-            const cy = cyRef.current;
-            const totalLevels = levels.length;
-            
-            // Get the graph extent (bounding box of all elements) - this matches what SVG export uses
-            const extent = cy.extent();
-            const graphWidth = extent.x2 - extent.x1;
-            const graphHeight = extent.y2 - extent.y1;
-            
-            // Calculate diagram position in PDF
-            const diagramTop = (pdfHeight - imgHeight) / 2 + 5;
-            const diagramLeft = (pdfWidth - imgWidth) / 2;
-            
-            // Scale factors: from graph model coordinates to PDF coordinates
-            const scaleX = imgWidth / graphWidth;
-            const scaleY = imgHeight / graphHeight;
-            
-            // Get nodes grouped by level from Cytoscape
-            const nodesByLevel: { [key: number]: cytoscape.NodeSingular[] } = {};
-            cy.nodes().forEach((node) => {
-              const level = node.data('level');
-              if (level !== undefined) {
-                if (!nodesByLevel[level]) nodesByLevel[level] = [];
-                nodesByLevel[level].push(node);
-              }
-            });
-            
-            // Sort levels in ascending order
-            const sortedLevels = Object.keys(nodesByLevel).map(Number).sort((a, b) => a - b);
-            
-            // Draw labels for each level based on actual node positions
-            sortedLevels.forEach((level) => {
-              const nodesInLevel = nodesByLevel[level];
-              
-              if (nodesInLevel && nodesInLevel.length > 0) {
-                // Get positions of nodes in this level using model positions (not rendered)
-                let minX = Infinity;
-                let maxY = -Infinity;
-                
-                nodesInLevel.forEach(node => {
-                  const pos = node.position(); // Use model position, not rendered
-                  const bb = node.boundingBox(); // Use model bounding box
-                  minX = Math.min(minX, pos.x);
-                  maxY = Math.max(maxY, bb.y2); // Bottom of the node
-                });
-                
-                // Convert from graph coordinates to PDF coordinates
-                // Normalize to 0-1 range within graph extent, then scale to PDF image size
-                const normalizedX = (minX - extent.x1) / graphWidth;
-                const normalizedY = (maxY - extent.y1) / graphHeight;
-                
-                // Position label to the left of the leftmost node, and below the level
-                const labelX = diagramLeft + Math.max(2, (normalizedX * imgWidth) - 20);
-                const labelY = diagramTop + (normalizedY * imgHeight) + 3;
-                
-                // Draw level label with background (same style as UI)
-                pdf.setFillColor(249, 250, 251); // #f9fafb
-                pdf.setDrawColor(229, 231, 235); // #e5e7eb
-                pdf.roundedRect(labelX - 1, labelY - 2, 16, 5, 0.5, 0.5, 'FD');
-                
-                pdf.setFont('helvetica', 'bold');
-                pdf.setFontSize(5);
-                pdf.setTextColor(55, 65, 81); // #374151
-                // Display level number inverted (Level 1 at bottom, higher numbers at top)
-                pdf.text(`Level ${totalLevels - level}`, labelX, labelY + 1.5);
-              }
-            });
-          }
-          
-          // Save the PDF with a simple name
-          pdf.save('ism-diagram.pdf');
-          
-          // Clean up
-          URL.revokeObjectURL(url);
-          setIsDownloading(false);
-        }
-      };
+      // Calculate dimensions to fit in PDF
+      let imgWidth = pdfWidth - 20; // margins
+      let imgHeight = imgWidth / imgAspectRatio;
       
-      img.src = url;
+      // Ensure the image fits in the page, leaving space for title
+      if (imgHeight > pdfHeight - 25) {
+        imgHeight = pdfHeight - 25;
+        imgWidth = imgHeight * imgAspectRatio;
+      }
+      
+      // Add a title at the top center
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(14);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('Final ISM Diagram Model', pdfWidth / 2, 12, { align: 'center' });
+      
+      // Add the captured image to the PDF
+      pdf.addImage(
+        dataUrl,
+        'PNG',
+        (pdfWidth - imgWidth) / 2, // center horizontally
+        16, // below title
+        imgWidth,
+        imgHeight
+      );
+      
+      // Save the PDF
+      pdf.save('ism-diagram.pdf');
+      
+      setIsDownloading(false);
     } catch (error) {
       console.error('Error generating PDF:', error);
       setIsDownloading(false);
@@ -837,7 +598,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
       </div>
       
       {/* Diagram container */}
-      <div className="relative">
+      <div ref={wrapperRef} className="relative bg-white">
         {/* Cytoscape container */}
         <div ref={containerRef} className="w-full min-h-[500px]" style={{ height: `${Math.max(500, levels.length * 180 + 150)}px`, paddingBottom: '50px' }} />
         
