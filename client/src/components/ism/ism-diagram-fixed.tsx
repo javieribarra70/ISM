@@ -388,6 +388,14 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
         const influenceLevel = levels.length - levelNum;
         const categoryColor = getCategoryColor(idea.category);
         
+        // Calculate position based on level and index within level
+        const nodeWidth = 200;
+        const nodeHeight = 80;
+        const horizontalGap = 40;
+        const verticalGap = 100;
+        const levelWidth = levelIdxs.length * (nodeWidth + horizontalGap);
+        const startX = -(levelWidth / 2) + (nodeWidth / 2);
+        
         // If the idea has a category with color, we use that color; otherwise, we use the level-based color
         elements.push({
           data: {
@@ -400,9 +408,9 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
             category: idea.category
           },
           position: {
-            // Positions will be automatically assigned by the layout
-            x: 0,
-            y: 0
+            // Position nodes horizontally within the same level
+            x: startX + indexInLevel * (nodeWidth + horizontalGap),
+            y: levelNum * (nodeHeight + verticalGap)
           },
           group: 'nodes'
         });
@@ -625,19 +633,15 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
         }
       ],
       layout: {
-        name: 'dagre',
-        rankDir: 'TB', // Top to Bottom
-        rankSep: 120,  // Vertical spacing
-        nodeSep: 80,   // Horizontal spacing
-        padding: 40
-      } as any, // The 'any' type is necessary because dagre is not included in Cytoscape types
+        name: 'preset' // We'll manually position nodes based on levels
+      },
       userZoomingEnabled: true,
       userPanningEnabled: true,
       autoungrabify: false, // Allow moving nodes
       wheelSensitivity: 0.2 // Reduce zoom sensitivity
     });
     
-    // Function to add level labels to the diagram
+    // Function to add level labels to the diagram (positioned below each level as separators)
     const addLevelLabels = () => {
       if (!containerRef.current) return;
       
@@ -655,30 +659,33 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
         }
       });
       
-      // Add labels for each level
-      Object.keys(nodesByLevel).forEach((levelStr) => {
-        const level = parseInt(levelStr);
+      // Sort levels in ascending order
+      const sortedLevels = Object.keys(nodesByLevel).map(Number).sort((a, b) => a - b);
+      const totalLevels = sortedLevels.length;
+      
+      // Add labels for each level (positioned below the level as a separator)
+      sortedLevels.forEach((level, idx) => {
         const nodesInLevel = nodesByLevel[level];
         
         if (nodesInLevel.length > 0) {
-          // Get the leftmost position of nodes in this level
+          // Get the leftmost position and bottom Y of nodes in this level
           let minX = Infinity;
-          let avgY = 0;
+          let maxY = -Infinity;
           
           nodesInLevel.forEach(node => {
             const pos = node.renderedPosition();
+            const bb = node.renderedBoundingBox();
             minX = Math.min(minX, pos.x);
-            avgY += pos.y;
+            maxY = Math.max(maxY, bb.y2); // Bottom of the node
           });
           
-          avgY /= nodesInLevel.length;
-          
-          // Create level label
+          // Create level label - positioned below the nodes as a separator
           const label = document.createElement('div');
           label.className = 'level-label';
           label.style.position = 'absolute';
-          label.style.left = Math.max(10, minX - 90) + 'px';
-          label.style.top = (avgY - 12) + 'px';
+          label.style.left = Math.max(10, minX - 100) + 'px';
+          // Position below the nodes - the label acts as a separator between levels
+          label.style.top = (maxY + 15) + 'px';
           label.style.fontSize = '14px';
           label.style.fontWeight = 'bold';
           label.style.color = '#374151';
@@ -688,7 +695,8 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
           label.style.border = '1px solid #e5e7eb';
           label.style.zIndex = '1000';
           label.style.pointerEvents = 'none';
-          label.textContent = `Level ${level + 1}`;
+          // Display level number inverted (Level 1 at bottom, higher numbers at top)
+          label.textContent = `Level ${totalLevels - level}`;
           
           containerRef.current?.appendChild(label);
         }
@@ -711,14 +719,16 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
     // Save the reference
     cyRef.current = cy;
     
-    // Apply the layout
+    // Apply the preset layout (positions are already set in elements)
     cy.layout({ 
-      name: 'dagre',
-      rankDir: 'TB',
-      rankSep: 120,
-      nodeSep: 80,
+      name: 'preset',
       padding: 40
-    } as any).run();
+    }).run();
+    
+    // Fit and center after initial render
+    cy.fit();
+    cy.center();
+    setTimeout(() => addLevelLabels(), 100);
     
   }, [ideas, levels, finalReachabilityMatrix, categories, getCategoryColor]);
   
