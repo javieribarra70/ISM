@@ -379,12 +379,14 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         yPos += 10;
       }
 
-      // Detailed Node Information Section
+      // Detailed Idea Information Section
       checkNewPage(30);
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Node Details', margin, yPos);
+      pdf.text('Idea Details', margin, yPos);
       yPos += 10;
+
+      const textMaxWidth = pageWidth - margin * 2 - 10;
 
       ideas.forEach((idea, index) => {
         // Find level for this idea
@@ -427,54 +429,99 @@ export default function ReportTab({ projectId }: ReportTabProps) {
           }
         }
 
-        // Calculate space needed for this node
-        const estimatedHeight = 40 + (idea.description ? 10 : 0) + 
+        // Get clarification (may exist on the idea object)
+        const ideaClarification = (idea as any).clarification || '';
+
+        // Calculate space needed for this idea (estimate based on content)
+        const estimatedHeight = 50 + 
+          (idea.description ? 15 : 0) + 
+          (ideaClarification ? 15 : 0) +
           (influencesNodes.length > 0 ? 10 : 0) + 
           (influencedByNodes.length > 0 ? 10 : 0);
         
         checkNewPage(estimatedHeight);
 
-        // Node title
+        // Idea title with text wrapping for long titles
         pdf.setFontSize(11);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(`${index + 1}. ${idea.title}`, margin, yPos);
-        yPos += 6;
+        const titleText = `${index + 1}. ${idea.title}`;
+        const titleLines = pdf.splitTextToSize(titleText, textMaxWidth);
+        pdf.text(titleLines, margin, yPos, { align: 'justify' });
+        yPos += titleLines.length * 5 + 2;
 
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'normal');
         
-        // Level and Category
-        pdf.text(`Level: ${nodeLevel} | Category: ${categoryName}`, margin + 5, yPos);
-        yPos += 4;
+        // Level
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Level: ', margin + 5, yPos);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`${nodeLevel}`, margin + 5 + pdf.getTextWidth('Level: '), yPos);
+        yPos += 5;
+        
+        // Category
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Category: ', margin + 5, yPos);
+        pdf.setFont('helvetica', 'normal');
+        const categoryLines = pdf.splitTextToSize(categoryName, textMaxWidth - 20);
+        pdf.text(categoryLines, margin + 5 + pdf.getTextWidth('Category: '), yPos, { align: 'justify' });
+        yPos += categoryLines.length * 4 + 1;
 
         // Description if available
         if (idea.description) {
-          const descLines = pdf.splitTextToSize(`Description: ${idea.description}`, pageWidth - margin * 2 - 10);
-          pdf.text(descLines, margin + 5, yPos);
-          yPos += descLines.length * 4;
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Description: ', margin + 5, yPos);
+          yPos += 4;
+          pdf.setFont('helvetica', 'normal');
+          const descLines = pdf.splitTextToSize(idea.description, textMaxWidth);
+          pdf.text(descLines, margin + 8, yPos, { align: 'justify' });
+          yPos += descLines.length * 4 + 1;
+        }
+
+        // Clarification if available
+        if (ideaClarification) {
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Clarification: ', margin + 5, yPos);
+          yPos += 4;
+          pdf.setFont('helvetica', 'normal');
+          const clarLines = pdf.splitTextToSize(ideaClarification, textMaxWidth);
+          pdf.text(clarLines, margin + 8, yPos, { align: 'justify' });
+          yPos += clarLines.length * 4 + 1;
         }
 
         // Cycle information
-        pdf.text(`Cycle Status: ${cycleInfo}`, margin + 5, yPos);
-        yPos += 4;
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Cycle Status: ', margin + 5, yPos);
+        pdf.setFont('helvetica', 'normal');
+        const cycleLines = pdf.splitTextToSize(cycleInfo, textMaxWidth - 25);
+        pdf.text(cycleLines, margin + 5 + pdf.getTextWidth('Cycle Status: '), yPos, { align: 'justify' });
+        yPos += cycleLines.length * 4 + 1;
 
         // Influences
         if (influencesNodes.length > 0) {
-          const influencesText = `Influences: ${influencesNodes.join(', ')}`;
-          const influencesLines = pdf.splitTextToSize(influencesText, pageWidth - margin * 2 - 10);
-          pdf.text(influencesLines, margin + 5, yPos);
-          yPos += influencesLines.length * 4;
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Influences: ', margin + 5, yPos);
+          yPos += 4;
+          pdf.setFont('helvetica', 'normal');
+          const influencesText = influencesNodes.join(', ');
+          const influencesLines = pdf.splitTextToSize(influencesText, textMaxWidth);
+          pdf.text(influencesLines, margin + 8, yPos, { align: 'justify' });
+          yPos += influencesLines.length * 4 + 1;
         }
 
         // Influenced by
         if (influencedByNodes.length > 0) {
-          const influencedByText = `Influenced by: ${influencedByNodes.join(', ')}`;
-          const influencedByLines = pdf.splitTextToSize(influencedByText, pageWidth - margin * 2 - 10);
-          pdf.text(influencedByLines, margin + 5, yPos);
-          yPos += influencedByLines.length * 4;
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Influenced by: ', margin + 5, yPos);
+          yPos += 4;
+          pdf.setFont('helvetica', 'normal');
+          const influencedByText = influencedByNodes.join(', ');
+          const influencedByLines = pdf.splitTextToSize(influencedByText, textMaxWidth);
+          pdf.text(influencedByLines, margin + 8, yPos, { align: 'justify' });
+          yPos += influencedByLines.length * 4 + 1;
         }
 
-        yPos += 5;
+        yPos += 8; // More spacing between ideas
       });
 
       // Save PDF
