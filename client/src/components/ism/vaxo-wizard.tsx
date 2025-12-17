@@ -171,6 +171,7 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
   
   const initializationRef = useRef(false);
   const totalQuestionsRef = useRef(0);
+  const autoCompletedRef = useRef(false);
 
   const { data: project, isLoading: isProjectLoading } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
@@ -302,6 +303,87 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
     
   }, [isIdeasLoading, isRelationshipsLoading, isSelectedIdeasLoading, isProjectLoading, isRelationshipsFetching, isSelectedIdeasFetching, allIdeas, existingRelationships, selectedIdeasData, preselectedIdeaIds, isInitialized]);
 
+  // Auto-detect when all relationships are completed and transition to SSIM matrix
+  useEffect(() => {
+    // Only run auto-completion once, and only if we're still in questions stage
+    if (!isInitialized || stage !== "questions" || questions.length === 0 || autoCompletedRef.current) {
+      return;
+    }
+
+    const answeredCount = questions.filter(q => q.response !== null).length;
+    const totalQuestions = questions.length;
+
+    // Check if all questions are answered
+    if (answeredCount >= totalQuestions) {
+      // Mark as auto-completed to prevent re-triggering when navigating back
+      autoCompletedRef.current = true;
+      console.log("All relationships completed. Transitioning to SSIM matrix...");
+      
+      // Build the SSIM matrix from completed questions
+      const matrix: SSIMCell[] = [];
+      questions.forEach((q) => {
+        if (q.response) {
+          matrix.push({
+            ideaI: q.ideaI.id,
+            ideaJ: q.ideaJ.id,
+            relation: q.response,
+          });
+        }
+      });
+      
+      setSSIMMatrix(matrix);
+      
+      // Build reachability matrix
+      const initialMatrix = buildInitialReachabilityMatrix(selectedIdeas, matrix);
+      setReachabilityMatrix(initialMatrix);
+      
+      // Apply transitive closure
+      const finalMatrix = applyTransitiveClosure(initialMatrix);
+      setFinalReachabilityMatrix(finalMatrix);
+      
+      // Calculate levels
+      const computedLevels = calculateLevels(finalMatrix, selectedIdeas);
+      setLevels(computedLevels);
+      
+      // Save VAXO results to localStorage
+      const n = selectedIdeas.length;
+      const booleanMatrix: boolean[][] = Array(n).fill(null).map(() => Array(n).fill(false));
+      
+      matrix.forEach(cell => {
+        const iIndex = selectedIdeas.findIndex(idea => idea.id === cell.ideaI);
+        const jIndex = selectedIdeas.findIndex(idea => idea.id === cell.ideaJ);
+        
+        if (iIndex !== -1 && jIndex !== -1) {
+          if (cell.relation === 'V') {
+            booleanMatrix[iIndex][jIndex] = true;
+          } else if (cell.relation === 'A') {
+            booleanMatrix[jIndex][iIndex] = true;
+          } else if (cell.relation === 'X') {
+            booleanMatrix[iIndex][jIndex] = true;
+            booleanMatrix[jIndex][iIndex] = true;
+          }
+        }
+      });
+
+      const vaxoResults = {
+        ssimMatrix: booleanMatrix,
+        reachabilityMatrix: initialMatrix,
+        levels: computedLevels,
+        selectedIdeas: selectedIdeas,
+        processDate: new Date().toISOString(),
+      };
+      
+      try {
+        localStorage.setItem(`vaxo-results-${projectId}`, JSON.stringify(vaxoResults));
+      } catch (error) {
+        console.error("Error saving VAXO results:", error);
+      }
+      
+      // Transition to SSIM stage
+      setStage("ssim");
+    }
+  }, [isInitialized, stage, questions, selectedIdeas, projectId]);
+
   const answerQuestion = async (response: RelationType) => {
     try {
       if (currentQuestionIndex < questions.length) {
@@ -388,6 +470,8 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
             console.error("Error saving VAXO results:", error);
           }
           
+          // Mark as completed to prevent auto-completion from re-triggering
+          autoCompletedRef.current = true;
           setStage("ssim");
           
           console.log("Process completed: Results saved. Go to the Report tab to see the full analysis.");
@@ -609,7 +693,7 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold">Influence Relationship</h3>
                   <Badge variant="outline">
-                    Question {currentQuestionIndex + 1} of {totalQuestionsRef.current || questions.length}
+                    Question {Math.min(questions.filter(q => q.response !== null).length + 1, totalQuestionsRef.current || questions.length)} of {totalQuestionsRef.current || questions.length}
                   </Badge>
                 </div>
                 
