@@ -301,48 +301,29 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
             pdf.text('No categories found', categoriesLegendX + 4, itemY + 3);
           }
           
-          // 3. Levels Legend - positioned below the categories legend
+          // 3. Draw level labels directly on the diagram (similar to how they appear in the UI)
+          // The levels are displayed from top (highest level number) to bottom (level 1)
           if (levels && levels.length > 0) {
-            const levelsLegendWidth = 70;
-            const levelsLegendX = categoriesLegendX;
-            const levelsLegendY = categoriesLegendY + categoriesHeight + 5;
+            const totalLevels = levels.length;
+            const diagramTop = (pdfHeight - imgHeight) / 2 + 5;
+            const diagramLeft = (pdfWidth - imgWidth) / 2;
+            const levelSpacing = imgHeight / (totalLevels + 1);
             
-            // Calculate levels legend height
-            let levelsItemsHeight = 0;
+            // Draw level labels on the left side of the diagram
             levels.forEach((levelIdeas, levelIndex) => {
-              const levelIdeasNames = levelIdeas.map(idx => ideas[idx]?.title || `Idea ${idx + 1}`).join(', ');
-              const splitText = pdf.splitTextToSize(`Level ${levelIndex + 1}: ${levelIdeasNames}`, levelsLegendWidth - 8);
-              levelsItemsHeight += Math.max(itemHeight, (splitText.length * 4));
-            });
-            
-            const levelsHeight = titleHeight + levelsItemsHeight + 4;
-            
-            // Draw levels legend background
-            pdf.setFillColor(255, 255, 255);
-            pdf.setDrawColor(226, 232, 240);
-            pdf.roundedRect(levelsLegendX, levelsLegendY, levelsLegendWidth, levelsHeight, 1, 1, 'FD');
-            
-            // Levels title
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(8);
-            pdf.setTextColor(75, 85, 99);
-            pdf.text('Levels', levelsLegendX + 4, levelsLegendY + 4);
-            
-            // Add level items
-            let currentLevelY = levelsLegendY + titleHeight + 2;
-            levels.forEach((levelIdeas, levelIndex) => {
-              const levelIdeasNames = levelIdeas.map(idx => ideas[idx]?.title || `Idea ${idx + 1}`).join(', ');
-              const levelText = `Level ${levelIndex + 1}: ${levelIdeasNames}`;
+              // Position: levels are inverted (Level 1 at bottom, highest at top)
+              const displayLevel = totalLevels - levelIndex;
+              const yPosition = diagramTop + (displayLevel * levelSpacing) - (levelSpacing / 2);
               
-              pdf.setFont('helvetica', 'normal');
-              pdf.setFontSize(6);
-              pdf.setTextColor(75, 85, 99);
+              // Draw level label with background
+              pdf.setFillColor(249, 250, 251); // #f9fafb
+              pdf.setDrawColor(229, 231, 235); // #e5e7eb
+              pdf.roundedRect(diagramLeft - 2, yPosition - 3, 22, 8, 1, 1, 'FD');
               
-              const splitText = pdf.splitTextToSize(levelText, levelsLegendWidth - 8);
-              pdf.text(splitText, levelsLegendX + 4, currentLevelY + 3);
-              
-              const levelHeight = Math.max(itemHeight, (splitText.length * 4));
-              currentLevelY += levelHeight;
+              pdf.setFont('helvetica', 'bold');
+              pdf.setFontSize(7);
+              pdf.setTextColor(55, 65, 81); // #374151
+              pdf.text(`Level ${levelIndex + 1}`, diagramLeft, yPosition + 2);
             });
           }
           
