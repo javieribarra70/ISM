@@ -491,10 +491,11 @@ export default function ReportTab({ projectId }: ReportTabProps) {
 
         // Cycle information
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Cycle Status: ', margin + 5, yPos);
+        pdf.text('Cycle Status:', margin + 5, yPos);
+        yPos += 4;
         pdf.setFont('helvetica', 'normal');
-        const cycleLines = pdf.splitTextToSize(cycleInfo, textMaxWidth - 25);
-        pdf.text(cycleLines, margin + 5 + pdf.getTextWidth('Cycle Status: '), yPos);
+        const cycleLines = pdf.splitTextToSize(cycleInfo, textMaxWidth);
+        pdf.text(cycleLines, margin + 8, yPos);
         yPos += cycleLines.length * 4 + 1;
 
         // Influences
