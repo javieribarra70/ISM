@@ -205,18 +205,16 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       pdf.text(`• Cycles Detected: ${cycles.length}`, margin, yPos);
       yPos += 15;
 
-      // Final ISM Diagram Model Section
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Final ISM Diagram Model', margin, yPos);
-      yPos += 8;
-
-      // Capture and add the diagram image
+      // Final ISM Diagram Model Section - Add on a separate landscape page
       if (diagramRef.current) {
         try {
+          // Capture the diagram exactly as displayed (same as Download PDF button)
           const diagramDataUrl = await toPng(diagramRef.current, {
             backgroundColor: '#ffffff',
             pixelRatio: 2,
+            style: {
+              overflow: 'visible',
+            },
           });
           
           // Create temporary image to get dimensions
@@ -226,48 +224,66 @@ export default function ReportTab({ projectId }: ReportTabProps) {
             diagramImg.onload = () => resolve();
           });
           
-          // Calculate dimensions to fit in PDF
+          // Add a new LANDSCAPE page for the diagram
+          pdf.addPage('l'); // 'l' = landscape orientation
+          const landscapeWidth = pdf.internal.pageSize.getWidth();
+          const landscapeHeight = pdf.internal.pageSize.getHeight();
+          
+          // Add title
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(16);
+          pdf.setTextColor(0, 0, 0);
+          pdf.text('Final ISM Diagram Model', landscapeWidth / 2, 15, { align: 'center' });
+          
+          // Calculate dimensions to fit in landscape page
           const imgAspectRatio = diagramImg.width / diagramImg.height;
-          let imgWidth = pageWidth - margin * 2;
+          let imgWidth = landscapeWidth - 20;
           let imgHeight = imgWidth / imgAspectRatio;
           
-          // Check if we need a new page for the diagram
-          if (yPos + imgHeight > pageHeight - margin) {
-            // If diagram is too tall, scale it down or add new page
-            if (imgHeight > pageHeight - margin * 2) {
-              imgHeight = pageHeight - margin * 2 - 20;
-              imgWidth = imgHeight * imgAspectRatio;
-            }
-            pdf.addPage();
-            yPos = margin;
+          // Ensure the image fits in the page
+          if (imgHeight > landscapeHeight - 30) {
+            imgHeight = landscapeHeight - 30;
+            imgWidth = imgHeight * imgAspectRatio;
           }
           
-          // Add diagram to PDF
+          // Add diagram centered on the page
           pdf.addImage(
             diagramDataUrl,
             'PNG',
-            (pageWidth - imgWidth) / 2,
-            yPos,
+            (landscapeWidth - imgWidth) / 2,
+            20,
             imgWidth,
             imgHeight
           );
-          yPos += imgHeight + 10;
+          
+          // Continue with portrait pages for remaining content
+          pdf.addPage('p'); // Back to portrait
+          yPos = margin;
+          
         } catch (diagramError) {
           console.error('Error capturing diagram:', diagramError);
+          pdf.setFontSize(14);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Final ISM Diagram Model', margin, yPos);
+          yPos += 8;
           pdf.setFontSize(10);
           pdf.setFont('helvetica', 'italic');
           pdf.setTextColor(100, 100, 100);
-          pdf.text('Diagram could not be captured. Use the "Download PDF" button on the diagram for high-definition export.', margin, yPos);
+          pdf.text('Diagram could not be captured. Use the "Download PDF" button on the diagram.', margin, yPos);
           pdf.setTextColor(0, 0, 0);
-          yPos += 10;
+          yPos += 15;
         }
       } else {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Final ISM Diagram Model', margin, yPos);
+        yPos += 8;
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'italic');
         pdf.setTextColor(100, 100, 100);
-        pdf.text('Diagram not available.', margin, yPos);
+        pdf.text('Diagram not available - complete the VAXO process first.', margin, yPos);
         pdf.setTextColor(0, 0, 0);
-        yPos += 10;
+        yPos += 15;
       }
 
       // Cycles Section (if any)
