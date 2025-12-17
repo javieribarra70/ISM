@@ -206,10 +206,12 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       yPos += 15;
 
       // Final ISM Diagram Model Section - Add on a separate landscape page
-      if (diagramRef.current) {
+      // Use the same element that the Download PDF button uses (id="ism-diagram-wrapper")
+      const diagramWrapper = document.getElementById('ism-diagram-wrapper');
+      if (diagramWrapper) {
         try {
           // Capture the diagram exactly as displayed (same as Download PDF button)
-          const diagramDataUrl = await toPng(diagramRef.current, {
+          const diagramDataUrl = await toPng(diagramWrapper, {
             backgroundColor: '#ffffff',
             pixelRatio: 2,
             style: {
