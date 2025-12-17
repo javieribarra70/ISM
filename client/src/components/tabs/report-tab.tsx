@@ -434,12 +434,32 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         // Get clarification (may exist on the idea object)
         const ideaClarification = (idea as any).clarification || '';
 
-        // Calculate space needed for this idea (estimate based on content)
-        const estimatedHeight = 50 + 
-          (idea.description ? 15 : 0) + 
-          (ideaClarification ? 15 : 0) +
-          (influencesNodes.length > 0 ? 10 : 0) + 
-          (influencedByNodes.length > 0 ? 10 : 0);
+        // Calculate ACTUAL space needed for this idea based on real text line counts
+        pdf.setFontSize(11);
+        const calcTitleText = `${index + 1}. ${idea.title}`;
+        const titleLinesCount = pdf.splitTextToSize(calcTitleText, textMaxWidth).length;
+        
+        pdf.setFontSize(9);
+        const categoryLinesCount = pdf.splitTextToSize(categoryName, textMaxWidth - 20).length;
+        const descLinesCount = idea.description ? pdf.splitTextToSize(idea.description, textMaxWidth).length : 0;
+        const clarLinesCount = ideaClarification ? pdf.splitTextToSize(ideaClarification, textMaxWidth).length : 0;
+        const cycleLinesCount = pdf.splitTextToSize(cycleInfo, textMaxWidth).length;
+        const influencesText = influencesNodes.join(', ');
+        const influencesLinesCount = influencesNodes.length > 0 ? pdf.splitTextToSize(influencesText, textMaxWidth).length : 0;
+        const influencedByText = influencedByNodes.join(', ');
+        const influencedByLinesCount = influencedByNodes.length > 0 ? pdf.splitTextToSize(influencedByText, textMaxWidth).length : 0;
+        
+        // Calculate total height: base + lines * line height + spacing
+        const estimatedHeight = 
+          (titleLinesCount * 5 + 2) +  // Title
+          5 +  // Level
+          (categoryLinesCount * 4 + 1) +  // Category
+          (idea.description ? (4 + descLinesCount * 4 + 1) : 0) +  // Description label + content
+          (ideaClarification ? (4 + clarLinesCount * 4 + 1) : 0) +  // Clarification label + content
+          (4 + cycleLinesCount * 4 + 1) +  // Cycle Status label + content
+          (influencesNodes.length > 0 ? (4 + influencesLinesCount * 4 + 1) : 0) +  // Influences
+          (influencedByNodes.length > 0 ? (4 + influencedByLinesCount * 4 + 1) : 0) +  // Influenced by
+          10;  // Bottom spacing + margin
         
         checkNewPage(estimatedHeight);
 
