@@ -76,6 +76,7 @@ export interface IStorage {
   getProjectRelationships(projectId: number): Promise<Relationship[]>;
   createRelationship(relationship: InsertRelationship): Promise<Relationship>;
   deleteRelationship(id: number): Promise<boolean>;
+  deleteAllProjectRelationships(projectId: number): Promise<number>;
 
   // Invitation operations
   createInvitation(invitation: InsertInvitation): Promise<Invitation>;
@@ -497,6 +498,19 @@ export class MemStorage implements IStorage {
 
   async deleteRelationship(id: number): Promise<boolean> {
     return this.relationships.delete(id);
+  }
+
+  async deleteAllProjectRelationships(projectId: number): Promise<number> {
+    const relationships = Array.from(this.relationships.values())
+      .filter(rel => rel.projectId === projectId);
+    
+    let deletedCount = 0;
+    for (const rel of relationships) {
+      if (this.relationships.delete(rel.id)) {
+        deletedCount++;
+      }
+    }
+    return deletedCount;
   }
 
   // Invitation operations
@@ -1427,6 +1441,21 @@ export class DatabaseStorage implements IStorage {
       return result.length > 0;
     } catch (error) {
       console.error('Error deleting relationship:', error);
+      throw error;
+    }
+  }
+
+  async deleteAllProjectRelationships(projectId: number): Promise<number> {
+    try {
+      const result = await sql`
+        DELETE FROM relationships
+        WHERE project_id = ${projectId}
+        RETURNING id
+      `;
+      
+      return result.length;
+    } catch (error) {
+      console.error('Error deleting all project relationships:', error);
       throw error;
     }
   }

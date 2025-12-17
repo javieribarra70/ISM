@@ -1,14 +1,15 @@
 import { useState, useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Idea, SelectedIdea, Project } from "@shared/schema";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { PlayCircle } from "lucide-react";
+import { PlayCircle, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { apiRequest } from "@/lib/queryClient";
 
 interface ProjectUser {
   id: number;
@@ -26,8 +27,9 @@ export default function ConnectionTab({
 }: ConnectionTabProps) {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [isStarting, setIsStarting] = useState(false);
-  const [isStartingAlternative, setIsStartingAlternative] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
   // Fetch project users to determine user role
@@ -178,18 +180,29 @@ export default function ConnectionTab({
     }, 300);
   };
 
-  // Handle the start alternative process button
-  const handleStartAlternativeProcess = () => {
-    // Set starting state to show loading UI
-    setIsStartingAlternative(true);
-
-    // Por ahora simplemente log, pero se puede extender
-    console.log("Iniciando el proceso de votación...");
-
-    // Reset the starting state after a short delay
-    setTimeout(() => {
-      setIsStartingAlternative(false);
-    }, 500);
+  // Handle delete all relationships for this project
+  const handleDeleteRelations = async () => {
+    if (!confirm("Are you sure you want to delete all existing relationships? This action cannot be undone.")) {
+      return;
+    }
+    
+    setIsDeleting(true);
+    
+    try {
+      const response = await apiRequest('DELETE', `/api/projects/${projectId}/relationships`);
+      const data = await response.json();
+      console.log(`Deleted ${data.deletedCount} relationships`);
+      
+      // Invalidate the relationships query to refresh the data
+      await queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/relationships`] });
+      
+      // Also clear localStorage VAXO results
+      localStorage.removeItem(`vaxo-results-${projectId}`);
+    } catch (error) {
+      console.error("Error deleting relationships:", error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Prepare project context information for ISM process
@@ -267,7 +280,7 @@ export default function ConnectionTab({
                 className="gap-2"
                 disabled={
                   isStarting ||
-                  isStartingAlternative ||
+                  isDeleting ||
                   selectedIdeas.length < 2 ||
                   isVaxoProcessCompleted
                 }
@@ -276,18 +289,18 @@ export default function ConnectionTab({
                 {isVaxoProcessCompleted ? "VAXO Completed" : isStarting ? "Starting..." : "Start VAXO Process"}
               </Button>
             )}
-            {/* Mostrar el botón de votación para todos */}
-            <Button
-              onClick={handleStartAlternativeProcess}
-              className="gap-2"
-              variant="outline"
-              disabled={
-                isStarting || isStartingAlternative || selectedIdeas.length < 2 || isVaxoProcessCompleted
-              }
-            >
-              <PlayCircle className="h-5 w-5" />
-              {isVaxoProcessCompleted ? "Process Completed" : isStartingAlternative ? "Starting..." : "Start Voting Process"}
-            </Button>
+            {/* Botón para eliminar relaciones existentes - solo para administradores */}
+            {isAdmin && hasExistingVaxoRelationships && (
+              <Button
+                onClick={handleDeleteRelations}
+                className="gap-2"
+                variant="destructive"
+                disabled={isStarting || isDeleting}
+              >
+                <Trash2 className="h-5 w-5" />
+                {isDeleting ? "Deleting..." : "Delete previous relations"}
+              </Button>
+            )}
           </div>
         </div>
 

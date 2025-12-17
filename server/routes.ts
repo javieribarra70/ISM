@@ -608,6 +608,19 @@ export function registerRoutes(app: Express): Server {
       next(error);
     }
   });
+
+  // Delete all relationships for a project (admin only)
+  app.delete("/api/projects/:projectId/relationships", isProjectAdmin, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const deletedCount = await storage.deleteAllProjectRelationships(projectId);
+      
+      console.log(`Deleted ${deletedCount} relationships for project ${projectId}`);
+      res.json({ deletedCount });
+    } catch (error) {
+      next(error);
+    }
+  });
   
   // Endpoint para obtener usuarios (solo para administradores)
   // Los administradores solo ven los usuarios que ellos crearon y los usuarios auto-registrados
