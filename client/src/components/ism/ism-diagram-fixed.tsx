@@ -301,6 +301,51 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
             pdf.text('No categories found', categoriesLegendX + 4, itemY + 3);
           }
           
+          // 3. Levels Legend - positioned below the categories legend
+          if (levels && levels.length > 0) {
+            const levelsLegendWidth = 70;
+            const levelsLegendX = categoriesLegendX;
+            const levelsLegendY = categoriesLegendY + categoriesHeight + 5;
+            
+            // Calculate levels legend height
+            let levelsItemsHeight = 0;
+            levels.forEach((levelIdeas, levelIndex) => {
+              const levelIdeasNames = levelIdeas.map(idx => ideas[idx]?.title || `Idea ${idx + 1}`).join(', ');
+              const splitText = pdf.splitTextToSize(`Level ${levelIndex + 1}: ${levelIdeasNames}`, levelsLegendWidth - 8);
+              levelsItemsHeight += Math.max(itemHeight, (splitText.length * 4));
+            });
+            
+            const levelsHeight = titleHeight + levelsItemsHeight + 4;
+            
+            // Draw levels legend background
+            pdf.setFillColor(255, 255, 255);
+            pdf.setDrawColor(226, 232, 240);
+            pdf.roundedRect(levelsLegendX, levelsLegendY, levelsLegendWidth, levelsHeight, 1, 1, 'FD');
+            
+            // Levels title
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(8);
+            pdf.setTextColor(75, 85, 99);
+            pdf.text('Levels', levelsLegendX + 4, levelsLegendY + 4);
+            
+            // Add level items
+            let currentLevelY = levelsLegendY + titleHeight + 2;
+            levels.forEach((levelIdeas, levelIndex) => {
+              const levelIdeasNames = levelIdeas.map(idx => ideas[idx]?.title || `Idea ${idx + 1}`).join(', ');
+              const levelText = `Level ${levelIndex + 1}: ${levelIdeasNames}`;
+              
+              pdf.setFont('helvetica', 'normal');
+              pdf.setFontSize(6);
+              pdf.setTextColor(75, 85, 99);
+              
+              const splitText = pdf.splitTextToSize(levelText, levelsLegendWidth - 8);
+              pdf.text(splitText, levelsLegendX + 4, currentLevelY + 3);
+              
+              const levelHeight = Math.max(itemHeight, (splitText.length * 4));
+              currentLevelY += levelHeight;
+            });
+          }
+          
           // Save the PDF with a simple name
           pdf.save('ism-diagram.pdf');
           
@@ -769,7 +814,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
       {/* Diagram container */}
       <div className="relative">
         {/* Cytoscape container */}
-        <div ref={containerRef} className="w-full h-[680px]" />
+        <div ref={containerRef} className="w-full min-h-[500px]" style={{ height: `${Math.max(500, levels.length * 180 + 100)}px` }} />
         
         {/* Project Info Legend - Draggable */}
         {projectInfo && (
