@@ -16,7 +16,6 @@ import SettingsTab from "@/components/tabs/settings-tab";
 import ContextTab from "@/components/tabs/context-tab";
 import ConnectionTab from "@/components/tabs/connection-tab";
 import ReportTab from "@/components/tabs/report-tab";
-import { Avatars } from "@/components/avatars";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -395,9 +394,6 @@ export default function ProjectPage() {
               </p>
             </div>
             
-            <div className="flex items-center">
-              <Avatars users={projectUsers?.map(pu => pu.user) || []} />
-            </div>
           </div>
           
           {/* Pestañas de navegación */}
