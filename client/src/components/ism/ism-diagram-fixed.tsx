@@ -750,7 +750,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
     
     // Add handler to adjust size after rendering
     cy.on('layoutstop', () => {
-      cy.fit();
+      cy.fit(undefined, 60); // Add padding for level labels
       cy.center();
       // Add level labels after layout is complete
       setTimeout(() => addLevelLabels(), 100);
@@ -767,11 +767,11 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
     // Apply the preset layout (positions are already set in elements)
     cy.layout({ 
       name: 'preset',
-      padding: 40
+      padding: 60
     }).run();
     
-    // Fit and center after initial render
-    cy.fit();
+    // Fit and center after initial render with padding for level labels
+    cy.fit(undefined, 60);
     cy.center();
     setTimeout(() => addLevelLabels(), 100);
     
@@ -814,7 +814,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
       {/* Diagram container */}
       <div className="relative">
         {/* Cytoscape container */}
-        <div ref={containerRef} className="w-full min-h-[500px]" style={{ height: `${Math.max(500, levels.length * 180 + 100)}px` }} />
+        <div ref={containerRef} className="w-full min-h-[500px]" style={{ height: `${Math.max(500, levels.length * 180 + 150)}px`, paddingBottom: '50px' }} />
         
         {/* Project Info Legend - Draggable */}
         {projectInfo && (
