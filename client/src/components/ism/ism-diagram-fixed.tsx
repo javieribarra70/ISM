@@ -598,7 +598,7 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
       </div>
       
       {/* Diagram container */}
-      <div ref={wrapperRef} id="ism-diagram-wrapper" className="relative bg-white">
+      <div ref={wrapperRef} className="relative bg-white">
         {/* Cytoscape container */}
         <div ref={containerRef} className="w-full min-h-[500px]" style={{ height: `${Math.max(500, levels.length * 180 + 150)}px`, paddingBottom: '50px' }} />
         

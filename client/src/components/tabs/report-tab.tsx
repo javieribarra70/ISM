@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { BarChart3, FileText, Network, Download } from "lucide-react";
 import { jsPDF } from "jspdf";
-import { toPng } from "html-to-image";
 import { findStronglyConnectedComponents } from "@/lib/matrix-utils";
 import ISMDiagram from "@/components/ism/ism-diagram-fixed";
 
@@ -39,7 +38,6 @@ interface VaxoResults {
 export default function ReportTab({ projectId }: ReportTabProps) {
   const [hasVaxoData, setHasVaxoData] = useState(false);
   const [vaxoResults, setVaxoResults] = useState<VaxoResults | null>(null);
-  const diagramRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Fetch all ideas
@@ -205,95 +203,18 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       pdf.text(`• Cycles Detected: ${cycles.length}`, margin, yPos);
       yPos += 15;
 
-      // Final ISM Diagram Model Section - Add on a separate landscape page
-      // Use the same element that the Download PDF button uses (id="ism-diagram-wrapper")
-      const diagramWrapper = document.getElementById('ism-diagram-wrapper');
-      if (diagramWrapper) {
-        try {
-          // Scroll the diagram into view and wait for it to be fully rendered
-          diagramWrapper.scrollIntoView({ behavior: 'instant', block: 'center' });
-          await new Promise(resolve => setTimeout(resolve, 500)); // Wait for render
-          
-          // Capture the diagram exactly as displayed (same as Download PDF button)
-          const diagramDataUrl = await toPng(diagramWrapper, {
-            backgroundColor: '#ffffff',
-            pixelRatio: 2,
-            style: {
-              overflow: 'visible',
-            },
-            cacheBust: true, // Force fresh capture
-            skipAutoScale: true,
-            includeQueryParams: true,
-          });
-          
-          // Create temporary image to get dimensions
-          const diagramImg = new Image();
-          diagramImg.src = diagramDataUrl;
-          await new Promise<void>((resolve) => {
-            diagramImg.onload = () => resolve();
-          });
-          
-          // Add a new LANDSCAPE page for the diagram
-          pdf.addPage('l'); // 'l' = landscape orientation
-          const landscapeWidth = pdf.internal.pageSize.getWidth();
-          const landscapeHeight = pdf.internal.pageSize.getHeight();
-          
-          // Add title
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(16);
-          pdf.setTextColor(0, 0, 0);
-          pdf.text('Final ISM Diagram Model', landscapeWidth / 2, 15, { align: 'center' });
-          
-          // Calculate dimensions to fit in landscape page
-          const imgAspectRatio = diagramImg.width / diagramImg.height;
-          let imgWidth = landscapeWidth - 20;
-          let imgHeight = imgWidth / imgAspectRatio;
-          
-          // Ensure the image fits in the page
-          if (imgHeight > landscapeHeight - 30) {
-            imgHeight = landscapeHeight - 30;
-            imgWidth = imgHeight * imgAspectRatio;
-          }
-          
-          // Add diagram centered on the page
-          pdf.addImage(
-            diagramDataUrl,
-            'PNG',
-            (landscapeWidth - imgWidth) / 2,
-            20,
-            imgWidth,
-            imgHeight
-          );
-          
-          // Continue with portrait pages for remaining content
-          pdf.addPage('p'); // Back to portrait
-          yPos = margin;
-          
-        } catch (diagramError) {
-          console.error('Error capturing diagram:', diagramError);
-          pdf.setFontSize(14);
-          pdf.setFont('helvetica', 'bold');
-          pdf.text('Final ISM Diagram Model', margin, yPos);
-          yPos += 8;
-          pdf.setFontSize(10);
-          pdf.setFont('helvetica', 'italic');
-          pdf.setTextColor(100, 100, 100);
-          pdf.text('Diagram could not be captured. Use the "Download PDF" button on the diagram.', margin, yPos);
-          pdf.setTextColor(0, 0, 0);
-          yPos += 15;
-        }
-      } else {
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Final ISM Diagram Model', margin, yPos);
-        yPos += 8;
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'italic');
-        pdf.setTextColor(100, 100, 100);
-        pdf.text('Diagram not available - complete the VAXO process first.', margin, yPos);
-        pdf.setTextColor(0, 0, 0);
-        yPos += 15;
-      }
+      // Final ISM Diagram Model Section
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Final ISM Diagram Model', margin, yPos);
+      yPos += 8;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'italic');
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('Note: Use the "Download PDF" button on the diagram to export the high-definition ISM diagram separately.', margin, yPos);
+      pdf.setTextColor(0, 0, 0);
+      yPos += 15;
 
       // Cycles Section (if any)
       if (cycles.length > 0) {
@@ -711,8 +632,7 @@ export default function ReportTab({ projectId }: ReportTabProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div ref={diagramRef}>
-              <ISMDiagram
+            <ISMDiagram
               ideas={vaxoResults.selectedIdeas.map(idea => {
                 // Get full idea info from allIdeas to obtain category
                 const fullIdea = allIdeas.find(ai => ai.id === idea.id);
@@ -735,7 +655,6 @@ export default function ReportTab({ projectId }: ReportTabProps) {
               finalReachabilityMatrix={vaxoResults.reachabilityMatrix}
               projectId={projectId}
             />
-            </div>
           </CardContent>
         </Card>
       )}
