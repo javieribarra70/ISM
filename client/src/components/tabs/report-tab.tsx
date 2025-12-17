@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { BarChart3, FileText, Network, Download } from "lucide-react";
 import { jsPDF } from "jspdf";
+import { toPng } from "html-to-image";
 import { findStronglyConnectedComponents } from "@/lib/matrix-utils";
 import ISMDiagram from "@/components/ism/ism-diagram-fixed";
 
@@ -38,6 +39,7 @@ interface VaxoResults {
 export default function ReportTab({ projectId }: ReportTabProps) {
   const [hasVaxoData, setHasVaxoData] = useState(false);
   const [vaxoResults, setVaxoResults] = useState<VaxoResults | null>(null);
+  const diagramRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Fetch all ideas
@@ -209,12 +211,64 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       pdf.text('Final ISM Diagram Model', margin, yPos);
       yPos += 8;
 
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'italic');
-      pdf.setTextColor(100, 100, 100);
-      pdf.text('Note: Use the "Download PDF" button on the diagram to export the high-definition ISM diagram separately.', margin, yPos);
-      pdf.setTextColor(0, 0, 0);
-      yPos += 15;
+      // Capture and add the diagram image
+      if (diagramRef.current) {
+        try {
+          const diagramDataUrl = await toPng(diagramRef.current, {
+            backgroundColor: '#ffffff',
+            pixelRatio: 2,
+          });
+          
+          // Create temporary image to get dimensions
+          const diagramImg = new Image();
+          diagramImg.src = diagramDataUrl;
+          await new Promise<void>((resolve) => {
+            diagramImg.onload = () => resolve();
+          });
+          
+          // Calculate dimensions to fit in PDF
+          const imgAspectRatio = diagramImg.width / diagramImg.height;
+          let imgWidth = pageWidth - margin * 2;
+          let imgHeight = imgWidth / imgAspectRatio;
+          
+          // Check if we need a new page for the diagram
+          if (yPos + imgHeight > pageHeight - margin) {
+            // If diagram is too tall, scale it down or add new page
+            if (imgHeight > pageHeight - margin * 2) {
+              imgHeight = pageHeight - margin * 2 - 20;
+              imgWidth = imgHeight * imgAspectRatio;
+            }
+            pdf.addPage();
+            yPos = margin;
+          }
+          
+          // Add diagram to PDF
+          pdf.addImage(
+            diagramDataUrl,
+            'PNG',
+            (pageWidth - imgWidth) / 2,
+            yPos,
+            imgWidth,
+            imgHeight
+          );
+          yPos += imgHeight + 10;
+        } catch (diagramError) {
+          console.error('Error capturing diagram:', diagramError);
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'italic');
+          pdf.setTextColor(100, 100, 100);
+          pdf.text('Diagram could not be captured. Use the "Download PDF" button on the diagram for high-definition export.', margin, yPos);
+          pdf.setTextColor(0, 0, 0);
+          yPos += 10;
+        }
+      } else {
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setTextColor(100, 100, 100);
+        pdf.text('Diagram not available.', margin, yPos);
+        pdf.setTextColor(0, 0, 0);
+        yPos += 10;
+      }
 
       // Cycles Section (if any)
       if (cycles.length > 0) {
@@ -632,7 +686,8 @@ export default function ReportTab({ projectId }: ReportTabProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ISMDiagram
+            <div ref={diagramRef}>
+              <ISMDiagram
               ideas={vaxoResults.selectedIdeas.map(idea => {
                 // Get full idea info from allIdeas to obtain category
                 const fullIdea = allIdeas.find(ai => ai.id === idea.id);
@@ -655,6 +710,7 @@ export default function ReportTab({ projectId }: ReportTabProps) {
               finalReachabilityMatrix={vaxoResults.reachabilityMatrix}
               projectId={projectId}
             />
+            </div>
           </CardContent>
         </Card>
       )}
