@@ -291,6 +291,84 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
       });
     }
 
+    // Apply logical inference to pre-filled relationships to determine additional inferred relationships
+    if (preFilled > 0) {
+      console.log(`Applying inference to ${preFilled} pre-filled relationships...`);
+      
+      // Build provisional SSIM from pre-filled answers
+      const provisionalSSIM: SSIMCell[] = [];
+      newQuestions.forEach((q) => {
+        if (q.response) {
+          provisionalSSIM.push({
+            ideaI: q.ideaI.id,
+            ideaJ: q.ideaJ.id,
+            relation: q.response,
+          });
+          
+          // Add inverse relationships
+          if (q.response === RelationType.V) {
+            provisionalSSIM.push({
+              ideaI: q.ideaJ.id,
+              ideaJ: q.ideaI.id,
+              relation: RelationType.A,
+            });
+          } else if (q.response === RelationType.A) {
+            provisionalSSIM.push({
+              ideaI: q.ideaJ.id,
+              ideaJ: q.ideaI.id,
+              relation: RelationType.V,
+            });
+          } else if (q.response === RelationType.X) {
+            provisionalSSIM.push({
+              ideaI: q.ideaJ.id,
+              ideaJ: q.ideaI.id,
+              relation: RelationType.X,
+            });
+          } else if (q.response === RelationType.O) {
+            provisionalSSIM.push({
+              ideaI: q.ideaJ.id,
+              ideaJ: q.ideaI.id,
+              relation: RelationType.O,
+            });
+          }
+        }
+      });
+      
+      // Build reachability matrix and apply transitive closure
+      const initialMatrix = buildInitialReachabilityMatrix(ideasToUse, provisionalSSIM);
+      const transitiveMatrix = applyTransitiveClosure(initialMatrix);
+      
+      // Infer relationships for unanswered questions
+      let inferredCount = 0;
+      for (let i = 0; i < newQuestions.length; i++) {
+        if (newQuestions[i].response !== null) continue;
+        
+        const ideaI = newQuestions[i].ideaI;
+        const ideaJ = newQuestions[i].ideaJ;
+        
+        const idxI = ideasToUse.findIndex(idea => idea.id === ideaI.id);
+        const idxJ = ideasToUse.findIndex(idea => idea.id === ideaJ.id);
+        
+        if (idxI !== -1 && idxJ !== -1) {
+          const iToJ = transitiveMatrix[idxI][idxJ];
+          const jToI = transitiveMatrix[idxJ][idxI];
+          
+          if (iToJ && !jToI) {
+            newQuestions[i].response = RelationType.V;
+            inferredCount++;
+          } else if (!iToJ && jToI) {
+            newQuestions[i].response = RelationType.A;
+            inferredCount++;
+          } else if (iToJ && jToI) {
+            newQuestions[i].response = RelationType.X;
+            inferredCount++;
+          }
+        }
+      }
+      
+      console.log(`Inferred ${inferredCount} additional relationships from pre-filled data.`);
+    }
+
     const firstUnansweredIndex = newQuestions.findIndex(q => q.response === null);
     
     totalQuestionsRef.current = newQuestions.length;
