@@ -446,7 +446,7 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         pdf.setFont('helvetica', 'bold');
         const titleText = `${index + 1}. ${idea.title}`;
         const titleLines = pdf.splitTextToSize(titleText, textMaxWidth);
-        pdf.text(titleLines, margin, yPos, { align: 'justify' });
+        pdf.text(titleLines, margin, yPos);
         yPos += titleLines.length * 5 + 2;
 
         pdf.setFontSize(9);
@@ -464,7 +464,7 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         pdf.text('Category: ', margin + 5, yPos);
         pdf.setFont('helvetica', 'normal');
         const categoryLines = pdf.splitTextToSize(categoryName, textMaxWidth - 20);
-        pdf.text(categoryLines, margin + 5 + pdf.getTextWidth('Category: '), yPos, { align: 'justify' });
+        pdf.text(categoryLines, margin + 5 + pdf.getTextWidth('Category: '), yPos);
         yPos += categoryLines.length * 4 + 1;
 
         // Description if available
@@ -474,7 +474,7 @@ export default function ReportTab({ projectId }: ReportTabProps) {
           yPos += 4;
           pdf.setFont('helvetica', 'normal');
           const descLines = pdf.splitTextToSize(idea.description, textMaxWidth);
-          pdf.text(descLines, margin + 8, yPos, { align: 'justify' });
+          pdf.text(descLines, margin + 8, yPos);
           yPos += descLines.length * 4 + 1;
         }
 
@@ -485,7 +485,7 @@ export default function ReportTab({ projectId }: ReportTabProps) {
           yPos += 4;
           pdf.setFont('helvetica', 'normal');
           const clarLines = pdf.splitTextToSize(ideaClarification, textMaxWidth);
-          pdf.text(clarLines, margin + 8, yPos, { align: 'justify' });
+          pdf.text(clarLines, margin + 8, yPos);
           yPos += clarLines.length * 4 + 1;
         }
 
@@ -494,7 +494,7 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         pdf.text('Cycle Status: ', margin + 5, yPos);
         pdf.setFont('helvetica', 'normal');
         const cycleLines = pdf.splitTextToSize(cycleInfo, textMaxWidth - 25);
-        pdf.text(cycleLines, margin + 5 + pdf.getTextWidth('Cycle Status: '), yPos, { align: 'justify' });
+        pdf.text(cycleLines, margin + 5 + pdf.getTextWidth('Cycle Status: '), yPos);
         yPos += cycleLines.length * 4 + 1;
 
         // Influences
@@ -505,7 +505,7 @@ export default function ReportTab({ projectId }: ReportTabProps) {
           pdf.setFont('helvetica', 'normal');
           const influencesText = influencesNodes.join(', ');
           const influencesLines = pdf.splitTextToSize(influencesText, textMaxWidth);
-          pdf.text(influencesLines, margin + 8, yPos, { align: 'justify' });
+          pdf.text(influencesLines, margin + 8, yPos);
           yPos += influencesLines.length * 4 + 1;
         }
 
@@ -517,7 +517,7 @@ export default function ReportTab({ projectId }: ReportTabProps) {
           pdf.setFont('helvetica', 'normal');
           const influencedByText = influencedByNodes.join(', ');
           const influencedByLines = pdf.splitTextToSize(influencedByText, textMaxWidth);
-          pdf.text(influencedByLines, margin + 8, yPos, { align: 'justify' });
+          pdf.text(influencedByLines, margin + 8, yPos);
           yPos += influencedByLines.length * 4 + 1;
         }
 
