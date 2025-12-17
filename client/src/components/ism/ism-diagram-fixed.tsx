@@ -302,16 +302,22 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
           }
           
           // 3. Draw level labels directly on the diagram based on actual Cytoscape node positions
-          if (levels && levels.length > 0 && cyRef.current && containerRef.current) {
+          if (levels && levels.length > 0 && cyRef.current) {
             const cy = cyRef.current;
-            const containerRect = containerRef.current.getBoundingClientRect();
             const totalLevels = levels.length;
             
-            // Calculate diagram position and scale factors
+            // Get the graph extent (bounding box of all elements) - this matches what SVG export uses
+            const extent = cy.extent();
+            const graphWidth = extent.x2 - extent.x1;
+            const graphHeight = extent.y2 - extent.y1;
+            
+            // Calculate diagram position in PDF
             const diagramTop = (pdfHeight - imgHeight) / 2 + 5;
             const diagramLeft = (pdfWidth - imgWidth) / 2;
-            const scaleX = imgWidth / containerRect.width;
-            const scaleY = imgHeight / containerRect.height;
+            
+            // Scale factors: from graph model coordinates to PDF coordinates
+            const scaleX = imgWidth / graphWidth;
+            const scaleY = imgHeight / graphHeight;
             
             // Get nodes grouped by level from Cytoscape
             const nodesByLevel: { [key: number]: cytoscape.NodeSingular[] } = {};
@@ -327,35 +333,40 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
             const sortedLevels = Object.keys(nodesByLevel).map(Number).sort((a, b) => a - b);
             
             // Draw labels for each level based on actual node positions
-            sortedLevels.forEach((level, idx) => {
+            sortedLevels.forEach((level) => {
               const nodesInLevel = nodesByLevel[level];
               
               if (nodesInLevel && nodesInLevel.length > 0) {
-                // Get positions of nodes in this level
+                // Get positions of nodes in this level using model positions (not rendered)
                 let minX = Infinity;
                 let maxY = -Infinity;
                 
                 nodesInLevel.forEach(node => {
-                  const pos = node.renderedPosition();
-                  const bb = node.renderedBoundingBox();
+                  const pos = node.position(); // Use model position, not rendered
+                  const bb = node.boundingBox(); // Use model bounding box
                   minX = Math.min(minX, pos.x);
                   maxY = Math.max(maxY, bb.y2); // Bottom of the node
                 });
                 
-                // Convert to PDF coordinates
-                const labelX = diagramLeft + (Math.max(10, minX - 100) * scaleX);
-                const labelY = diagramTop + ((maxY + 15) * scaleY);
+                // Convert from graph coordinates to PDF coordinates
+                // Normalize to 0-1 range within graph extent, then scale to PDF image size
+                const normalizedX = (minX - extent.x1) / graphWidth;
+                const normalizedY = (maxY - extent.y1) / graphHeight;
+                
+                // Position label to the left of the leftmost node, and below the level
+                const labelX = diagramLeft + Math.max(2, (normalizedX * imgWidth) - 20);
+                const labelY = diagramTop + (normalizedY * imgHeight) + 3;
                 
                 // Draw level label with background (same style as UI)
                 pdf.setFillColor(249, 250, 251); // #f9fafb
                 pdf.setDrawColor(229, 231, 235); // #e5e7eb
-                pdf.roundedRect(labelX - 2, labelY - 3, 18, 6, 1, 1, 'FD');
+                pdf.roundedRect(labelX - 1, labelY - 2, 16, 5, 0.5, 0.5, 'FD');
                 
                 pdf.setFont('helvetica', 'bold');
-                pdf.setFontSize(6);
+                pdf.setFontSize(5);
                 pdf.setTextColor(55, 65, 81); // #374151
                 // Display level number inverted (Level 1 at bottom, higher numbers at top)
-                pdf.text(`Level ${totalLevels - level}`, labelX, labelY + 1);
+                pdf.text(`Level ${totalLevels - level}`, labelX, labelY + 1.5);
               }
             });
           }
