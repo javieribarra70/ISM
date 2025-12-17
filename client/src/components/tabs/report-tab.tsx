@@ -855,6 +855,50 @@ export default function ReportTab({ projectId }: ReportTabProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Detected Cycles */}
+      {(() => {
+        const ideas = vaxoResults?.selectedIdeas || selectedIdeaObjects;
+        const ssimMatrix = vaxoResults?.ssimMatrix;
+        if (!ssimMatrix || ideas.length === 0) return null;
+        
+        const sccs = findStronglyConnectedComponents(ssimMatrix);
+        const cycles = sccs.filter(scc => scc.length > 1);
+        
+        if (cycles.length === 0) return null;
+        
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Detected Cycles</CardTitle>
+              <CardDescription>
+                Strongly connected components with mutual influence relationships
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {cycles.map((cycle, cycleIndex) => (
+                  <div key={cycleIndex} className="flex items-start gap-4">
+                    <Badge variant="destructive" className="text-sm">
+                      Cycle {cycleIndex + 1}
+                    </Badge>
+                    <div className="flex flex-wrap gap-2">
+                      {cycle.map((ideaIndex) => {
+                        const idea = ideas[ideaIndex];
+                        return idea ? (
+                          <Badge key={ideaIndex} variant="outline" className="text-xs border-red-300 text-red-700">
+                            {idea.title}
+                          </Badge>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
     </div>
   );
 }
