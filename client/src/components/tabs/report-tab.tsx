@@ -1,14 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { BarChart3, FileText, Network, Download } from "lucide-react";
-import cytoscape from "cytoscape";
-import dagre from "cytoscape-dagre";
 import { jsPDF } from "jspdf";
-import { removeTransitiveRedundancies, findStronglyConnectedComponents } from "@/lib/matrix-utils";
+import { findStronglyConnectedComponents } from "@/lib/matrix-utils";
 import ISMDiagram from "@/components/ism/ism-diagram-fixed";
 
 interface ReportTabProps {
@@ -40,8 +38,6 @@ interface VaxoResults {
 export default function ReportTab({ projectId }: ReportTabProps) {
   const [hasVaxoData, setHasVaxoData] = useState(false);
   const [vaxoResults, setVaxoResults] = useState<VaxoResults | null>(null);
-  const cyRef = useRef<HTMLDivElement>(null);
-  const cyInstance = useRef<cytoscape.Core | null>(null);
   const { toast } = useToast();
 
   // Fetch all ideas
@@ -54,10 +50,10 @@ export default function ReportTab({ projectId }: ReportTabProps) {
     queryKey: [`/api/projects/${projectId}/selected-ideas`],
   });
 
-  // Initialize Cytoscape
-  useEffect(() => {
-    cytoscape.use(dagre);
-  }, []);
+  // Fetch categories
+  const { data: categories = [] } = useQuery<{ id: number; name: string; description?: string; color?: string }[]>({
+    queryKey: [`/api/projects/${projectId}/categories`],
+  });
 
   // Get the full idea objects for selected ideas
   const getSelectedIdeaObjects = () => {
@@ -70,7 +66,7 @@ export default function ReportTab({ projectId }: ReportTabProps) {
 
   const selectedIdeaObjects = getSelectedIdeaObjects();
 
-  // Check if there's stored VAXO data in localStorage
+  // Check if there's stored VAXO data in localStorage (only once on mount)
   useEffect(() => {
     const checkVaxoData = () => {
       try {
@@ -91,222 +87,10 @@ export default function ReportTab({ projectId }: ReportTabProps) {
     };
 
     checkVaxoData();
-    
-    // Check for updates every 5 seconds
-    const interval = setInterval(checkVaxoData, 5000);
-    return () => clearInterval(interval);
+    // Removed periodic refresh to prevent diagram from resetting user changes
   }, [projectId]);
 
-  // Initialize network diagram when VAXO results are available
-  useEffect(() => {
-    if (vaxoResults && cyRef.current && hasVaxoData) {
-      initializeNetworkDiagram();
-    }
-  }, [vaxoResults, hasVaxoData]);
-
-  // Initialize network diagram
-  const initializeNetworkDiagram = useCallback(() => {
-    if (!cyRef.current || !vaxoResults) return;
-
-    // Destroy existing instance
-    if (cyInstance.current) {
-      cyInstance.current.destroy();
-    }
-
-    const ideas = vaxoResults.selectedIdeas || selectedIdeaObjects;
-    const { ssimMatrix, levels } = vaxoResults;
-    
-    // Remove transitive redundancies for cleaner visualization
-    const reducedMatrix = removeTransitiveRedundancies(ssimMatrix);
-    
-    console.log('Original SSIM Matrix:', ssimMatrix);
-    console.log('Reduced SSIM Matrix (without redundancies):', reducedMatrix);
-    console.log('Ideas:', ideas.map(idea => idea.title));
-
-    // Create nodes
-    const nodes = ideas.map((idea, index) => {
-      // Find which level this idea belongs to
-      let levelIndex = 0;
-      if (levels) {
-        levels.forEach((level, lIndex) => {
-          if (level.includes(index)) {
-            levelIndex = lIndex;
-          }
-        });
-      }
-
-      // Color based on level
-      const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6'];
-      const color = colors[levelIndex % colors.length];
-
-      return {
-        data: {
-          id: `node-${index}`,
-          label: idea.title,
-          level: levelIndex,
-          color: color,
-        },
-      };
-    });
-
-    // Create edges based on reduced SSIM matrix (without transitive redundancies)
-    const edges: any[] = [];
-    if (reducedMatrix) {
-      for (let i = 0; i < reducedMatrix.length; i++) {
-        for (let j = 0; j < reducedMatrix[i].length; j++) {
-          if (reducedMatrix[i][j]) {
-            edges.push({
-              data: {
-                id: `edge-${i}-${j}`,
-                source: `node-${i}`,
-                target: `node-${j}`,
-              },
-            });
-          }
-        }
-      }
-    }
-
-    // Note: Level separators removed due to Cytoscape warnings
-
-    // Initialize Cytoscape
-    cyInstance.current = cytoscape({
-      container: cyRef.current,
-      elements: [...nodes, ...edges],
-      style: [
-        {
-          selector: 'node',
-          style: {
-            'label': 'data(label)',
-            'background-color': 'data(color)',
-            'text-valign': 'center',
-            'text-halign': 'center',
-            'text-wrap': 'wrap',
-            'text-max-width': '70px',
-            'font-size': '16px',
-            'font-weight': 'bold',
-            'color': '#ffffff',
-            'text-outline-width': '2px',
-            'text-outline-color': '#000000',
-            'width': '80px',
-            'height': '80px',
-            'border-width': '3px',
-            'border-color': '#ffffff',
-            'shape': 'ellipse',
-          },
-        },
-        {
-          selector: 'edge',
-          style: {
-            'width': 3,
-            'line-color': '#4f46e5',
-            'target-arrow-color': '#4f46e5',
-            'target-arrow-shape': 'triangle',
-            'curve-style': 'bezier',
-            'opacity': 0.8,
-          },
-        },
-        {
-          selector: '.highlighted',
-          style: {
-            'opacity': 1,
-            'z-index': 999,
-          },
-        },
-      ],
-      layout: {
-        name: 'dagre',
-        rankDir: 'LR', // Left to Right direction
-        spacingFactor: 2,
-        rankSep: 150, // Horizontal spacing between levels
-        nodeSep: 80,  // Vertical spacing between nodes in same level
-      } as any,
-    });
-
-    // Add click event to highlight connections
-    cyInstance.current.on('tap', 'node', (event) => {
-      const node = event.target;
-      cyInstance.current?.elements().removeClass('highlighted');
-      
-      const connectedElements = node.neighborhood().add(node);
-      connectedElements.addClass('highlighted');
-    });
-
-    // Style for highlighted and non-highlighted elements
-    cyInstance.current
-      .style()
-      .selector('.highlighted')
-      .style({
-        'opacity': 1,
-        'z-index': 999,
-      })
-      .update();
-
-    // Add level labels after layout is complete
-    cyInstance.current.ready(() => {
-      setTimeout(() => {
-        addLevelLabels();
-      }, 100);
-    });
-  }, [vaxoResults, selectedIdeaObjects]);
-
-  // Function to add level labels to the diagram
-  const addLevelLabels = useCallback(() => {
-    if (!cyInstance.current || !vaxoResults?.levels) return;
-
-    const container = cyRef.current;
-    if (!container) return;
-
-    // Remove existing level labels
-    const existingLabels = container.querySelectorAll('.level-label');
-    existingLabels.forEach(label => label.remove());
-
-    // Get nodes grouped by level
-    const nodesByLevel: { [key: number]: any[] } = {};
-    cyInstance.current.nodes().forEach((node) => {
-      const level = node.data('level');
-      if (!nodesByLevel[level]) nodesByLevel[level] = [];
-      nodesByLevel[level].push(node);
-    });
-
-    // Add labels for each level
-    Object.keys(nodesByLevel).forEach((levelStr) => {
-      const level = parseInt(levelStr);
-      const nodesInLevel = nodesByLevel[level];
-      
-      if (nodesInLevel.length > 0) {
-        // Get the leftmost position of nodes in this level
-        let minX = Infinity;
-        let avgY = 0;
-        
-        nodesInLevel.forEach(node => {
-          const pos = node.renderedPosition();
-          minX = Math.min(minX, pos.x);
-          avgY += pos.y;
-        });
-        
-        avgY /= nodesInLevel.length;
-
-        // Create level label
-        const label = document.createElement('div');
-        label.className = 'level-label';
-        label.style.position = 'absolute';
-        label.style.left = (minX - 80) + 'px';
-        label.style.top = (avgY - 10) + 'px';
-        label.style.fontSize = '14px';
-        label.style.fontWeight = 'bold';
-        label.style.color = '#374151';
-        label.style.backgroundColor = '#f9fafb';
-        label.style.padding = '4px 8px';
-        label.style.borderRadius = '4px';
-        label.style.border = '1px solid #e5e7eb';
-        label.style.zIndex = '1000';
-        label.textContent = `Level ${level + 1}`;
-        
-        container.appendChild(label);
-      }
-    });
-  }, [vaxoResults]);
+  // Note: Old network diagram code removed - now using ISMDiagram component
 
   // Generate SSIM Matrix display
   const renderSSIMMatrix = () => {
@@ -425,57 +209,12 @@ export default function ReportTab({ projectId }: ReportTabProps) {
       pdf.text('Final ISM Diagram Model', margin, yPos);
       yPos += 8;
 
-      // Capture diagram as image
-      if (cyInstance.current) {
-        try {
-          const pngData = cyInstance.current.png({ 
-            full: true, 
-            scale: 4, // High definition
-            bg: '#fafafa'
-          });
-          
-          // Calculate image dimensions preserving aspect ratio
-          const maxImgWidth = pageWidth - (margin * 2);
-          const maxImgHeight = 120;
-          
-          // Create temporary image to get actual dimensions
-          const img = new Image();
-          img.src = pngData;
-          
-          // Wait for image to load to get dimensions
-          await new Promise<void>((resolve) => {
-            img.onload = () => resolve();
-            img.onerror = () => resolve();
-            // Fallback timeout
-            setTimeout(() => resolve(), 100);
-          });
-          
-          // Calculate scaled dimensions preserving aspect ratio
-          let imgWidth = maxImgWidth;
-          let imgHeight = maxImgHeight;
-          
-          if (img.naturalWidth && img.naturalHeight) {
-            const aspectRatio = img.naturalWidth / img.naturalHeight;
-            // Fit within max dimensions while preserving aspect ratio
-            if (maxImgWidth / aspectRatio <= maxImgHeight) {
-              imgWidth = maxImgWidth;
-              imgHeight = maxImgWidth / aspectRatio;
-            } else {
-              imgHeight = maxImgHeight;
-              imgWidth = maxImgHeight * aspectRatio;
-            }
-          }
-          
-          pdf.addImage(pngData, 'PNG', margin, yPos, imgWidth, imgHeight);
-          yPos += imgHeight + 10;
-        } catch (imgError) {
-          console.error('Error capturing diagram:', imgError);
-          pdf.setFontSize(10);
-          pdf.setFont('helvetica', 'italic');
-          pdf.text('(Diagram could not be captured)', margin, yPos);
-          yPos += 10;
-        }
-      }
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'italic');
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('Note: Use the "Download PDF" button on the diagram to export the high-definition ISM diagram separately.', margin, yPos);
+      pdf.setTextColor(0, 0, 0);
+      yPos += 15;
 
       // Cycles Section (if any)
       if (cycles.length > 0) {
@@ -590,6 +329,56 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         yPos += 10;
       }
 
+      // Categories Section - support both categoryId (number) and category (string from localStorage)
+      const usedCategoryNames = new Set<string>();
+      ideas.forEach(idea => {
+        // Check both category (string) and categoryId (number)
+        if ((idea as any).category) {
+          usedCategoryNames.add((idea as any).category);
+        } else if (idea.categoryId) {
+          const cat = categories.find(c => c.id === idea.categoryId);
+          if (cat) usedCategoryNames.add(cat.name);
+        }
+      });
+      
+      // Get full category info for used categories
+      const usedCategories = categories.filter(c => usedCategoryNames.has(c.name));
+      
+      if (usedCategories.length > 0 || usedCategoryNames.size > 0) {
+        checkNewPage(30);
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Categories', margin, yPos);
+        yPos += 8;
+
+        pdf.setFontSize(10);
+        // If we have category details from DB, show them
+        if (usedCategories.length > 0) {
+          usedCategories.forEach((cat) => {
+            checkNewPage(12);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(`• ${cat.name}`, margin, yPos);
+            pdf.setFont('helvetica', 'normal');
+            if (cat.description) {
+              const descLines = pdf.splitTextToSize(cat.description, pageWidth - margin * 2 - 15);
+              pdf.text(descLines, margin + 5, yPos + 5);
+              yPos += 5 + (descLines.length * 4);
+            } else {
+              yPos += 5;
+            }
+          });
+        } else {
+          // Fallback: just list category names from ideas
+          Array.from(usedCategoryNames).forEach((catName) => {
+            checkNewPage(8);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`• ${catName}`, margin, yPos);
+            yPos += 5;
+          });
+        }
+        yPos += 10;
+      }
+
       // Detailed Node Information Section
       checkNewPage(30);
       pdf.setFontSize(14);
@@ -606,6 +395,15 @@ export default function ReportTab({ projectId }: ReportTabProps) {
               nodeLevel = lIndex + 1;
             }
           });
+        }
+
+        // Find category for this idea - support both category (string) and categoryId (number)
+        let categoryName = 'No category';
+        if ((idea as any).category) {
+          categoryName = (idea as any).category;
+        } else if (idea.categoryId) {
+          const cat = categories.find(c => c.id === idea.categoryId);
+          if (cat) categoryName = cat.name;
         }
 
         // Find if this idea is part of a cycle
@@ -630,7 +428,7 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         }
 
         // Calculate space needed for this node
-        const estimatedHeight = 35 + (idea.description ? 10 : 0) + 
+        const estimatedHeight = 40 + (idea.description ? 10 : 0) + 
           (influencesNodes.length > 0 ? 10 : 0) + 
           (influencedByNodes.length > 0 ? 10 : 0);
         
@@ -645,8 +443,8 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'normal');
         
-        // Level
-        pdf.text(`Level: ${nodeLevel}`, margin + 5, yPos);
+        // Level and Category
+        pdf.text(`Level: ${nodeLevel} | Category: ${categoryName}`, margin + 5, yPos);
         yPos += 4;
 
         // Description if available
@@ -787,20 +585,24 @@ export default function ReportTab({ projectId }: ReportTabProps) {
           </CardHeader>
           <CardContent>
             <ISMDiagram
-              ideas={vaxoResults.selectedIdeas.map(idea => ({
-                id: idea.id,
-                title: idea.title,
-                projectId: projectId,
-                description: idea.description || '',
-                clarification: '',
-                createdAt: new Date(),
-                createdBy: 0,
-                categoryId: idea.categoryId || 0,
-                category: '',
-                updatedAt: new Date(),
-                positionX: '0',
-                positionY: '0'
-              }))}
+              ideas={vaxoResults.selectedIdeas.map(idea => {
+                // Get full idea info from allIdeas to obtain category
+                const fullIdea = allIdeas.find(ai => ai.id === idea.id);
+                return {
+                  id: idea.id,
+                  title: idea.title,
+                  projectId: projectId,
+                  description: idea.description || '',
+                  clarification: '',
+                  createdAt: new Date(),
+                  createdBy: 0,
+                  categoryId: idea.categoryId || 0,
+                  category: (fullIdea as any)?.category || '',
+                  updatedAt: new Date(),
+                  positionX: '0',
+                  positionY: '0'
+                };
+              })}
               levels={vaxoResults.levels}
               finalReachabilityMatrix={vaxoResults.reachabilityMatrix}
               projectId={projectId}
