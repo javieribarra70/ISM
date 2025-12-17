@@ -301,29 +301,62 @@ const ISMDiagram = ({ ideas, levels, finalReachabilityMatrix, projectId, project
             pdf.text('No categories found', categoriesLegendX + 4, itemY + 3);
           }
           
-          // 3. Draw level labels directly on the diagram (similar to how they appear in the UI)
-          // The levels are displayed from top (highest level number) to bottom (level 1)
-          if (levels && levels.length > 0) {
+          // 3. Draw level labels directly on the diagram based on actual Cytoscape node positions
+          if (levels && levels.length > 0 && cyRef.current && containerRef.current) {
+            const cy = cyRef.current;
+            const containerRect = containerRef.current.getBoundingClientRect();
             const totalLevels = levels.length;
+            
+            // Calculate diagram position and scale factors
             const diagramTop = (pdfHeight - imgHeight) / 2 + 5;
             const diagramLeft = (pdfWidth - imgWidth) / 2;
-            const levelSpacing = imgHeight / (totalLevels + 1);
+            const scaleX = imgWidth / containerRect.width;
+            const scaleY = imgHeight / containerRect.height;
             
-            // Draw level labels on the left side of the diagram
-            levels.forEach((levelIdeas, levelIndex) => {
-              // Position: levels are inverted (Level 1 at bottom, highest at top)
-              const displayLevel = totalLevels - levelIndex;
-              const yPosition = diagramTop + (displayLevel * levelSpacing) - (levelSpacing / 2);
+            // Get nodes grouped by level from Cytoscape
+            const nodesByLevel: { [key: number]: cytoscape.NodeSingular[] } = {};
+            cy.nodes().forEach((node) => {
+              const level = node.data('level');
+              if (level !== undefined) {
+                if (!nodesByLevel[level]) nodesByLevel[level] = [];
+                nodesByLevel[level].push(node);
+              }
+            });
+            
+            // Sort levels in ascending order
+            const sortedLevels = Object.keys(nodesByLevel).map(Number).sort((a, b) => a - b);
+            
+            // Draw labels for each level based on actual node positions
+            sortedLevels.forEach((level, idx) => {
+              const nodesInLevel = nodesByLevel[level];
               
-              // Draw level label with background
-              pdf.setFillColor(249, 250, 251); // #f9fafb
-              pdf.setDrawColor(229, 231, 235); // #e5e7eb
-              pdf.roundedRect(diagramLeft - 2, yPosition - 3, 22, 8, 1, 1, 'FD');
-              
-              pdf.setFont('helvetica', 'bold');
-              pdf.setFontSize(7);
-              pdf.setTextColor(55, 65, 81); // #374151
-              pdf.text(`Level ${levelIndex + 1}`, diagramLeft, yPosition + 2);
+              if (nodesInLevel && nodesInLevel.length > 0) {
+                // Get positions of nodes in this level
+                let minX = Infinity;
+                let maxY = -Infinity;
+                
+                nodesInLevel.forEach(node => {
+                  const pos = node.renderedPosition();
+                  const bb = node.renderedBoundingBox();
+                  minX = Math.min(minX, pos.x);
+                  maxY = Math.max(maxY, bb.y2); // Bottom of the node
+                });
+                
+                // Convert to PDF coordinates
+                const labelX = diagramLeft + (Math.max(10, minX - 100) * scaleX);
+                const labelY = diagramTop + ((maxY + 15) * scaleY);
+                
+                // Draw level label with background (same style as UI)
+                pdf.setFillColor(249, 250, 251); // #f9fafb
+                pdf.setDrawColor(229, 231, 235); // #e5e7eb
+                pdf.roundedRect(labelX - 2, labelY - 3, 18, 6, 1, 1, 'FD');
+                
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(6);
+                pdf.setTextColor(55, 65, 81); // #374151
+                // Display level number inverted (Level 1 at bottom, higher numbers at top)
+                pdf.text(`Level ${totalLevels - level}`, labelX, labelY + 1);
+              }
             });
           }
           
