@@ -254,10 +254,12 @@ export default function ReportTab({ projectId }: ReportTabProps) {
 
       pdf.setFontSize(10);
       if (levels && levels.length > 0) {
+        const totalLevels = levels.length;
         levels.forEach((level, levelIndex) => {
           checkNewPage(10);
           pdf.setFont('helvetica', 'bold');
-          pdf.text(`Level ${levelIndex + 1}:`, margin, yPos);
+          // Invert level numbering to match diagram (Level 1 at bottom, highest at top)
+          pdf.text(`Level ${totalLevels - levelIndex}:`, margin, yPos);
           pdf.setFont('helvetica', 'normal');
           const levelIdeas = level.map(idx => ideas[idx]?.title || `Idea ${idx + 1}`).join(', ');
           const textLines = pdf.splitTextToSize(levelIdeas, pageWidth - margin * 2 - 25);
@@ -682,23 +684,26 @@ export default function ReportTab({ projectId }: ReportTabProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {vaxoResults?.levels?.map((level, levelIndex) => (
-              <div key={levelIndex} className="flex items-center gap-4">
-                <Badge variant="outline" className="text-sm">
-                  Level {levelIndex + 1}
-                </Badge>
-                <div className="flex flex-wrap gap-2">
-                  {level.map((ideaIndex) => {
-                    const idea = vaxoResults.selectedIdeas?.[ideaIndex] || selectedIdeaObjects[ideaIndex];
-                    return idea ? (
-                      <Badge key={ideaIndex} variant="secondary" className="text-xs">
-                        {idea.title}
-                      </Badge>
-                    ) : null;
-                  })}
+            {vaxoResults?.levels?.map((level, levelIndex) => {
+              const totalLevels = vaxoResults?.levels?.length || 0;
+              return (
+                <div key={levelIndex} className="flex items-center gap-4">
+                  <Badge variant="outline" className="text-sm">
+                    Level {totalLevels - levelIndex}
+                  </Badge>
+                  <div className="flex flex-wrap gap-2">
+                    {level.map((ideaIndex) => {
+                      const idea = vaxoResults.selectedIdeas?.[ideaIndex] || selectedIdeaObjects[ideaIndex];
+                      return idea ? (
+                        <Badge key={ideaIndex} variant="secondary" className="text-xs">
+                          {idea.title}
+                        </Badge>
+                      ) : null;
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
