@@ -341,9 +341,25 @@ export default function ProjectPage() {
     },
     onError: (error: Error) => {
       console.error("Error al eliminar idea:", error);
+      // Try to extract the server message from the error
+      let errorMessage = "An error occurred while deleting the idea.";
+      try {
+        // Error format is "status: {json}" or "status: message"
+        const errorText = error.message;
+        const colonIndex = errorText.indexOf(':');
+        if (colonIndex !== -1) {
+          const jsonPart = errorText.substring(colonIndex + 1).trim();
+          const parsed = JSON.parse(jsonPart);
+          if (parsed.message) {
+            errorMessage = parsed.message;
+          }
+        }
+      } catch {
+        // If parsing fails, use the default message
+      }
       toast({
-        title: "Error al eliminar idea",
-        description: "Ha ocurrido un error al eliminar la idea.",
+        title: "Error",
+        description: errorMessage,
         variant: "destructive",
       });
     }
