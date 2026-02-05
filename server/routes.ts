@@ -1127,7 +1127,7 @@ export function registerRoutes(app: Express): Server {
         if (hasRelationships) {
           console.log(`[SELECT IDEA] Cannot deselect idea ${ideaId} - has existing relationships`);
           return res.status(400).json({ 
-            message: "Para deseleccionar esta idea, primero elimina sus conexiones en la pestaña Conexiones." 
+            message: "To deselect this idea, first remove its connections in the Connections tab." 
           });
         }
       }
