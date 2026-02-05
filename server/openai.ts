@@ -20,6 +20,13 @@ interface OpenAIResponse {
 }
 
 /**
+ * Helper function to check if a string has actual content
+ */
+function hasContent(value: string | null | undefined): boolean {
+  return !!(value && value.trim().length > 0);
+}
+
+/**
  * Fusiona dos ideas usando la API de OpenAI para generar un contenido
  * coherente y bien integrado.
  * 
@@ -33,29 +40,68 @@ export async function mergeIdeasWithAI(idea1: Idea, idea2: Idea): Promise<Partia
     
     if (!apiKey) {
       console.error("Error: No se encontró OPENAI_API_KEY en las variables de entorno");
-      return createSimpleMerge(idea1, idea2);
+      return createSmartMerge(idea1, idea2);
+    }
+    
+    // Determine which fields need AI fusion (both ideas have content)
+    const bothHaveTitles = hasContent(idea1.title) && hasContent(idea2.title);
+    const bothHaveDescriptions = hasContent(idea1.description) && hasContent(idea2.description);
+    const bothHaveClarifications = hasContent(idea1.clarification) && hasContent(idea2.clarification);
+    
+    // If no fields need AI fusion (only one or neither has content for each field)
+    // use the smart merge directly without calling OpenAI
+    if (!bothHaveTitles && !bothHaveDescriptions && !bothHaveClarifications) {
+      console.log("No hay campos que requieran fusión con IA, usando fusión directa");
+      return createSmartMerge(idea1, idea2);
+    }
+    
+    // Build a dynamic prompt based on what fields need to be merged
+    let fieldsToMerge = [];
+    
+    if (bothHaveTitles) {
+      fieldsToMerge.push({
+        field: "title",
+        instruction: `TÍTULOS A FUSIONAR:
+- Título 1: "${idea1.title}"
+- Título 2: "${idea2.title}"
+Genera UNA SOLA FRASE que explique y combine ambas problemáticas/ideas en un título coherente.`
+      });
+    }
+    
+    if (bothHaveDescriptions) {
+      fieldsToMerge.push({
+        field: "description",
+        instruction: `DESCRIPCIONES A FUSIONAR:
+- Descripción 1: "${idea1.description}"
+- Descripción 2: "${idea2.description}"
+Genera una descripción unificada que integre ambos conceptos de manera fluida.`
+      });
+    }
+    
+    if (bothHaveClarifications) {
+      fieldsToMerge.push({
+        field: "clarification",
+        instruction: `ACLARACIONES A FUSIONAR:
+- Aclaración 1: "${idea1.clarification}"
+- Aclaración 2: "${idea2.clarification}"
+Genera una aclaración unificada que combine ambas explicaciones.`
+      });
     }
     
     const prompt = `
-      Estoy fusionando dos ideas relacionadas en una plataforma de gestión de proyectos.
-      Por favor, crea una nueva idea que combine de manera coherente el contenido de estas dos ideas:
-      
-      IDEA 1:
-      Título: ${idea1.title}
-      Descripción: ${idea1.description}
-      ${idea1.clarification ? `Aclaración: ${idea1.clarification}` : ''}
-      
-      IDEA 2:
-      Título: ${idea2.title}
-      Descripción: ${idea2.description}
-      ${idea2.clarification ? `Aclaración: ${idea2.clarification}` : ''}
-      
-      Por favor, genera:
-      1. Un título conciso que represente la fusión de ambas ideas.
-      2. Una descripción detallada que integre ambos conceptos de manera fluida.
-      3. Una aclaración opcional si es necesario explicar algún detalle adicional.
-      
-      Devuelve el resultado en formato JSON con las propiedades: title, description, clarification. Respeta el idioma original, si las ideas originales vienen en ingles, responde en ingles, si las ideas originales vienen en español, responde en español. O segun el idioma original, si las ideas originales vienen en otro idioma, responde en ese.
+Estoy fusionando dos ideas relacionadas en una plataforma de análisis ISM.
+Por favor, fusiona SOLO los siguientes campos que tienen contenido en ambas ideas:
+
+${fieldsToMerge.map(f => f.instruction).join('\n\n')}
+
+INSTRUCCIONES IMPORTANTES:
+- Fusiona SOLO los campos indicados arriba.
+- Para cada campo, crea UNA versión unificada que represente ambos conceptos.
+- NO añadas campos que no se te pidieron fusionar.
+- Respeta el idioma original de las ideas.
+
+Devuelve el resultado en formato JSON con SOLO las propiedades que fusionaste: ${fieldsToMerge.map(f => f.field).join(', ')}.
+Ejemplo de formato: {"title": "...", "description": "..."} (solo incluye los campos que fusionaste)
     `;
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -84,7 +130,7 @@ export async function mergeIdeasWithAI(idea1: Idea, idea2: Idea): Promise<Partia
     if (!response.ok) {
       const errorData = await response.json();
       console.error("Error en la API de OpenAI:", errorData);
-      return createSimpleMerge(idea1, idea2);
+      return createSmartMerge(idea1, idea2);
     }
 
     const data = await response.json() as OpenAIResponse;
@@ -94,7 +140,7 @@ export async function mergeIdeasWithAI(idea1: Idea, idea2: Idea): Promise<Partia
       // Verificar que la respuesta tenga la estructura esperada
       if (!data.choices || !data.choices[0] || !data.choices[0].message) {
         console.error("Formato de respuesta de OpenAI inesperado:", data);
-        return createSimpleMerge(idea1, idea2);
+        return createSmartMerge(idea1, idea2);
       }
       
       // Intentar extraer el JSON de la respuesta
@@ -109,14 +155,17 @@ export async function mergeIdeasWithAI(idea1: Idea, idea2: Idea): Promise<Partia
       contentText = contentText.replace(/\\n/g, ' ').trim();
       
       // Intentar parsear el resultado como JSON
-      const result = JSON.parse(contentText);
+      const aiResult = JSON.parse(contentText);
       
+      // Get the base smart merge (handles fields where only one idea has content)
+      const baseMerge = createSmartMerge(idea1, idea2);
+      
+      // Override with AI results only for fields that were fused by AI
       return {
-        title: result.title || `${idea1.title} + ${idea2.title}`,
-        description: result.description || `${idea1.description}\n\n${idea2.description}`,
-        clarification: result.clarification || '',
-        // Mantener la categoría de la primera idea
-        category: idea1.category
+        title: aiResult.title || baseMerge.title,
+        description: aiResult.description || baseMerge.description,
+        clarification: aiResult.clarification || baseMerge.clarification,
+        category: baseMerge.category
       };
     } catch (parseError) {
       console.error("Error al parsear la respuesta de OpenAI:", parseError);
@@ -124,7 +173,7 @@ export async function mergeIdeasWithAI(idea1: Idea, idea2: Idea): Promise<Partia
       // Verificar que la respuesta tenga la estructura esperada antes de intentar acceder a su contenido
       if (!data.choices || !data.choices[0] || !data.choices[0].message) {
         console.error("Formato de respuesta de OpenAI inesperado:", data);
-        return createSimpleMerge(idea1, idea2);
+        return createSmartMerge(idea1, idea2);
       }
       
       // Extraer manualmente título y descripción de la respuesta si el formato no es JSON
@@ -133,11 +182,13 @@ export async function mergeIdeasWithAI(idea1: Idea, idea2: Idea): Promise<Partia
       const descriptionMatch = content.match(/Descripción:?\s*([^\n]+(?:\n(?!\n).+)*)/i);
       const clarificationMatch = content.match(/Aclaración:?\s*([^\n]+(?:\n(?!\n).+)*)/i);
       
+      const baseMerge = createSmartMerge(idea1, idea2);
+      
       return {
-        title: titleMatch ? titleMatch[1].trim() : `${idea1.title} + ${idea2.title}`,
-        description: descriptionMatch ? descriptionMatch[1].trim() : `${idea1.description}\n\n${idea2.description}`,
-        clarification: clarificationMatch ? clarificationMatch[1].trim() : '',
-        category: idea1.category
+        title: titleMatch ? titleMatch[1].trim() : baseMerge.title,
+        description: descriptionMatch ? descriptionMatch[1].trim() : baseMerge.description,
+        clarification: clarificationMatch ? clarificationMatch[1].trim() : baseMerge.clarification,
+        category: baseMerge.category
       };
     }
   } catch (error) {
@@ -149,35 +200,66 @@ export async function mergeIdeasWithAI(idea1: Idea, idea2: Idea): Promise<Partia
       idea2: { id: idea2.id, title: idea2.title, projectId: idea2.projectId }
     });
     
-    // Si hay cualquier error, caemos de nuevo a la fusión básica
-    return createSimpleMerge(idea1, idea2);
+    // Si hay cualquier error, caemos de nuevo a la fusión inteligente
+    return createSmartMerge(idea1, idea2);
   }
 }
 
 /**
- * Función de respaldo que simplemente concatena las dos ideas
- * cuando no se puede usar la API de OpenAI
+ * Función de fusión inteligente que maneja campos vacíos:
+ * - Si ambas ideas tienen contenido en un campo: concatena (será reemplazado por IA si está disponible)
+ * - Si solo una idea tiene contenido: usa ese valor directamente
+ * - Si ninguna tiene contenido: deja vacío
  */
-function createSimpleMerge(idea1: Idea, idea2: Idea): Partial<Idea> {
-  // Combinar títulos
-  const mergedTitle = `${idea1.title} + ${idea2.title}`;
+function createSmartMerge(idea1: Idea, idea2: Idea): Partial<Idea> {
+  // Merge titles intelligently
+  let mergedTitle: string;
+  if (hasContent(idea1.title) && hasContent(idea2.title)) {
+    mergedTitle = `${idea1.title} + ${idea2.title}`;
+  } else if (hasContent(idea1.title)) {
+    mergedTitle = idea1.title;
+  } else if (hasContent(idea2.title)) {
+    mergedTitle = idea2.title;
+  } else {
+    mergedTitle = "";
+  }
   
-  // Combinar descripciones
-  const mergedDescription = `${idea1.description}\n\n${idea2.description}`;
+  // Merge descriptions intelligently
+  let mergedDescription: string;
+  if (hasContent(idea1.description) && hasContent(idea2.description)) {
+    mergedDescription = `${idea1.description}\n\n${idea2.description}`;
+  } else if (hasContent(idea1.description)) {
+    mergedDescription = idea1.description!;
+  } else if (hasContent(idea2.description)) {
+    mergedDescription = idea2.description!;
+  } else {
+    mergedDescription = "";
+  }
   
-  // Combinar aclaraciones si existen
-  let mergedClarification = "";
-  if (idea1.clarification || idea2.clarification) {
-    mergedClarification = [
-      idea1.clarification || "",
-      idea2.clarification || ""
-    ].filter(Boolean).join("\n\n");
+  // Merge clarifications intelligently
+  let mergedClarification: string;
+  if (hasContent(idea1.clarification) && hasContent(idea2.clarification)) {
+    mergedClarification = `${idea1.clarification}\n\n${idea2.clarification}`;
+  } else if (hasContent(idea1.clarification)) {
+    mergedClarification = idea1.clarification!;
+  } else if (hasContent(idea2.clarification)) {
+    mergedClarification = idea2.clarification!;
+  } else {
+    mergedClarification = "";
+  }
+  
+  // Category: use the one that exists, prefer idea1 if both have it
+  let mergedCategory: string | undefined;
+  if (hasContent(idea1.category)) {
+    mergedCategory = idea1.category!;
+  } else if (hasContent(idea2.category)) {
+    mergedCategory = idea2.category!;
   }
   
   return {
     title: mergedTitle,
     description: mergedDescription,
     clarification: mergedClarification,
-    category: idea1.category // Mantener la categoría de la primera idea
+    category: mergedCategory
   };
 }

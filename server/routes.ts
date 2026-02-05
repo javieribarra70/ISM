@@ -447,12 +447,37 @@ export function registerRoutes(app: Express): Server {
         
         const projectId = parseInt(req.params.projectId);
         
-        // Fusión simple
+        // Fusión inteligente: solo combina si ambos tienen contenido, sino usa el que existe
+        const hasContent = (val: string | null | undefined) => !!(val && val.trim().length > 0);
+        
+        let mergedTitle: string;
+        if (hasContent(idea1.title) && hasContent(idea2.title)) {
+          mergedTitle = `${idea1.title} + ${idea2.title}`;
+        } else {
+          mergedTitle = hasContent(idea1.title) ? idea1.title : (hasContent(idea2.title) ? idea2.title : "");
+        }
+        
+        let mergedDescription: string;
+        if (hasContent(idea1.description) && hasContent(idea2.description)) {
+          mergedDescription = `${idea1.description}\n\n${idea2.description}`;
+        } else {
+          mergedDescription = hasContent(idea1.description) ? idea1.description! : (hasContent(idea2.description) ? idea2.description! : "");
+        }
+        
+        let mergedClarification: string;
+        if (hasContent(idea1.clarification) && hasContent(idea2.clarification)) {
+          mergedClarification = `${idea1.clarification}\n\n${idea2.clarification}`;
+        } else {
+          mergedClarification = hasContent(idea1.clarification) ? idea1.clarification! : (hasContent(idea2.clarification) ? idea2.clarification! : "");
+        }
+        
+        const mergedCategory = hasContent(idea1.category) ? idea1.category : (hasContent(idea2.category) ? idea2.category : undefined);
+        
         const simpleContent = {
-          title: `${idea1.title} + ${idea2.title}`,
-          description: `${idea1.description}\n\n${idea2.description}`,
-          clarification: [idea1.clarification || "", idea2.clarification || ""].filter(Boolean).join("\n\n"),
-          category: idea1.category
+          title: mergedTitle,
+          description: mergedDescription,
+          clarification: mergedClarification,
+          category: mergedCategory
         };
         
         // Crear la nueva idea combinada
