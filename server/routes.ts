@@ -1118,6 +1118,20 @@ export function registerRoutes(app: Express): Server {
         selectedBy: userId
       });
       
+      // Check if idea is currently selected (to determine if this is a deselection)
+      const currentSelection = await storage.getSelectedIdea(ideaId, projectId);
+      
+      // If idea is selected and we're trying to deselect, check for relationships first
+      if (currentSelection) {
+        const hasRelationships = await storage.hasRelationshipsForIdea(ideaId, projectId);
+        if (hasRelationships) {
+          console.log(`[SELECT IDEA] Cannot deselect idea ${ideaId} - has existing relationships`);
+          return res.status(400).json({ 
+            message: "Para deseleccionar esta idea, primero elimina sus conexiones en la pestaña Conexiones." 
+          });
+        }
+      }
+      
       // Toggle the idea selection
       try {
         const toggleData = {
@@ -1143,8 +1157,12 @@ export function registerRoutes(app: Express): Server {
             message: "Idea deselected successfully"
           });
         }
-      } catch (toggleError) {
+      } catch (toggleError: any) {
         console.error(`[SELECT IDEA] Error in toggle operation:`, toggleError);
+        // Check if this is the relationship error from storage layer
+        if (toggleError.message && toggleError.message.includes("deseleccionar")) {
+          return res.status(400).json({ message: toggleError.message });
+        }
         throw toggleError;
       }
     } catch (error) {

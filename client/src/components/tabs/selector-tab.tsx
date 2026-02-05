@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 interface SelectorTabProps {
   projectId: number;
@@ -19,6 +20,7 @@ interface SelectorTabProps {
 
 export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProps) {
   const { user, isLoading: isUserLoading } = useAuth();
+  const { toast } = useToast();
   const [selectedIdeas, setSelectedIdeas] = useState<number[]>([]);
   const [votingLimit, setVotingLimit] = useState<number>(0);
   // Estado para las ideas seleccionadas por el administrador para el proceso de conexión
@@ -164,41 +166,40 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
     mutationFn: async (ideaId: number) => {
       console.log(`[CLIENT] Sending selection toggle request for ideaId=${ideaId}, projectId=${projectId}`);
       
-      try {
-        // Add more details to the request
-        const payload = { 
-          projectId,
-          userId: user?.id 
-        };
-        console.log(`[CLIENT] Selection toggle payload:`, payload);
-        
-        const response = await apiRequest(
-          "POST", 
-          `/api/ideas/${ideaId}/select`, 
-          payload
-        );
-        
-        console.log(`[CLIENT] Selection toggle API response status:`, response.status);
-        
-        if (!response.ok) {
-          // Try to get more detailed error info
-          try {
-            const errorData = await response.json();
-            console.error(`[CLIENT] Error response:`, errorData);
-            throw new Error(errorData.error || `Server returned ${response.status}`);
-          } catch (parseError) {
-            console.error(`[CLIENT] Failed to parse error response:`, parseError);
-            throw new Error(`Server returned ${response.status}`);
+      const payload = { 
+        projectId,
+        userId: user?.id 
+      };
+      console.log(`[CLIENT] Selection toggle payload:`, payload);
+      
+      const response = await fetch(`/api/ideas/${ideaId}/select`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload)
+      });
+      
+      console.log(`[CLIENT] Selection toggle API response status:`, response.status);
+      
+      if (!response.ok) {
+        let errorMessage = "Error al cambiar selección de la idea.";
+        try {
+          const errorData = await response.json();
+          console.error(`[CLIENT] Error response:`, errorData);
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
           }
+        } catch {
+          // If JSON parsing fails, use default message
         }
-        
-        const data = await response.json();
-        console.log(`[CLIENT] Selection toggle API response data:`, data);
-        return data;
-      } catch (error) {
-        console.error(`[CLIENT] Error in selection toggle request:`, error);
-        throw error;
+        throw new Error(errorMessage);
       }
+      
+      const data = await response.json();
+      console.log(`[CLIENT] Selection toggle API response data:`, data);
+      return data;
     },
     onSuccess: (data) => {
       // Refetch selected ideas after toggling
@@ -207,6 +208,14 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
     },
     onError: (error: Error) => {
       console.error(`[CLIENT] Selection toggle mutation error:`, error);
+      // Show toast notification with error message
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      // Revert local state by refetching
+      refetchSelectedIdeas();
     }
   });
 
@@ -214,22 +223,16 @@ export default function SelectorTab({ projectId, setActiveTab }: SelectorTabProp
   const handleConnectionToggle = (ideaId: number) => {
     console.log(`[CLIENT] Toggle connection for idea ${ideaId}. Current selected:`, connectionIdeas);
     
+    const isCurrentlySelected = connectionIdeas.includes(ideaId);
+    
+    // If adding a new idea (not deselecting), update local state immediately for responsive UI
+    // For deselection, wait for server confirmation to avoid flash of wrong state
+    if (!isCurrentlySelected) {
+      setConnectionIdeas(prevSelected => [...prevSelected, ideaId]);
+    }
+    
     // Call the API to toggle the selected idea
     toggleSelectedIdeaMutation.mutate(ideaId);
-    
-    // Update local state for immediate UI feedback
-    setConnectionIdeas(prevSelected => {
-      // If already selected, remove it
-      if (prevSelected.includes(ideaId)) {
-        console.log(`Removing idea ${ideaId} from selection`);
-        return prevSelected.filter(id => id !== ideaId);
-      } 
-      // If not selected, add it
-      else {
-        console.log(`Adding idea ${ideaId} to selection`);
-        return [...prevSelected, ideaId];
-      }
-    });
   };
   
   // Load selected ideas from database when data is fetched

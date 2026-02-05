@@ -77,6 +77,7 @@ export interface IStorage {
   createRelationship(relationship: InsertRelationship): Promise<Relationship>;
   deleteRelationship(id: number): Promise<boolean>;
   deleteAllProjectRelationships(projectId: number): Promise<number>;
+  hasRelationshipsForIdea(ideaId: number, projectId: number): Promise<boolean>;
 
   // Invitation operations
   createInvitation(invitation: InsertInvitation): Promise<Invitation>;
@@ -513,6 +514,13 @@ export class MemStorage implements IStorage {
     return deletedCount;
   }
 
+  async hasRelationshipsForIdea(ideaId: number, projectId: number): Promise<boolean> {
+    const relationships = Array.from(this.relationships.values())
+      .filter(rel => rel.projectId === projectId && 
+        (rel.fromIdeaId === ideaId || rel.toIdeaId === ideaId));
+    return relationships.length > 0;
+  }
+
   // Invitation operations
   async createInvitation(insertInvitation: InsertInvitation): Promise<Invitation> {
     const id = this.currentInvitationId++;
@@ -638,6 +646,11 @@ export class MemStorage implements IStorage {
     const existingSelectedIdea = this.selectedIdeas.get(selectedKey);
     
     if (existingSelectedIdea) {
+      // Check if idea has relationships before allowing deselection
+      const hasRelationships = await this.hasRelationshipsForIdea(selectedIdeaData.ideaId, selectedIdeaData.projectId);
+      if (hasRelationships) {
+        throw new Error("Para deseleccionar esta idea, primero elimina sus conexiones en la pestaña Conexiones.");
+      }
       // Si la idea ya está seleccionada, la eliminamos
       this.selectedIdeas.delete(selectedKey);
       return undefined;
@@ -1459,6 +1472,20 @@ export class DatabaseStorage implements IStorage {
       throw error;
     }
   }
+
+  async hasRelationshipsForIdea(ideaId: number, projectId: number): Promise<boolean> {
+    try {
+      const result = await sql`
+        SELECT COUNT(*) as count FROM relationships
+        WHERE project_id = ${projectId}
+        AND (from_idea_id = ${ideaId} OR to_idea_id = ${ideaId})
+      `;
+      return parseInt(result[0]?.count || '0') > 0;
+    } catch (error) {
+      console.error('Error checking relationships for idea:', error);
+      throw error;
+    }
+  }
   
   async createInvitation(invitationData: InsertInvitation): Promise<Invitation> {
     try {
@@ -1798,9 +1825,18 @@ export class DatabaseStorage implements IStorage {
         
         console.log('[STORAGE] Check query results:', checkResult.rows);
         
-        // If the idea is already selected, delete it
+        // If the idea is already selected, check for relationships before deleting
         if (checkResult.rows.length > 0) {
-          console.log('[STORAGE] Idea already selected, deleting it');
+          console.log('[STORAGE] Idea already selected, checking for relationships before deselection');
+          
+          // Check if idea has relationships
+          const hasRelationships = await this.hasRelationshipsForIdea(selectedIdeaData.ideaId, selectedIdeaData.projectId);
+          if (hasRelationships) {
+            console.log('[STORAGE] Cannot deselect idea - has existing relationships');
+            throw new Error("Para deseleccionar esta idea, primero elimina sus conexiones en la pestaña Conexiones.");
+          }
+          
+          console.log('[STORAGE] No relationships found, proceeding with deletion');
           
           const deleteQuery = `
             DELETE FROM selected_ideas 
