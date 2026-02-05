@@ -1160,7 +1160,7 @@ export function registerRoutes(app: Express): Server {
       } catch (toggleError: any) {
         console.error(`[SELECT IDEA] Error in toggle operation:`, toggleError);
         // Check if this is the relationship error from storage layer
-        if (toggleError.message && toggleError.message.includes("deseleccionar")) {
+        if (toggleError.message && toggleError.message.includes("deselect")) {
           return res.status(400).json({ message: toggleError.message });
         }
         throw toggleError;

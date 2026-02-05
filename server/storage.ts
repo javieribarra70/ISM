@@ -649,7 +649,7 @@ export class MemStorage implements IStorage {
       // Check if idea has relationships before allowing deselection
       const hasRelationships = await this.hasRelationshipsForIdea(selectedIdeaData.ideaId, selectedIdeaData.projectId);
       if (hasRelationships) {
-        throw new Error("Para deseleccionar esta idea, primero elimina sus conexiones en la pestaña Conexiones.");
+        throw new Error("To deselect this idea, first remove its connections in the Connections tab.");
       }
       // Si la idea ya está seleccionada, la eliminamos
       this.selectedIdeas.delete(selectedKey);
@@ -1833,7 +1833,7 @@ export class DatabaseStorage implements IStorage {
           const hasRelationships = await this.hasRelationshipsForIdea(selectedIdeaData.ideaId, selectedIdeaData.projectId);
           if (hasRelationships) {
             console.log('[STORAGE] Cannot deselect idea - has existing relationships');
-            throw new Error("Para deseleccionar esta idea, primero elimina sus conexiones en la pestaña Conexiones.");
+            throw new Error("To deselect this idea, first remove its connections in the Connections tab.");
           }
           
           console.log('[STORAGE] No relationships found, proceeding with deletion');
