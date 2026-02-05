@@ -339,15 +339,16 @@ export default function ProjectPage() {
       
       if (!response.ok) {
         // Try to get the error message from the response body
+        let errorMessage = "An error occurred while deleting the idea.";
         try {
           const errorData = await response.json();
           if (errorData.message) {
-            throw new Error(errorData.message);
+            errorMessage = errorData.message;
           }
         } catch {
-          // If JSON parsing fails, throw generic error
+          // If JSON parsing fails, use the default message
         }
-        throw new Error("An error occurred while deleting the idea.");
+        throw new Error(errorMessage);
       }
       
       return true;
