@@ -446,7 +446,7 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
 
       const vaxoResults = {
         ssimMatrix: booleanMatrix,
-        reachabilityMatrix: initialMatrix,
+        reachabilityMatrix: finalMatrix,
         levels: computedLevels,
         selectedIdeas: selectedIdeas,
         processDate: new Date().toISOString(),
@@ -537,7 +537,7 @@ export default function VaxoWizard({ projectId, preselectedIdeaIds = [], onCompl
 
           const vaxoResults = {
             ssimMatrix: booleanMatrix,
-            reachabilityMatrix: initialMatrix,
+            reachabilityMatrix: finalMatrix,
             levels: computedLevels,
             selectedIdeas: selectedIdeas,
             processDate: new Date().toISOString(),
