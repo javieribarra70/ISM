@@ -332,40 +332,34 @@ export default function ProjectPage() {
   // Delete idea mutation
   const deleteIdeaMutation = useMutation({
     mutationFn: async (ideaId: number) => {
-      const response = await apiRequest("DELETE", `/api/ideas/${ideaId}`, {});
-      return response.ok;
+      const response = await fetch(`/api/ideas/${ideaId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        // Try to get the error message from the response body
+        try {
+          const errorData = await response.json();
+          if (errorData.message) {
+            throw new Error(errorData.message);
+          }
+        } catch {
+          // If JSON parsing fails, throw generic error
+        }
+        throw new Error("An error occurred while deleting the idea.");
+      }
+      
+      return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${parsedProjectId}/ideas`] });
       refetchIdeas();
     },
     onError: (error: Error) => {
-      console.error("Error al eliminar idea:", error);
-      console.log("Error message raw:", error.message);
-      // Try to extract the server message from the error
-      let errorMessage = "An error occurred while deleting the idea.";
-      try {
-        // Error format is "status: {json}" or "status: message"
-        const errorText = error.message;
-        console.log("Error text:", errorText);
-        const colonIndex = errorText.indexOf(':');
-        if (colonIndex !== -1) {
-          const jsonPart = errorText.substring(colonIndex + 1).trim();
-          console.log("JSON part:", jsonPart);
-          const parsed = JSON.parse(jsonPart);
-          console.log("Parsed:", parsed);
-          if (parsed.message) {
-            errorMessage = parsed.message;
-            console.log("Using server message:", errorMessage);
-          }
-        }
-      } catch (parseError) {
-        // If parsing fails, use the default message
-        console.error("Parse error:", parseError);
-      }
       toast({
         title: "Error",
-        description: errorMessage,
+        description: error.message,
         variant: "destructive",
       });
     }
