@@ -528,6 +528,14 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).json({ message: "No tienes permisos para eliminar esta idea" });
       }
       
+      // Check if the idea is selected for VAXO process
+      const selectedIdea = await storage.getSelectedIdea(ideaId, idea.projectId);
+      if (selectedIdea) {
+        return res.status(400).json({ 
+          message: "Deselect the idea before attempting to delete it. Do this in the Selector tab." 
+        });
+      }
+      
       // Eliminar la idea
       const success = await storage.deleteIdea(ideaId);
       
