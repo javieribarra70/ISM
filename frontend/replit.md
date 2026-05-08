@@ -112,10 +112,10 @@ Preferred communication style: Simple, everyday language.
 ### External Dependencies
 
 **Third-Party Services:**
-- **Neon Database** - Serverless PostgreSQL hosting
-  - Connection via `@neondatabase/serverless` package
-  - WebSocket support for persistent connections
-  - SSL required for security
+- **PostgreSQL** - Local in Docker (default) or any compatible cloud provider
+  - Connection via `postgres` (postgres-js) driver from `server/db.ts` and `server/storage.ts`
+  - SSL conditionally enabled based on host (disabled for `localhost`, enabled otherwise)
+  - Local infrastructure provisioned via `infra/docker-compose.yml`
 
 - **OpenAI API** (Optional) - AI-powered idea merging
   - Used in clustering mode to intelligently merge similar ideas
@@ -124,7 +124,7 @@ Preferred communication style: Simple, everyday language.
 
 **Key NPM Packages:**
 - **Authentication**: `passport`, `passport-local`, `express-session`, `connect-pg-simple`
-- **Database**: `drizzle-orm`, `drizzle-kit`, `@neondatabase/serverless`, `postgres`
+- **Database**: `drizzle-orm`, `drizzle-kit`, `postgres` (postgres-js), `pg` (used internally by `connect-pg-simple`)
 - **Frontend**: `react`, `react-dom`, `wouter`, `@tanstack/react-query`
 - **UI Components**: `@radix-ui/*` (comprehensive component library), `tailwindcss`
 - **Graph Visualization**: `cytoscape`, `cytoscape-dagre`, `cytoscape-svg`
