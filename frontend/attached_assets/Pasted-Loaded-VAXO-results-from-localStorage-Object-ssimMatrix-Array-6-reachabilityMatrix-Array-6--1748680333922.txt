@@ -1,0 +1,41 @@
+Loaded VAXO results from localStorage: 
+Object {ssimMatrix: Array(6), reachabilityMatrix: Array(6), levels: Array(6), selectedIdeas: Array(6), processDate: "2025-05-31T08:08:15.304Z"}
+Original SSIM Matrix: 
+(6) [Array(6), Array(6), Array(6), Array(6), Array(6), Array(6)]
+Reduced SSIM Matrix (without redundancies): 
+(6) [Array(6), Array(6), Array(6), Array(6), Array(6), Array(6)]
+Ideas: 
+(6) ["5", "6", "4", "1", "3", "2"]
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-0` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-1` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-2` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-3` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-4` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-0` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-1` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-2` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-3` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-4` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Cannot read properties of undefined (reading 'length')
+Query to /api/projects/7/ideas: 200
+Query to /api/projects/7/relationships: 200
+Query to /api/projects/7: 200
+Loaded VAXO results from localStorage: 
+Object {ssimMatrix: Array(6), reachabilityMatrix: Array(6), levels: Array(6), selectedIdeas: Array(6), processDate: "2025-05-31T08:08:15.304Z"}
+Original SSIM Matrix: 
+(6) [Array(6), Array(6), Array(6), Array(6), Array(6), Array(6)]
+Reduced SSIM Matrix (without redundancies): 
+(6) [Array(6), Array(6), Array(6), Array(6), Array(6), Array(6)]
+Ideas: 
+(6) ["5", "6", "4", "1", "3", "2"]
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-0` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-1` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-2` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-3` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-4` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-0` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-1` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-2` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-3` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Do not assign mappings to elements without corresponding data (i.e. ele `separator-4` has no mapping for property `label` with data field `label`); try a `[label]` selector to limit scope to elements with `label` defined
+Can

@@ -1,6 +1,77 @@
-node_modules
-dist
+# =====================================================
+# .gitignore — Monorepo ISM (Python + Node.js + Docker)
+# =====================================================
+
+# -----------------------------
+# Python
+# -----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+.env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# -----------------------------
+# Node.js
+# -----------------------------
+node_modules/
+.pnp.*
+frontend/dist/
+frontend/build/
+*.log
+npm-debug.log*
+
+# -----------------------------
+# Docker
+# -----------------------------
+.docker/
+docker-volumes/
+
+# -----------------------------
+# Entorno y secretos
+# -----------------------------
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# -----------------------------
+# IDE y sistema
+# -----------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
 .DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz
+Thumbs.db
+
+# -----------------------------
+# Cursor
+# -----------------------------
+.cursor/
+
+# -----------------------------
+# Replit (residuales)
+# -----------------------------
+.replit
+replit.nix
+
+# -----------------------------
+# Logs y temporales
+# -----------------------------
+*.log
+tmp/
+temp/
