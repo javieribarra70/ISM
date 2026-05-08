@@ -18,8 +18,13 @@ const { Pool } = pkg;
 
 // Database setup - using postgres package for better compatibility
 const connectionString = process.env.DATABASE_URL;
-const sql = postgres(connectionString as string, { 
-  ssl: 'require',
+
+// Postgres local en Docker no expone TLS; Neon y cualquier nube sí.
+// Detectamos por host y desactivamos SSL sólo cuando apunta a localhost.
+const isLocalDb = /@(localhost|127\.0\.0\.1)\b/.test(connectionString ?? "");
+
+const sql = postgres(connectionString as string, {
+  ssl: isLocalDb ? false : 'require',
   connect_timeout: 10,
   idle_timeout: 30
 });
@@ -28,9 +33,7 @@ const db = drizzle(sql);
 // Create a pool for native pg queries
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  ssl: isLocalDb ? false : { rejectUnauthorized: false }
 });
 
 // PostgreSQL session store
@@ -688,11 +691,10 @@ export class DatabaseStorage implements IStorage {
   constructor() {
     try {
       // Set up the session store
+      // Reusamos el `pool` definido arriba para heredar su configuración
+      // de SSL (desactivado en localhost, activo contra cloud DBs).
       this.sessionStore = new PostgresSessionStore({
-        conObject: {
-          connectionString: connectionString,
-          ssl: { rejectUnauthorized: false }
-        },
+        pool,
         createTableIfMissing: true,
       });
       

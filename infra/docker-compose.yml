@@ -1,0 +1,61 @@
+# =====================================================================
+# docker-compose.yml — Infraestructura local del sistema FISM
+# =====================================================================
+# Levanta Postgres 16 en el host para que tanto el frontend (Express +
+# Drizzle) como el futuro backend Python se conecten a la misma instancia.
+#
+# Uso:
+#   cd infra
+#   docker compose up -d           # arranca en segundo plano
+#   docker compose ps              # estado del servicio
+#   docker compose logs -f postgres
+#   docker compose down            # detiene (conserva datos en el volumen)
+#   docker compose down -v         # detiene y BORRA el volumen de datos
+#
+# La contraseña se toma de la variable POSTGRES_PASSWORD del entorno
+# (puede venir de un .env en la raíz del repo o de la shell). Si no se
+# define, se usa 'fism_dev_password' SOLO para desarrollo local.
+# =====================================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fism_postgres
+    restart: unless-stopped
+
+    environment:
+      # Credenciales de la base de datos del sistema FISM.
+      # POSTGRES_USER y POSTGRES_DB se fijan en el compose porque son
+      # parámetros estables del proyecto; sólo la contraseña es variable.
+      POSTGRES_USER: fism_user
+      POSTGRES_DB: fism_db
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fism_dev_password}
+
+      # Opciones recomendadas para Postgres 16.
+      # Fuerza checksums en páginas para detectar corrupción temprana.
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+
+    ports:
+      # Se expone únicamente a 127.0.0.1 para que el puerto NO quede
+      # accesible desde la red local. Si necesitas exponerlo a otros
+      # equipos en la LAN, quita el prefijo "127.0.0.1:".
+      # 5433 en host porque 5432 lo ocupa Postgres nativo de Windows;
+      # dentro del contenedor sigue siendo 5432.
+      - "127.0.0.1:5433:5432"
+
+    volumes:
+      # Volumen nombrado: los datos sobreviven a `docker compose down`
+      # y a reinicios del contenedor. Sólo se borran con `down -v`.
+      - fism_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      # pg_isready confirma que Postgres acepta conexiones.
+      test: ["CMD-SHELL", "pg_isready -U fism_user -d fism_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  fism_postgres_data:
+    name: fism_postgres_data
