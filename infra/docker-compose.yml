@@ -27,6 +27,9 @@ services:
       # Credenciales de la base de datos del sistema FISM.
       # POSTGRES_USER y POSTGRES_DB se fijan en el compose porque son
       # parámetros estables del proyecto; sólo la contraseña es variable.
+      # POSTGRES_DB es la base "principal" creada automaticamente por
+      # Postgres al inicializar. Las bases adicionales (ism_db) se crean
+      # mediante init-db.sh montado en /docker-entrypoint-initdb.d/.
       POSTGRES_USER: fism_user
       POSTGRES_DB: fism_db
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fism_dev_password}
@@ -47,6 +50,13 @@ services:
       # Volumen nombrado: los datos sobreviven a `docker compose down`
       # y a reinicios del contenedor. Sólo se borran con `down -v`.
       - fism_postgres_data:/var/lib/postgresql/data
+
+      # El script init-db.sh se ejecuta SOLO la primera vez que Postgres
+      # arranca con un volumen vacio (Postgres busca scripts .sh y .sql
+      # en /docker-entrypoint-initdb.d/ en el primer init). Para
+      # ejecutarlo de nuevo, hay que correr `docker compose down -v` y
+      # volver a `docker compose up -d`.
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
 
     healthcheck:
       # pg_isready confirma que Postgres acepta conexiones.

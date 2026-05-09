@@ -1,0 +1,5 @@
+# Forzar LF en scripts shell para que funcionen dentro de contenedores
+# Linux aunque se editen en Windows. Sin esta regla, Git en Windows los
+# convertiria a CRLF y bash dentro del contenedor fallaria con
+# "/bin/bash^M: bad interpreter".
+*.sh text eol=lf
