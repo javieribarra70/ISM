@@ -710,94 +710,35 @@ export class DatabaseStorage implements IStorage {
   
   private async initializeDatabase() {
     try {
-      // Create tables if they don't exist
+      // Sanity check: confirma que el schema fue aplicado por Drizzle.
+      // La aplicacion del schema corre por separado via `npm run db:push`,
+      // que usa shared/schema.ts como unica fuente de verdad. Aqui NO
+      // creamos tablas ad-hoc: cualquier discrepancia entre el codigo y
+      // la base se resuelve en el flujo de migraciones de Drizzle.
       console.log('Running database migrations...');
-      
-      // This is just a basic check - in a production app, we would use drizzle-kit for migrations
       try {
         await db.select().from(users).limit(1);
         console.log('Users table exists');
       } catch (error) {
-        console.log('Creating database schema...');
-        // We need to execute each table creation as a separate SQL query
-        // to avoid "cannot insert multiple commands into a prepared statement" error
-        await sql`CREATE TABLE IF NOT EXISTS users (
-          id SERIAL PRIMARY KEY,
-          username TEXT NOT NULL UNIQUE,
-          email TEXT NOT NULL UNIQUE,
-          password TEXT NOT NULL,
-          role TEXT NOT NULL DEFAULT 'user'
-        );`;
-        
-        await sql`CREATE TABLE IF NOT EXISTS projects (
-          id SERIAL PRIMARY KEY,
-          name TEXT NOT NULL,
-          description TEXT,
-          created_by INTEGER NOT NULL REFERENCES users(id),
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );`;
-        
-        await sql`CREATE TABLE IF NOT EXISTS project_users (
-          id SERIAL PRIMARY KEY,
-          project_id INTEGER NOT NULL REFERENCES projects(id),
-          user_id INTEGER NOT NULL REFERENCES users(id),
-          role TEXT NOT NULL DEFAULT 'member',
-          UNIQUE (project_id, user_id)
-        );`;
-        
-        await sql`CREATE TABLE IF NOT EXISTS ideas (
-          id SERIAL PRIMARY KEY,
-          project_id INTEGER NOT NULL REFERENCES projects(id),
-          title TEXT NOT NULL,
-          description TEXT,
-          category TEXT NOT NULL,
-          position_x TEXT DEFAULT '0',
-          position_y TEXT DEFAULT '0',
-          created_by INTEGER NOT NULL REFERENCES users(id),
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );`;
-        
-        await sql`CREATE TABLE IF NOT EXISTS relationships (
-          id SERIAL PRIMARY KEY,
-          project_id INTEGER NOT NULL REFERENCES projects(id),
-          from_idea_id INTEGER NOT NULL REFERENCES ideas(id),
-          to_idea_id INTEGER NOT NULL REFERENCES ideas(id),
-          created_by INTEGER NOT NULL REFERENCES users(id)
-        );`;
-        
-        await sql`CREATE TABLE IF NOT EXISTS categories (
-          id SERIAL PRIMARY KEY,
-          project_id INTEGER NOT NULL REFERENCES projects(id),
-          name TEXT NOT NULL,
-          description TEXT,
-          color TEXT NOT NULL DEFAULT '#2196F3',
-          created_by INTEGER NOT NULL REFERENCES users(id),
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );`;
-        
-        await sql`CREATE TABLE IF NOT EXISTS invitations (
-          id SERIAL PRIMARY KEY,
-          project_id INTEGER NOT NULL REFERENCES projects(id),
-          email TEXT NOT NULL,
-          role TEXT NOT NULL DEFAULT 'member',
-          token TEXT NOT NULL UNIQUE,
-          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-          used BOOLEAN NOT NULL DEFAULT FALSE,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );`;
-        console.log('Database schema created successfully');
-        
-        // Create demo user
-        const demoUserExists = await sql`SELECT * FROM users WHERE username = 'demo' LIMIT 1`;
-        if (demoUserExists.length === 0) {
-          console.log('Creating demo user...');
-          await sql`
-            INSERT INTO users (username, email, password, role)
-            VALUES ('demo', 'demo@example.com', 'demo-password', 'admin')
-          `;
-          console.log('Demo user created successfully');
-        }
+        const userMessage =
+          "\n" +
+          "==============================================================\n" +
+          "  ❌ La tabla 'users' no existe en la base de datos.\n" +
+          "     El schema no esta aplicado.\n" +
+          "\n" +
+          "  Corre primero (desde frontend/):\n" +
+          "      npm run db:push\n" +
+          "\n" +
+          "  Esto aplica el schema completo desde shared/schema.ts.\n" +
+          "  --------------------------------------------------------------\n" +
+          "  EN: 'users' table not found. Run 'npm run db:push' before\n" +
+          "      starting the dev server.\n" +
+          "==============================================================\n";
+        console.error(userMessage);
+        throw new Error(
+          "Schema de base de datos no aplicado. " +
+          "Ejecuta 'npm run db:push' antes de arrancar el dev server."
+        );
       }
     } catch (error) {
       console.error('Error initializing database:', error);
